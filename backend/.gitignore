@@ -1,0 +1,42 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Virtual environments
+venv/
+.venv/
+env/
+env.bak/
+envs/
+#ace-t-env/
+
+# Environment variables
+#.env
+
+# Pytest
+.cache/
+.pytest_cache/
+
+# VS Code
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Node modules (if applicable)
+node_modules/
+
+# Logs
+*.log
+
+# Docker
+docker-compose.yml
+.env
+
+# Build directories
+build/
+dist/
