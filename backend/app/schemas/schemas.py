@@ -1,20 +1,25 @@
-# backend/app/schemas/schemas.py
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from datetime import datetime
 
-# Base schema for shared fields
-class UserBase(BaseModel):
+# Schema for reading a user
+class User(BaseModel):
+    id: int
     name: str
     email: str
-
-# Schema for creating a user
-class UserCreate(UserBase):
-    pass
-
-# Schema for returning full user data
-class User(UserBase):
-    id: int
     created_at: datetime
 
     class Config:
-        from_attributes = True  # Updated for Pydantic V2
+        from_attributes = True  # This replaces orm_mode in Pydantic v2
+
+# Schema for creating a user
+class UserCreate(BaseModel):
+    name: str
+    email: str
+
+# Schema for updating a user
+class UserUpdate(BaseModel):
+    name: str
+    email: str
+
+    class Config:
+        from_attributes = True

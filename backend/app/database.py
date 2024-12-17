@@ -1,10 +1,14 @@
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 
-SQLALCHEMY_DATABASE_URL = "postgresql+asyncpg://mbaosint:<your_password>@localhost:5432/ace_t_db"
+# SQLite database URL
+SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 
-# Set up the engine and session maker
+# Create the database engine
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+
+# SessionLocal for database sessions
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Base class for models
 Base = declarative_base()
