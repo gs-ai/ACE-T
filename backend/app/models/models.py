@@ -1,14 +1,12 @@
+# backend/app/models/models.py
 from sqlalchemy import Column, Integer, String, DateTime
-from sqlalchemy.orm import declarative_base
 from datetime import datetime
+from backend.app.database import Base
 
-Base = declarative_base()
-
-# User model representing the database table
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    email = Column(String, unique=True, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)

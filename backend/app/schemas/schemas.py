@@ -1,3 +1,4 @@
+# backend/app/schemas/schemas.py
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -9,7 +10,7 @@ class User(BaseModel):
     created_at: datetime
 
     class Config:
-        from_attributes = True  # This replaces orm_mode in Pydantic v2
+        from_attributes = True  # For Pydantic v2
 
 # Schema for creating a user
 class UserCreate(BaseModel):
@@ -18,8 +19,8 @@ class UserCreate(BaseModel):
 
 # Schema for updating a user
 class UserUpdate(BaseModel):
-    name: str
-    email: str
+    name: str | None = None
+    email: str | None = None
 
     class Config:
         from_attributes = True

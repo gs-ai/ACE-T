@@ -1,1 +1,1 @@
-from .schemas import User, UserCreate
+from .schemas import User, UserCreate, UserUpdate
