@@ -120,8 +120,7 @@ ACE-T/
    git commit -m "Initial project structure and .gitignore"
    git push -u origin master
 
-Current DIR Structure 12.16.2024
-(ace-t-env) mbaosint@Mac ACE-T % tree                                               
+Current DIR Structure 12.16.2024                                             
 .
 ├── ARCHITECTURE
 ├── DIRECTORY STRUCTURE
