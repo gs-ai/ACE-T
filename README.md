@@ -101,4 +101,4 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 
 ## Contact
 
-For any inquiries or issues, please open an issue on the GitHub repository. 
+Don't... 
