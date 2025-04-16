@@ -1,3 +1,5 @@
+![Project Architecture](1b95a033-dea0-4c22-98c6-f311b752e11a.png)
+
 # ACE-T
 
 ACE-T (Condition Placed Aversion OSINT in Realtime) is a project designed to perform real-time Open Source Intelligence (OSINT) analysis.
@@ -101,4 +103,4 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 
 ## Contact
 
-For any inquiries or issues, please open an issue on the GitHub repository. 
+For any inquiries or issues, please open an issue on the GitHub repository.
