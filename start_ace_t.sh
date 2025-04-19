@@ -10,9 +10,9 @@ conda activate ace-t-env
 echo "[+] Cleaning workspace..."
 python clean_ace_t.py
 
-# Initialize database
-echo "[+] Initializing database..."
-python initialize_db.py
+# Run Alembic migrations to ensure DB is up to date
+echo "[+] Running Alembic migrations..."
+alembic upgrade head
 
 # Start orchestrator (launches backend, OSINT monitor, log ingester, alert GUI)
 echo "[+] Starting ACE-T orchestrator..."

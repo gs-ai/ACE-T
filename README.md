@@ -26,7 +26,7 @@ ACE-T is a next-generation, modular Open-Source Intelligence (OSINT) platform en
    ```
 2. **Initialize the database**
    ```sh
-   python initialize_db.py
+   alembic upgrade head
    ```
 3. **Start the platform**
    ```sh
@@ -36,6 +36,23 @@ ACE-T is a next-generation, modular Open-Source Intelligence (OSINT) platform en
 
 4. **Access the API**
    - Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) for interactive API docs.
+
+---
+
+## Database Setup & Migrations
+
+ACE-T uses Alembic for all database schema management and migrations. **Do not use manual scripts for table creation.**
+
+- To initialize or upgrade the database, run:
+  ```sh
+  alembic upgrade head
+  ```
+- To create a new migration after changing models:
+  ```sh
+  alembic revision --autogenerate -m "Describe your change"
+  ```
+
+See `alembic/README` for more details.
 
 ---
 
