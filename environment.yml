@@ -3,19 +3,30 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.11.8
-  - fastapi=0.115.6
-  - uvicorn=0.32.1
+  - python=3.11
+  - fastapi
+  - uvicorn
   - sqlalchemy
   - pydantic=2.10.3
-  - python-dotenv=1.0.1
-  - python-multipart=0.0.19
-  - email-validator=2.2.0
-  - typer=0.15.1
-  - starlette=0.41.3
-  - jinja2=3.1.4
-  - rich=13.9.4
-  - httpx=0.28.1
-  - watchfiles=1.0.0
+  - python-dotenv
+  - python-multipart
+  - email-validator
+  - typer
+  - starlette
+  - jinja2
+  - rich
+  - httpx
+  - watchfiles
   - pip
   - wheel
+  - tk
+  - scrapy
+  - itemadapter
+  - requests
+  - pandas
+  - matplotlib
+  - seaborn
+  - alembic
+  - pytest
+  - pyyaml
+  - twisted

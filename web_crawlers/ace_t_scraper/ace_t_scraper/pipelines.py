@@ -16,8 +16,8 @@ class AceTScraperPipeline:
             return None
 
         # Transform data (e.g., strip whitespace)
-        item['title'] = item['title'].strip()
-        item['url'] = item['url'].strip()
+        item['title'] = item['title'].strip() if item['title'] else item['title']
+        item['url'] = item['url'].strip() if item['url'] else item['url']
 
         logging.info(f"Processed item: {item}")
         return item

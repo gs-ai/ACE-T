@@ -1,7 +1,7 @@
 # backend/app/crud.py
 from sqlalchemy.orm import Session
-from backend.app.models.models import User
-from backend.app.schemas.schemas import UserCreate, UserUpdate
+from backend.app.models.models import User, OSINTRecord
+from backend.app.schemas.schemas import UserCreate, UserUpdate, OSINTRecordCreate
 
 # Function to create a user
 def create_user(db: Session, user: UserCreate):
@@ -31,3 +31,15 @@ def update_user(db: Session, user_id: int, user: UserUpdate):
         db.refresh(db_user)
         return db_user
     return None
+
+# Function to create an OSINT record
+def create_osint_record(db: Session, record: OSINTRecordCreate):
+    db_record = OSINTRecord(**record.dict())
+    db.add(db_record)
+    db.commit()
+    db.refresh(db_record)
+    return db_record
+
+# Function to get all OSINT records
+def get_osint_records(db: Session, skip: int = 0, limit: int = 10):
+    return db.query(OSINTRecord).offset(skip).limit(limit).all()

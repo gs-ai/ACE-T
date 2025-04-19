@@ -2,34 +2,31 @@ ACE-T: Advanced Cyber-Enabled Threat Intelligence Platform
 
 Introduction
 
-ACE-T (Advanced Cyber-Enabled Threat Intelligence) is a next-generation, modular Open-Source Intelligence (OSINT) platform specifically engineered for top-tier intelligence agencies like the NSA, CIA, and FBI. Designed by a PhD-level computer scientist with deep expertise in cybersecurity, data science, and intelligence operations, ACE-T leverages cutting-edge AI, big data analytics, and cloud architectures. It empowers analysts with real-time, actionable insights from vast, heterogeneous data sources, facilitating timely, data-driven decisions for national security and strategic operations.
+ACE-T (Advanced Cyber-Enabled Threat Intelligence) is a next-generation, modular Open-Source Intelligence (OSINT) platform designed for real-time, actionable insights from a wide range of data sources. The platform leverages modular Python-based OSINT modules, a FastAPI backend, and a real-time GUI for alerting and analytics. The architecture is engineered for extensibility, automation, and future AI integration.
 
-1. System Overview
+1. System Overview (2025 Flow)
 
-Core Objectives:
-- Real-time, Global Visibility: Continuous ingestion and processing of data from social media, dark web forums, open government data, news sources, and other OSINT channels.
-- AI-Driven Insights: Leverage advanced NLP, ML, and geospatial analytics to uncover patterns, anomalies, and sentiment-driven trends.
-- Scalable & Extensible: A cloud-native, microservices architecture that grows with evolving data volumes and emerging sources.
-- Secure & Compliant: Comprehensive security measures, privacy-by-design principles, and adherence to relevant regulatory frameworks.
-- User-Centric Design: Intuitive dashboards, role-based access, automated alerting, and multi-platform accessibility.
+**Current Flow:**
+- The orchestrator script (`ace_t_orchestrator.py`) launches all core components: backend API, OSINT monitor, log ingester, and alert GUI.
+- Each OSINT module (e.g., Twitter, Reddit, Trends, crt.sh, etc.) runs in parallel, prints a startup message, and logs alerts with full metadata using a shared trigger system.
+- Alerts are written to `ace_t_osint/output/logs.csv` and `logs.json`.
+- The GUI reads these logs in real time, filtering out header rows and color-coding alerts by severity.
+- The FastAPI backend provides user management, alert ingestion, and analytics endpoints.
+- Analytics and reporting modules can be run for summary statistics and deeper insights.
+
+**Key Improvements (April 2025):**
+- All modules and orchestrator now print clear startup/logging messages for easier monitoring and troubleshooting.
+- The GUI table is robust against malformed logs and displays only valid alerts.
+- The crt.sh (crtsh) module monitors new SSL/TLS certificates for threat intelligence.
 
 2. Data Collection and Ingestion
 
 Data Sources:
-1. Social Media: Twitter/X, Facebook, Instagram, LinkedIn, Reddit, TikTok, YouTube.
-2. Dark Web Forums & Marketplaces: Integrates via Tor-based proxies, using dark web scrapers hardened against detection.
-3. News & Media Outlets: RSS feeds, open APIs (GDELT), curated lists of reliable and emerging news portals.
-4. Public Records & Gov Datasets: Court filings, public registries, SEC disclosures, FOIA-released documents, international open-data portals.
-5. Niche Communities & Repositories: Specialized forums, GitHub repositories, tech community boards, and threat intelligence feeds.
-6. **Non-API Data Collection:** 
-   - **Direct Database Access:** Establish secure connections to target databases using credentials and secure protocols to extract data without relying on public APIs.
-   - **File System Monitoring:** Implement agents that monitor and collect data from designated file systems, ensuring comprehensive data acquisition from internal and partner sources.
-   - **Packet Sniffing & Network Traffic Analysis:** Utilize advanced network monitoring tools to capture and analyze traffic data, identifying relevant information streams without API dependencies.
-   - **Custom Protocol Integration:** Develop modules that interact with proprietary or legacy systems using custom communication protocols to gather necessary intelligence.
+- Modular OSINT collectors for social media, paste sites, code repositories, certificate transparency logs (crt.sh), and more.
+- Triggers are defined in a central JSON file and shared across all modules.
+- Each module logs alerts in a standardized format for downstream processing.
 
 Ingestion Methods:
-- **[DEFERRED] API Integration:** 
-  - *Direct ingestion from REST, GraphQL, and streaming APIs with robust rate-limiting and token management.*
 - Web Crawlers & Scrapers: Headless browsers (Selenium, Playwright), anti-bot mitigation, and adaptive scheduling.
 - Bulk File Imports: Secure ingestion of CSV, JSON, XML data dumps from partners and internal proprietary sources.
 - Metadata Enrichment: Automatic tagging of data with source credibility scores, timestamps, and standardized formatting.
@@ -80,7 +77,7 @@ Automated Reporting:
 - Real-Time Incident Reports: On-demand PDF/HTML summaries for rapid dissemination during critical events.
 - Localization & Internationalization: Multi-language support for allied agencies and international coalitions.
 
-6. Scalability and Modularity
+6. Extensibility and Modularity
 
 Microservices Architecture:
 - Containerized Deployments (Docker/K8s): Each service (ingestion, NLP, graph analysis) independently deployable and scalable.
@@ -88,9 +85,8 @@ Microservices Architecture:
 - CI/CD Integration: Automated builds, vulnerability scanning, and rolling updates to maintain agility.
 
 Modular Extensibility:
-- Plugin Ecosystem: Add new data connectors, NLP models, or ML pipelines on-demand without major re-architecture.
-- Open APIs & Webhooks: REST/GraphQL endpoints and asynchronous event streams (Apache Kafka) for integration with internal analytics tools or classified data systems.
-- Cloud-Neutral & Hybrid Deployments: Abstract infrastructure to run on-premises, within secure agency clouds, or hybrid models as per organizational policies.
+- New modules can be added in `ace_t_osint/modules/` and registered in the monitor.
+- Use `utils.log_signal()` for consistent alert logging.
 
 7. Automation and Alerts
 
@@ -103,24 +99,26 @@ Alert Dissemination:
 - Multi-Channel Notifications: Secure messaging apps, email, SMS, or mobile push notifications for authorized personnel.
 - Priority Tiers: High-severity alerts may escalate to voice calls or secure pagers, ensuring response times align with operational demands.
 
-8. User Interface & Role-Based Access Control
+8. Future AI Integration
 
-RBAC & Authorization:
-- Granular Permissions: Tiered roles (Analyst, Senior Analyst, Data Scientist, Administrator) control data visibility, editing rights, and reporting capabilities.
-- Advanced AuthN & AuthZ: Hardware tokens, smartcards, and contextual access policies (time of day, location) for sensitive roles.
-- Comprehensive Audit Logging: Complete historical records of user sessions, queries, and actions for accountability and after-action reviews.
+**Planned AI/NLP Features:**
+- Advanced entity extraction, topic modeling, and sentiment analysis using transformer models (e.g., BERT, RoBERTa).
+- Automated threat scoring and clustering of related alerts using unsupervised ML.
+- LLM-powered summarization and context enrichment for each alert.
+- AI-driven anomaly detection and forecasting in analytics modules.
+- Integration of LLMs for analyst assistance, scenario generation, and investigative lead suggestions.
 
-Cross-Platform Access:
-- Responsive Web UI: Modern, responsive browser interface supporting Chrome, Firefox, and Edge.
-- Mobile & Field-Friendly: Native iOS/Android apps with local encryption, offline cache, and remote-wipe features for field operatives.
-- Accessibility: Adherence to WCAG standards, ensuring usability by analysts with diverse needs.
+**Implementation Roadmap:**
+- Begin with Python-based NLP pipelines for entity/sentiment extraction.
+- Integrate HuggingFace transformers and spaCy for advanced text analytics.
+- Add LLM-based summarization and context enrichment as a post-processing step for alerts.
+- Develop ML pipelines for trend detection and anomaly scoring in analytics.
 
 9. Innovations and Future-Readiness
 
-- Integration with LLMs & AI Assistants: Seamless adoption of large language models to aid analysts in summarizing complex data, suggesting investigative leads, or generating scenario-based forecasts.
-- Big Data & Streaming Analytics: Utilize Apache Spark/Flink for large-scale batch and stream data processing, ensuring low-latency analytics.
-- Graph Neural Networks (GNNs): Advanced relationship detection to pinpoint complex covert networks or supply-chain infiltration patterns.
-- Quantum-Resistant Cryptography: Future-proof cryptographic modules to stay ahead of evolving cyber threats.
+- Modular, microservice-friendly design for future cloud or distributed deployments.
+- Plugin ecosystem for new data sources, analytics, and AI models.
+- Designed for easy integration with LLMs and advanced AI as the platform evolves.
 
 10. Operational Considerations
 

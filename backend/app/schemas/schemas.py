@@ -24,3 +24,17 @@ class UserUpdate(BaseModel):
 
     class Config:
         from_attributes = True
+
+class OSINTRecordBase(BaseModel):
+    source: str
+    content: str
+    tags: str | None = None
+
+class OSINTRecordCreate(OSINTRecordBase):
+    pass
+
+class OSINTRecord(OSINTRecordBase):
+    id: int
+    timestamp: datetime
+    class Config:
+        from_attributes = True

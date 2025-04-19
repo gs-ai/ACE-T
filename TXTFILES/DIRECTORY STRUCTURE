@@ -1,0 +1,82 @@
+
+.
+├── 15cc352a-102e-4da7-a48b-05b18394f2e9.png
+├── ace_t_orchestrator.py
+├── ace_t_osint
+│   ├── analytics
+│   │   └── analytics.py
+│   ├── gui
+│   │   └── alert_gui.py
+│   ├── ingest
+│   │   └── log_ingest.py
+│   ├── modules
+│   │   ├── archive_org.py
+│   │   ├── chans.py
+│   │   ├── crtsh.py
+│   │   ├── ghostbin.py
+│   │   ├── github.py
+│   │   ├── pastebin.py
+│   │   ├── reddit.py
+│   │   ├── rentry.py
+│   │   ├── shodan.py
+│   │   ├── telegram.py
+│   │   ├── trends.py
+│   │   └── twitter.py
+│   ├── monitor
+│   │   └── main.py
+│   ├── triggers
+│   │   └── triggers.json
+│   └── utils
+│       └── utils.py
+├── alembic
+│   ├── env.py
+│   ├── README
+│   ├── script.py.mako
+│   └── versions
+├── alembic.ini
+├── backend
+│   └── app
+│       ├── __init__.py
+│       ├── core
+│       │   └── __init__.py
+│       ├── crud.py
+│       ├── database.py
+│       ├── main.py
+│       ├── models
+│       │   ├── __init__.py
+│       │   └── models.py
+│       ├── routers
+│       │   ├── __init__.py
+│       │   ├── osint_router.py
+│       │   └── users_router.py
+│       ├── schemas
+│       │   ├── __init__.py
+│       │   └── schemas.py
+│       └── utils
+│           └── __init__.py
+├── clean_ace_t.py
+├── environment.yml
+├── initialize_db.py
+├── Makefile
+├── output
+├── start_ace_t.sh
+├── testdbchema.py
+├── TXTFILES
+│   ├── ARCHITECTURE
+│   ├── DIRECTORY STRUCTURE
+│   └── README.md
+└── web_crawlers
+    ├── __init__.py
+    └── ace_t_scraper
+        ├── ace_t_scraper
+        │   ├── __init__.py
+        │   ├── items.py
+        │   ├── middlewares.py
+        │   ├── pipelines.py
+        │   ├── settings.py
+        │   └── spiders
+        │       ├── __init__.py
+        │       └── example.py
+        └── scrapy.cfg
+
+24 directories, 55 files
