@@ -1,4 +1,4 @@
-![Project Architecture](1b95a033-dea0-4c22-98c6-f311b752e11a.png)
+![Project Architecture](15cc352a-102e-4da7-a48b-05b18394f2e9.png)
 
 # ACE-T: Advanced Cyber-Enabled Threat Intelligence Platform
 
