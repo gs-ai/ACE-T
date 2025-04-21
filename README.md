@@ -1,5 +1,12 @@
 ![Project Architecture](15cc352a-102e-4da7-a48b-05b18394f2e9.png)
 
+<p align="left">
+  <img src="https://img.shields.io/badge/Python-3.11-blue.svg" alt="Python 3.11">
+  <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg" alt="Platform">
+  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
+  <img src="https://img.shields.io/badge/Last_Update-2025--04--21-yellow.svg" alt="Last Update">
+</p>
+
 # ACE-T: Advanced Cyber-Enabled Threat Intelligence Platform
 
 ---

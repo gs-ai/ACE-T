@@ -1,0 +1,55 @@
+{
+  "timestamp": "2025-04-21T19:31:16.397570",
+  "source": "endchan",
+  "signal_type": "triggered_content",
+  "severity": "medium",
+  "trigger_id": "darkweb_forum",
+  "context": "endchan board: Darknet forum reference",
+  "title": "endchan board: Darknet forum reference",
+  "extra_data": {
+    "title": "endchan board: Darknet forum reference",
+    "matched_text": "dread",
+    "url": "https://endchan.org/pol/catalog.html",
+    "source": "endchan",
+    "geo_info": {
+      "country": "Unknown",
+      "city": "Unknown",
+      "lat": null,
+      "lon": null
+    },
+    "source_url": "https://endchan.org/pol/catalog.html",
+    "detected_at": "2025-04-21T19:31:16.397452",
+    "first_seen": "2025-04-21T19:31:16.397457",
+    "last_seen": "2025-04-21T19:31:16.397458",
+    "entities": {
+      "organizations": [],
+      "keywords": [
+        "dread"
+      ]
+    },
+    "threat_analysis": {
+      "potential_impact": "Potential impact related to dread",
+      "risk_vector": "endchan board post",
+      "related_terms": [
+        "data breach",
+        "leak",
+        "cybersecurity"
+      ]
+    },
+    "trend_velocity": {
+      "increase_percent": 12,
+      "previous_day_volume": 41,
+      "current_volume": 425
+    },
+    "sentiment": "negative",
+    "tags": [
+      "osint",
+      "endchan",
+      "cyber-intel"
+    ],
+    "classification": "Confidential",
+    "city": "Unknown",
+    "country": "Unknown"
+  },
+  "extra": "{\"region\": \"Unknown\", \"trend\": \"12% (vol: 425)\", \"sentiment\": \"negative\", \"source_url\": \"https://endchan.org/pol/catalog.html\", \"lat\": \"\", \"lon\": \"\", \"city\": \"Unknown\", \"country\": \"Unknown\"}"
+}
