@@ -38,8 +38,9 @@ def monitor_pastebin(triggers, interval=60):
             for trig in triggers:
                 if trig["pattern"] in content:
                     meta = {
+                        "title": f"Pastebin paste {pid}",  # Ensure title is present
                         "content": content,
-                        "url": RAW_URL.format(pid=pid),
+                        "url": f"https://pastebin.com/{pid}",
                         "paste_id": pid,
                         "source": "pastebin",
                         "geo_info": {
@@ -48,7 +49,7 @@ def monitor_pastebin(triggers, interval=60):
                             "lat": None,
                             "lon": None
                         },
-                        "source_url": RAW_URL.format(pid=pid),
+                        "source_url": f"https://pastebin.com/{pid}",
                         "detected_at": utils.datetime.utcnow().isoformat() if hasattr(utils, 'datetime') else None,
                         "first_seen": utils.datetime.utcnow().isoformat() if hasattr(utils, 'datetime') else None,
                         "last_seen": utils.datetime.utcnow().isoformat() if hasattr(utils, 'datetime') else None,
@@ -84,7 +85,8 @@ def monitor_pastebin(triggers, interval=60):
                 signal_type="deletion",
                 severity="medium",
                 trigger_id="N/A",
-                context=f"Paste {pid} deleted"
+                context=f"Paste {pid} deleted",
+                extra_data={"title": f"Paste Deleted: {pid}"}
             )
         seen = paste_ids
         time.sleep(interval)

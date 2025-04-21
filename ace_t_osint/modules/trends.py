@@ -49,6 +49,7 @@ def monitor_trends(triggers, interval=600):
                 if trig["pattern"].lower() in trend.lower():
                     # Enhanced metadata for each alert
                     meta = {
+                        "title": f"Google Trends {region}",
                         "trend": trend,
                         "region": region,
                         "source": "trends",

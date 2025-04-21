@@ -1,8 +1,13 @@
+"""
+Custom Scrapy middlewares for ACE-T web crawling.
+Enhances request/response handling, error logging, and spider robustness.
+"""
 # Define here the models for your spider middleware
 #
 # See documentation in:
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
+import logging
 from scrapy import signals
 
 # useful for handling different item types with a single interface
@@ -39,9 +44,9 @@ class AceTScraperSpiderMiddleware:
     def process_spider_exception(self, response, exception, spider):
         # Called when a spider or process_spider_input() method
         # (from other spider middleware) raises an exception.
-
+        logging.error(f"Spider exception in {spider.name}: {exception}")
         # Should return either None or an iterable of Request or item objects.
-        pass
+        return None
 
     def process_start_requests(self, start_requests, spider):
         # Called with the start requests of the spider, and works
@@ -92,12 +97,12 @@ class AceTScraperDownloaderMiddleware:
     def process_exception(self, request, exception, spider):
         # Called when a download handler or a process_request()
         # (from other downloader middleware) raises an exception.
-
+        logging.error(f"Downloader exception in {spider.name}: {exception}")
         # Must either:
         # - return None: continue processing this exception
         # - return a Response object: stops process_exception() chain
         # - return a Request object: stops process_exception() chain
-        pass
+        return None
 
     def spider_opened(self, spider):
         spider.logger.info("Spider opened: %s" % spider.name)

@@ -34,6 +34,7 @@ def monitor_telegram(triggers, interval=180):
         for trig in triggers:
             if trig["pattern"] in message:
                 meta = {
+                    "title": f"Telegram channel {channel}: {trig['context']}",  # Ensure title is present
                     "content": message,
                     "channel": channel,
                     "url": url,

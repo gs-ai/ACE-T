@@ -37,6 +37,7 @@ def monitor_chans(triggers, interval=120):
                     match = re.search(trig["pattern"], html, re.IGNORECASE)
                     if match:
                         meta = {
+                            "title": f"{name} board: {trig['context']}",  # Ensure title is present
                             "matched_text": match.group(0),
                             "url": url,
                             "source": name,
@@ -74,6 +75,8 @@ def monitor_chans(triggers, interval=120):
                             extra_data=meta
                         )
                         print("[chans] Alert logged!")
+                    # Detect deletions (if applicable in chans)
+                    # No explicit deletion logic in chans, so no change needed here.
         except Exception as e:
             print(f"[chans] Error: {e}")
         time.sleep(interval)

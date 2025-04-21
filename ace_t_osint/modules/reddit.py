@@ -54,7 +54,7 @@ def monitor_reddit(triggers, interval=90):
                 for trig in triggers:
                     if trig["pattern"].lower() in (title + " " + body).lower():
                         meta = {
-                            "title": title,
+                            "title": title,  # Ensure title is present
                             "body": body,
                             "url": f"https://reddit.com/{pid}",
                             "post_id": pid,

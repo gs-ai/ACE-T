@@ -36,9 +36,9 @@ def stealth_get(url, timeout=15, use_tor=True, retries=3):
     return None
 
 def log_signal(source, signal_type, severity, trigger_id, context, output_dir=None, extra_data=None):
+    import shutil
     if output_dir is None:
         output_dir = DEFAULT_OUTPUT_DIR
-    # Ensure output directory exists (absolute path)
     os.makedirs(output_dir, exist_ok=True)
     ts = datetime.utcnow().isoformat()
     row = {
@@ -49,18 +49,41 @@ def log_signal(source, signal_type, severity, trigger_id, context, output_dir=No
         "trigger_id": trigger_id,
         "context": context
     }
-    # --- Ensure extra_data for GUI columns ---
     if extra_data is None:
         extra_data = {}
-    # Fill required fields for GUI columns
+    # --- Deep geolocation extraction ---
+    geo = extra_data.get('geo_info', {})
+    # Try to extract from multiple possible locations
+    lat = (
+        geo.get('lat') or geo.get('latitude') or
+        extra_data.get('lat') or extra_data.get('latitude')
+    )
+    lon = (
+        geo.get('lon') or geo.get('lng') or geo.get('longitude') or
+        extra_data.get('lon') or extra_data.get('lng') or extra_data.get('longitude')
+    )
+    city = geo.get('city') or extra_data.get('city', '')
+    country = geo.get('country') or extra_data.get('country', '')
+    # Add to extra_data for GUI/map
+    if 'lat' not in extra_data and lat:
+        extra_data['lat'] = lat
+    if 'lon' not in extra_data and lon:
+        extra_data['lon'] = lon
+    if 'city' not in extra_data and city:
+        extra_data['city'] = city
+    if 'country' not in extra_data and country:
+        extra_data['country'] = country
+    # --- Ensure 'title' is present for schema compliance ---
+    title = extra_data.get('title') or row.get('context') or row.get('source') or str(trigger_id)
+    row['title'] = title
+    extra_data['title'] = title
+    # --- Ensure extra_data for GUI columns ---
     region = extra_data.get('region')
     if not region:
-        # Try to extract from geo_info if present
         geo = extra_data.get('geo_info', {})
         region = geo.get('country', '')
     trend = extra_data.get('trend')
     if not trend:
-        # Try to extract from trend_velocity if present
         tv = extra_data.get('trend_velocity', {})
         if tv:
             trend = f"{tv.get('increase_percent', '')}% (vol: {tv.get('current_volume', '')})"
@@ -73,7 +96,11 @@ def log_signal(source, signal_type, severity, trigger_id, context, output_dir=No
         'region': region or '',
         'trend': trend or '',
         'sentiment': sentiment or '',
-        'source_url': url or ''
+        'source_url': url or '',
+        'lat': lat or '',
+        'lon': lon or '',
+        'city': city or '',
+        'country': country or ''
     })
     row["extra_data"] = extra_data  # for JSON
     row["extra"] = extra_for_csv    # for CSV GUI parsing
@@ -97,6 +124,11 @@ def log_signal(source, signal_type, severity, trigger_id, context, output_dir=No
     alert_path = os.path.join(output_dir, alert_filename)
     with open(alert_path, "w") as f:
         json.dump(row, f, indent=2)
+    # --- Copy medium/high alerts to alerts_for_review ---
+    if severity.lower() in ("medium", "high"):
+        review_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "alerts_for_review")
+        os.makedirs(review_dir, exist_ok=True)
+        shutil.copy(alert_path, os.path.join(review_dir, alert_filename))
 
 def load_triggers(path=None):
     if path is None:

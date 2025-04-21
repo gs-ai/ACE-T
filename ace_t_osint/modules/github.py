@@ -20,7 +20,13 @@ def monitor_github(triggers, interval=180):
 
         for trig in triggers:
             if trig["pattern"] in content:
-                meta = {"content": content, "repo": repo, "url": url, "source": "github"}
+                meta = {
+                    "title": f"GitHub repo {repo}",
+                    "content": content,
+                    "repo": repo,
+                    "url": url,
+                    "source": "github"
+                }
                 utils.log_signal(
                     source="github",
                     signal_type="triggered_content",

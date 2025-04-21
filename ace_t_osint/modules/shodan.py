@@ -18,7 +18,12 @@ def monitor_shodan(triggers, interval=300):
         ip = "example_ip"  # Placeholder for actual IP data
         for trig in triggers:
             if trig["pattern"] in event:
-                meta = {"event": event, "ip": ip, "source": "shodan"}
+                meta = {
+                    "title": f"Shodan event {ip}",
+                    "event": event,
+                    "ip": ip,
+                    "source": "shodan"
+                }
                 utils.log_signal(
                     source="shodan",
                     signal_type="triggered_content",

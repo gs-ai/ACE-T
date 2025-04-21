@@ -33,6 +33,7 @@ def monitor_archive_org(triggers, interval=180):
         for trig in triggers:
             if trig["pattern"] in content:
                 meta = {
+                    "title": f"Archive.org url {url}",
                     "content": content,
                     "url": url,
                     "source": "archive_org",

@@ -30,10 +30,12 @@ def monitor_twitter(triggers, interval=120):
         tweets = ["example tweet 1", "example tweet 2"]
         for tweet in tweets:
             user = "example_user"
-            url = "http://example.com"
+            tweet_id = "1234567890"  # Replace with real tweet ID when scraping real data
+            url = f"https://twitter.com/{user}/status/{tweet_id}"
             for trig in triggers:
                 if trig["pattern"] in tweet:
                     meta = {
+                        "title": f"Twitter user {user}",
                         "content": tweet,
                         "user": user,
                         "url": url,

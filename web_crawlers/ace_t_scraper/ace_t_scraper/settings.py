@@ -90,3 +90,16 @@ AUTOTHROTTLE_TARGET_CONCURRENCY = 2.0
 # Set settings whose default value is deprecated to a future-proof value
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 FEED_EXPORT_ENCODING = "utf-8"
+
+# Robust logging configuration
+LOG_ENABLED = True
+LOG_LEVEL = "INFO"
+LOG_STDOUT = True
+
+# Ensure future-proof and robust settings
+RETRY_ENABLED = True
+RETRY_TIMES = 3
+RETRY_HTTP_CODES = [500, 502, 503, 504, 522, 524, 408, 429]
+
+# Fail gracefully on errors
+DOWNLOAD_FAIL_ON_DATALOSS = False

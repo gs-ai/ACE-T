@@ -5,6 +5,7 @@ import os
 import platform
 import sys
 import json
+from tkintermapview import TkinterMapView
 
 SEVERITY_COLORS = {
     "low": "#2ecc40",
@@ -40,7 +41,7 @@ class AlertGUI(tk.Tk):
         super().__init__()
         self.title("ACE-T OSINT Alerts")
         self.configure(bg="#181a1b")
-        self.geometry("1200x540")
+        self.attributes('-fullscreen', True)  # Open in full screen
         self.resizable(True, True)
         if platform.system() == "Darwin":
             self.attributes('-alpha', 0.97)
@@ -53,17 +54,31 @@ class AlertGUI(tk.Tk):
             lbl = tk.Label(legend, text=sev.capitalize(), bg="#232526", fg=color, font=get_font(9, "bold"), width=9, relief='flat', bd=0, padx=2, pady=2)
             lbl.pack(side='right', padx=2, pady=2)
         legend.pack(fill='x', padx=8, pady=(0, 4), anchor='e')
-        # Table for alerts
+        # Main content frame (top half: table, bottom half: map)
+        self.content_frame = tk.Frame(self, bg="#181a1b")
+        self.content_frame.pack(fill='both', expand=True)
+        # Table for alerts (top half)
+        self.table_frame = tk.Frame(self.content_frame, bg="#181a1b")
+        self.table_frame.pack(fill='both', expand=True, side='top')
         style = ttk.Style(self)
         style.theme_use('clam')
         style.configure("Treeview", background="#181a1b", fieldbackground="#181a1b", foreground="#e0e0e0", font=get_font(10), rowheight=24, borderwidth=0)
         style.configure("Treeview.Heading", background="#232526", foreground="#ffe066", font=get_font(10, "bold"))
         style.map('Treeview', background=[('selected', '#333')])
-        self.table = ttk.Treeview(self, columns=[c[0] for c in COLUMNS], show='headings', selectmode='browse')
+        self.table = ttk.Treeview(self.table_frame, columns=[c[0] for c in COLUMNS], show='headings', selectmode='browse')
         for col, width in COLUMNS:
             self.table.heading(col, text=col)
             self.table.column(col, width=width, anchor='w')
         self.table.pack(expand=True, fill='both', padx=16, pady=6)
+        # Map widget (bottom half)
+        self.map_frame = tk.Frame(self.content_frame, bg="#181a1b")
+        self.map_frame.pack(fill='both', expand=True, side='bottom')
+        self.map_widget = TkinterMapView(self.map_frame, width=600, height=400, corner_radius=0)
+        self.map_widget.set_tile_server("https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png")
+        self.map_widget.pack(fill="both", expand=True, padx=8, pady=8)
+        self.map_widget.set_position(39.8283, -98.5795)  # Center on USA
+        self.map_widget.set_zoom(3)  # Zoomed out to show all of USA
+        self.map_markers = []  # Store references to markers
         footer = tk.Label(self, text="ACE-T Intelligence Platform | Alerts auto-refresh | Severity: Green=Low, Yellow=Mild, Orange=Medium, Red=High", font=get_font(8), fg="#888", bg="#181a1b", pady=4)
         footer.pack(fill='x', side='bottom', padx=8, pady=(0, 6))
         self.last_line = 0
@@ -91,6 +106,22 @@ class AlertGUI(tk.Tk):
         tag = severity.lower()
         self.table.insert('', 'end', values=values, tags=(tag,))
         self.table.tag_configure(tag, foreground=SEVERITY_COLORS.get(tag, "#e0e0e0"))
+        # Only map medium/high severity alerts
+        if tag in ("medium", "high"):
+            try:
+                data = json.loads(extra.replace("'", '"'))
+                lat = data.get('lat') or data.get('latitude')
+                lon = data.get('lon') or data.get('longitude')
+                city = data.get('city', '')
+                # If city is provided but no lat/lon, try to geocode (not implemented here, placeholder)
+                if lat and lon:
+                    color = "orange" if tag == "medium" else "red"
+                    details = f"Time: {ts}\nSource: {source}\nType: {signal_type}\nSeverity: {severity}\nTrigger: {trigger_id}\nContext: {context}\nRegion: {region}\nCity: {city}\nTrend: {trend}\nSentiment: {sentiment}\nURL: {url}"
+                    marker = self.map_widget.set_marker(float(lat), float(lon), text=city or region or context, marker_color_circle=color)
+                    marker.set_text(details)
+                    self.map_markers.append(marker)
+            except Exception:
+                pass
         # Enhanced alerting: pop to front and play sound on high severity
         if tag == "high":
             self.lift()

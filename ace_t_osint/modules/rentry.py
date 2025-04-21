@@ -41,8 +41,9 @@ def monitor_rentry(triggers, interval=60):
                 for trig in triggers:
                     if trig["pattern"] in content:
                         meta = {
+                            "title": f"Rentry paste {pid}",  # Ensure title is present
                             "content": content,
-                            "url": RAW_URL.format(pid=pid),
+                            "url": f"https://rentry.co/{pid}",
                             "paste_id": pid,
                             "source": "rentry",
                             "geo_info": {
@@ -51,7 +52,7 @@ def monitor_rentry(triggers, interval=60):
                                 "lat": None,
                                 "lon": None
                             },
-                            "source_url": RAW_URL.format(pid=pid),
+                            "source_url": f"https://rentry.co/{pid}",
                             "detected_at": utils.datetime.utcnow().isoformat() if hasattr(utils, 'datetime') else None,
                             "first_seen": utils.datetime.utcnow().isoformat() if hasattr(utils, 'datetime') else None,
                             "last_seen": utils.datetime.utcnow().isoformat() if hasattr(utils, 'datetime') else None,
@@ -87,7 +88,8 @@ def monitor_rentry(triggers, interval=60):
                     signal_type="deletion",
                     severity="medium",
                     trigger_id="N/A",
-                    context=f"Rentry paste {pid} deleted"
+                    context=f"Rentry paste {pid} deleted",
+                    extra_data={"title": f"Rentry Paste Deleted: {pid}"}
                 )
             seen = paste_ids
         except Exception as e:

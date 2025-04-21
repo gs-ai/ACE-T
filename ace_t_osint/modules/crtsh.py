@@ -18,7 +18,11 @@ def monitor_crtsh(triggers, interval=180):
             domain = "example.com"
             for trig in triggers:
                 if trig["pattern"] in domain:
-                    meta = {"domain": domain, "source": "crtsh"}
+                    meta = {
+                        "title": f"crt.sh domain {domain}",
+                        "domain": domain,
+                        "source": "crtsh"
+                    }
                     utils.log_signal(
                         source="crtsh",
                         signal_type="triggered_content",
