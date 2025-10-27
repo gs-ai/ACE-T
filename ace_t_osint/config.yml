@@ -39,6 +39,10 @@ tor_or_proxy:
 checkpoint_dir: data/checkpoints
 alert_output_dir: data/alerts
 logs_dir: logs
+fixture_dir: ace_t_osint/fixtures
+http_cache_path: data/http_cache.json
+reload:
+  interval_seconds: 120
 sources:
   pastebin:
     urls:

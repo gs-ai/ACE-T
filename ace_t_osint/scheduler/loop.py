@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections import defaultdict
-from typing import Awaitable, Callable, Dict, Iterable, List, Optional
+import random
+from typing import Awaitable, Callable, Dict, List
 
 from ..utils.time import format_ts, utcnow
 
@@ -21,21 +21,61 @@ class SchedulerLoop:
 
     async def run_forever(self, jobs: Dict[str, Callable[[], Awaitable[None]]]) -> None:
         self._running = True
-        metrics = defaultdict(int)
-        while self._running:
-            start = utcnow()
-            await self.run_once(jobs)
-            metrics["iterations"] += 1
-            elapsed = (utcnow() - start).total_seconds()
-            sleep_for = min(self.interval_map.values()) if self.interval_map else 60
-            logger.info("scheduler-iteration", extra={
-                "iterations": metrics["iterations"],
-                "elapsed": elapsed,
-            })
-            await asyncio.sleep(sleep_for)
+        offsets = self._initial_offsets(jobs)
+        for name, job in jobs.items():
+            interval = max(self.interval_map.get(name, 60), 1)
+            task = asyncio.create_task(self._worker(name, job, interval, offsets.get(name, 0.0)))
+            self._tasks.append(task)
+        try:
+            await asyncio.gather(*self._tasks)
+        finally:
+            self._running = False
 
     def stop(self) -> None:
         self._running = False
+        for task in self._tasks:
+            task.cancel()
+
+    def _initial_offsets(self, jobs: Dict[str, Callable[[], Awaitable[None]]]) -> Dict[str, float]:
+        count = max(len(jobs), 1)
+        offsets: Dict[str, float] = {}
+        for index, name in enumerate(jobs.keys()):
+            interval = max(self.interval_map.get(name, 60), 1)
+            spread = interval / count
+            jitter = random.uniform(0, spread)
+            offsets[name] = index * spread + jitter
+        return offsets
+
+    async def _worker(
+        self,
+        name: str,
+        job: Callable[[], Awaitable[None]],
+        interval: float,
+        offset: float,
+    ) -> None:
+        await asyncio.sleep(offset)
+        while self._running:
+            started = utcnow()
+            try:
+                await job()
+                elapsed = (utcnow() - started).total_seconds()
+                logger.info(
+                    "scheduler-cycle",
+                    extra={
+                        "source": name,
+                        "started_at": format_ts(started),
+                        "elapsed": elapsed,
+                        "interval": interval,
+                    },
+                )
+            except asyncio.CancelledError:  # pragma: no cover - cancellation path
+                break
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.error(
+                    "scheduler-error",
+                    extra={"source": name, "error": str(exc)},
+                )
+            await asyncio.sleep(interval)
 
 
 __all__ = ["SchedulerLoop"]

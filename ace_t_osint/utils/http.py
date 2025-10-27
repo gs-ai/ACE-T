@@ -1,8 +1,11 @@
 import asyncio
 import contextlib
+import json
 import logging
 import random
+import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, AsyncIterator, Dict, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -18,6 +21,65 @@ class RetryPolicy:
     max_attempts: int
     base_delay_seconds: float
     max_delay_seconds: float
+
+
+@dataclass
+class FetchResult:
+    url: str
+    text: str
+    bytes_in: int
+    latency_ms: float
+    from_cache: bool = False
+    cached_at: float | None = None
+
+
+class HttpCache:
+    def __init__(self, path: str) -> None:
+        self._path = Path(path)
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        self._store: Dict[str, Dict[str, Any]] = {}
+        self._lock: asyncio.Lock | None = None
+        self._load()
+
+    def _load(self) -> None:
+        if not self._path.exists():
+            return
+        try:
+            data = json.loads(self._path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            logger.warning("http-cache-load-error", extra={"path": str(self._path)})
+            return
+        if isinstance(data, dict):
+            self._store = data
+
+    def _lock_for_loop(self) -> asyncio.Lock:
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
+
+    async def _persist(self) -> None:
+        lock = self._lock_for_loop()
+        async with lock:
+            tmp_path = self._path.with_suffix(".tmp")
+            tmp_path.write_text(json.dumps(self._store), encoding="utf-8")
+            tmp_path.replace(self._path)
+
+    async def update(self, url: str, *, etag: str | None, last_modified: str | None, body: str) -> None:
+        self._store[url] = {
+            "etag": etag,
+            "last_modified": last_modified,
+            "body": body,
+            "cached_at": time.time(),
+        }
+        await self._persist()
+
+    def get(self, url: str) -> Dict[str, Any] | None:
+        return self._store.get(url)
+
+    async def touch(self, url: str) -> None:
+        if url in self._store:
+            self._store[url]["cached_at"] = time.time()
+            await self._persist()
 
 
 class RateLimiter:
@@ -51,6 +113,8 @@ class HttpClientFactory:
         self._session: Optional[Any] = None
         self._rate_limiters: Dict[str, RateLimiter] = {}
         self._network_enabled = aiohttp is not None
+        cache_path = self._config.get("http_cache_path", "data/http_cache.json")
+        self._cache = HttpCache(cache_path)
 
     def _get_rate_limiter(self, source: str) -> RateLimiter:
         interval = self._config.get("scrape_interval_seconds", {}).get(source)
@@ -133,15 +197,62 @@ class HttpClientFactory:
                     )
                     await asyncio.sleep(backoff + jitter)
 
-    async def fetch_text(self, url: str, source: str, **kwargs) -> str:
+    def _conditional_headers(self, url: str) -> Dict[str, str]:
+        cached = self._cache.get(url)
+        if not cached:
+            return {}
+        headers: Dict[str, str] = {}
+        etag = cached.get("etag")
+        last_modified = cached.get("last_modified")
+        if etag:
+            headers["If-None-Match"] = etag
+        if last_modified:
+            headers["If-Modified-Since"] = last_modified
+        return headers
+
+    async def fetch_text(self, url: str, source: str, **kwargs) -> FetchResult:
+        cached = self._cache.get(url)
         if not self._network_enabled:
+            if cached:
+                body = cached.get("body", "")
+                size = len(body.encode("utf-8"))
+                return FetchResult(
+                    url=url,
+                    text=body,
+                    bytes_in=size,
+                    latency_ms=0.0,
+                    from_cache=True,
+                    cached_at=cached.get("cached_at"),
+                )
             raise RuntimeError("Network fetching not available without aiohttp")
-        async with self.request("GET", url, source, **kwargs) as resp:
+
+        headers = kwargs.pop("headers", {})
+        conditional = self._conditional_headers(url)
+        merged_headers = {**headers, **conditional}
+        start = asyncio.get_event_loop().time()
+        async with self.request("GET", url, source, headers=merged_headers, **kwargs) as resp:
+            latency_ms = (asyncio.get_event_loop().time() - start) * 1000
+            if resp.status == 304 and cached:
+                await self._cache.touch(url)
+                body = cached.get("body", "")
+                size = len(body.encode("utf-8"))
+                return FetchResult(
+                    url=url,
+                    text=body,
+                    bytes_in=size,
+                    latency_ms=latency_ms,
+                    from_cache=True,
+                    cached_at=cached.get("cached_at"),
+                )
             text = await resp.text(errors="ignore")
-            return text
+            etag = resp.headers.get("ETag")
+            last_modified = resp.headers.get("Last-Modified")
+            await self._cache.update(url, etag=etag, last_modified=last_modified, body=text)
+            size = len(text.encode("utf-8"))
+            return FetchResult(url=url, text=text, bytes_in=size, latency_ms=latency_ms)
 
     def network_available(self) -> bool:
         return self._network_enabled
 
 
-__all__ = ["HttpClientFactory", "RetryPolicy", "RateLimiter"]
+__all__ = ["HttpClientFactory", "RetryPolicy", "RateLimiter", "FetchResult", "HttpCache"]
