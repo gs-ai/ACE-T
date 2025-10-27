@@ -11,7 +11,7 @@
 
 ---
 
-> **Date:** April 21, 2025  
+> **Date:** October 27, 2025  
 > **Platform:** macOS, Linux, Windows  
 > **License:** MIT  
 > **Contact:** Project Maintainer (see LICENSE)
