@@ -1,0 +1,51 @@
+scrape_interval_seconds:
+  pastebin: 300
+  ghostbin: 600
+  rentry: 600
+  reddit: 300
+  chans: 900
+  telegram: 300
+  twitter: 300
+  archive_org: 1800
+  github: 900
+  crtsh: 900
+  news: 900
+  forum: 900
+  darkweb: 1800
+concurrency:
+  default: 4
+  pastebin: 2
+  reddit: 4
+  telegram: 2
+  twitter: 3
+user_agents:
+  - "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"
+  - "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+retry_policy:
+  max_attempts: 3
+  base_delay_seconds: 2
+  max_delay_seconds: 30
+jitter_bounds:
+  min_seconds: 0.5
+  max_seconds: 2.0
+robots_policy:
+  default: respect
+  overrides:
+    boards.4channel.org: ignore
+    endchan.net: ignore
+tor_or_proxy:
+  enabled: false
+  url: null
+checkpoint_dir: data/checkpoints
+alert_output_dir: data/alerts
+logs_dir: logs
+sources:
+  pastebin:
+    urls:
+      - https://pastebin.com/archive
+  ghostbin:
+    urls:
+      - https://ghostbin.com/archive
+  reddit:
+    urls:
+      - https://old.reddit.com/r/cybersecurity/

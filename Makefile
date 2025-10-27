@@ -1,19 +1,24 @@
-# Makefile for ACE-T Backend
+.PHONY: install test lint run clean migrate
 
-.PHONY: clean initdb run test
+install:
+python -m pip install -U pip
+python -m pip install -r requirements.txt || true
 
-clean:
-	find . -type d -name '__pycache__' -exec rm -rf {} +
-	rm -f test.db
-
-initdb:
-	python initialize_db.py
-
-run:
-	uvicorn backend.app.main:app --reload
+migrate:
+python -m ace_t_osint.migrate
 
 test:
-	curl -X POST "http://127.0.0.1:8000/api/users/" \
-	  -H "Content-Type: application/json" \
-	  -d '{"name": "Test User", "email": "testuser@example.com"}'
-	curl "http://127.0.0.1:8000/api/users/"
+pytest
+
+lint:
+python -m pylint ace_t_osint || true
+
+run:
+python -m ace_t_osint.cli run --sources all --once
+
+clean:
+rm -rf __pycache__ */__pycache__
+rm -rf .pytest_cache
+rm -f data/osint.db
+rm -rf data/alerts
+

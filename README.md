@@ -210,3 +210,27 @@ For support or collaboration, contact the project maintainer.
 ---
 
 <sub>ACE-T is built for the next generation of cyber threat intelligence. Stay sharp. Stay secure.</sub>
+
+## Refactored OSINT Monitor
+
+The OSINT framework now uses an asynchronous pipeline located in `ace_t_osint/`. Key commands:
+
+```sh
+python -m ace_t_osint run --sources all --once
+python -m ace_t_osint validate
+python -m ace_t_osint vacuum
+```
+
+Before running, initialize the local SQLite schema and sample directories (this also creates `data/osint.db` on demand):
+
+```sh
+python -m ace_t_osint.migrate
+```
+
+Alerts are written to `data/osint.db` and JSONL files under `data/alerts/YYYY/MM/DD/alerts.jsonl`. The SQLite database and runtime artifacts are git-ignored and will be generated locally when commands run. Checkpointed seen sets are stored in `data/checkpoints/`.
+
+### Troubleshooting
+- Ensure the `tests/fixtures/<source>/sample.html` files exist when running in offline mode.
+- Configure per-source URLs, intervals, and concurrency via `ace_t_osint/config.yml`.
+- If you need to resume after interruption, rerun with `python -m ace_t_osint.cli run --from-checkpoint --once`.
+- For verbose debugging, edit `ace_t_osint/cli.py` to add console logging or update the JSON log at `logs/osint.log`.
