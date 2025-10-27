@@ -6,11 +6,15 @@ import random
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, AsyncIterator, Dict, Optional, TYPE_CHECKING
+from typing import Any, AsyncIterator, Dict, Optional
 
-if TYPE_CHECKING:  # pragma: no cover
+# Try to import aiohttp at runtime. The previous pattern using TYPE_CHECKING
+# left `aiohttp` set to None during execution which disabled network fetching
+# even when aiohttp was installed. Use a runtime try/except to detect
+# availability instead.
+try:
     import aiohttp  # type: ignore
-else:  # pragma: no cover
+except Exception:  # pragma: no cover - runtime may not have aiohttp
     aiohttp = None  # type: ignore
 
 logger = logging.getLogger(__name__)
@@ -130,7 +134,13 @@ class HttpClientFactory:
         user_agents = self._config.get("user_agents") or [
             "Mozilla/5.0 (compatible; ACE-T OSINT/1.0; +https://example.com)"
         ]
-        ua = user_agents[asyncio.get_event_loop().time_ns() % len(user_agents)]
+        # Use system time_ns() rather than relying on event loop providing time_ns
+        # (some event loop implementations don't expose time_ns()).
+        try:
+            idx = time.time_ns() % len(user_agents)
+        except AttributeError:
+            idx = int(time.time() * 1e9) % len(user_agents)
+        ua = user_agents[idx]
         return {"User-Agent": ua}
 
     async def _ensure_session(self) -> Any:
