@@ -1,4 +1,4 @@
-.PHONY: install test lint run clean migrate
+.PHONY: install test lint run clean migrate wiki-push
 
 install:
 python -m pip install -U pip
@@ -22,3 +22,6 @@ rm -rf .pytest_cache
 rm -f data/osint.db
 rm -rf data/alerts
 
+
+wiki-push:
+	python utilities/publish_wiki.py --remote origin

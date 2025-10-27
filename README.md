@@ -240,3 +240,14 @@ Alerts are written to `data/osint.db` and JSONL files under `data/alerts/YYYY/MM
 ## Wiki
 
 Comprehensive operator and developer documentation now lives in the project wiki. See the rendered pages at `https://github.com/gs-ai/ACE-T/wiki` (or consult the markdown sources under `wiki/` in this repository when offline).
+
+### Publishing wiki updates
+
+Use the helper script to publish the local `wiki/` directory to the GitHub-hosted wiki. The script clones the wiki repository, synchronises the markdown files, commits, and pushes. Provide credentials via your Git configuration or a `GITHUB_TOKEN`-powered credential helper.
+
+```sh
+python utilities/publish_wiki.py --remote origin
+```
+
+Override the inferred wiki URL with `--wiki-url` when working from a fork or mirror. Set `WIKI_COMMIT_MESSAGE` to customise the commit message.
+
