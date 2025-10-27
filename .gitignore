@@ -1,0 +1,19 @@
+# OSINT runtime artifacts
+__pycache__/
+*.pyc
+logs/
+data/osint.db
+data/alerts/
+data/checkpoints/
+*.sqlite
+*.db
+
+# Virtual environments
+.venv/
+.env/
+
+# Coverage and test caches
+.pytest_cache/
+.coverage
+htmlcov/
+

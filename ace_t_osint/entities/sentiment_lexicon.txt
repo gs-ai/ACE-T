@@ -1,0 +1,8 @@
+# simple sentiment lexicon
+positive:success
+positive:win
+positive:secure
+negative:fail
+negative:breach
+negative:exploit
+neutral:note
