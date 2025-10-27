@@ -1,0 +1,13 @@
+keywords:
+  credential:
+    - "password"
+    - "credential"
+    - "leak"
+  threat:
+    - "0day"
+    - "exploit"
+    - "cve"
+  malware:
+    - "ransomware"
+    - "botnet"
+    - "backdoor"
