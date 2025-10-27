@@ -234,3 +234,9 @@ Alerts are written to `data/osint.db` and JSONL files under `data/alerts/YYYY/MM
 - Configure per-source URLs, intervals, and concurrency via `ace_t_osint/config.yml`.
 - If you need to resume after interruption, rerun with `python -m ace_t_osint.cli run --from-checkpoint --once`.
 - For verbose debugging, edit `ace_t_osint/cli.py` to add console logging or update the JSON log at `logs/osint.log`.
+
+---
+
+## Wiki
+
+Comprehensive operator and developer documentation now lives in the project wiki. See the rendered pages at `https://github.com/gs-ai/ACE-T/wiki` (or consult the markdown sources under `wiki/` in this repository when offline).
