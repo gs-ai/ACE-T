@@ -17,3 +17,8 @@ data/checkpoints/
 .coverage
 htmlcov/
 
+.DS_Store
+logs/osint.log
+data/http_cache.json
+data/osint.db-shm
+data/osint.db-wal
