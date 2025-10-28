@@ -85,4 +85,4 @@ def test_crtsh_parser_extracts_rows():
     html = _load("sample.html", "crtsh")
     items = crtsh.parse_results(html)
     assert items
-    assert "example.com" in items[0].title
+    assert items[0].title == "example.com"
