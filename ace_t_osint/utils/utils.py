@@ -125,8 +125,19 @@ def log_signal(source, signal_type, severity, trigger_id, context, output_dir=No
     with open(alert_path, "w") as f:
         json.dump(row, f, indent=2)
     # --- Copy medium/high alerts to alerts_for_review ---
+    # Use a per-day directory layout so alerts are grouped by UTC date. This
+    # matches how JSONLWriter organizes its output (year/month/day). If the
+    # program stops and restarts it will append new files into the same date
+    # directory (no overwrites). When the UTC date changes mid-run, a new
+    # directory for the new date will be created and subsequent alerts will
+    # be written there.
     if severity.lower() in ("medium", "high"):
-        review_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "alerts_for_review")
+        now = datetime.utcnow()
+        review_root = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            "alerts_for_review",
+        )
+        review_dir = os.path.join(review_root, f"{now:%Y}", f"{now:%m}", f"{now:%d}")
         os.makedirs(review_dir, exist_ok=True)
         shutil.copy(alert_path, os.path.join(review_dir, alert_filename))
 

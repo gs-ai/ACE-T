@@ -31,6 +31,7 @@ data/http_cache.json
 data/alerts/
 data/checkpoints/
 data/tmp/
+alerts_for_review/
 *.db
 *.sqlite
 *.sql
