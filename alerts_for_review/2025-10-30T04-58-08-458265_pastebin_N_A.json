@@ -1,0 +1,13 @@
+{
+  "timestamp": "2025-10-30T04:58:08.458265",
+  "source": "pastebin",
+  "signal_type": "deletion",
+  "severity": "medium",
+  "trigger_id": "N/A",
+  "context": "Paste VL2XSiza deleted",
+  "title": "Paste Deleted: VL2XSiza",
+  "extra_data": {
+    "title": "Paste Deleted: VL2XSiza"
+  },
+  "extra": "{\"region\": \"\", \"trend\": \"\", \"sentiment\": \"\", \"source_url\": \"\", \"lat\": \"\", \"lon\": \"\", \"city\": \"\", \"country\": \"\"}"
+}

@@ -1,0 +1,13 @@
+{
+  "timestamp": "2025-10-30T04:57:05.193007",
+  "source": "pastebin",
+  "signal_type": "deletion",
+  "severity": "medium",
+  "trigger_id": "N/A",
+  "context": "Paste yCScYevG deleted",
+  "title": "Paste Deleted: yCScYevG",
+  "extra_data": {
+    "title": "Paste Deleted: yCScYevG"
+  },
+  "extra": "{\"region\": \"\", \"trend\": \"\", \"sentiment\": \"\", \"source_url\": \"\", \"lat\": \"\", \"lon\": \"\", \"city\": \"\", \"country\": \"\"}"
+}

@@ -1,0 +1,13 @@
+{
+  "timestamp": "2025-10-30T05:05:28.854341",
+  "source": "pastebin",
+  "signal_type": "deletion",
+  "severity": "medium",
+  "trigger_id": "N/A",
+  "context": "Paste CbVbhaek deleted",
+  "title": "Paste Deleted: CbVbhaek",
+  "extra_data": {
+    "title": "Paste Deleted: CbVbhaek"
+  },
+  "extra": "{\"region\": \"\", \"trend\": \"\", \"sentiment\": \"\", \"source_url\": \"\", \"lat\": \"\", \"lon\": \"\", \"city\": \"\", \"country\": \"\"}"
+}

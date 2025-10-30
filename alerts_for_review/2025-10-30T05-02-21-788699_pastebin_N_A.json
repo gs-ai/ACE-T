@@ -1,0 +1,13 @@
+{
+  "timestamp": "2025-10-30T05:02:21.788699",
+  "source": "pastebin",
+  "signal_type": "deletion",
+  "severity": "medium",
+  "trigger_id": "N/A",
+  "context": "Paste FaQuTPaG deleted",
+  "title": "Paste Deleted: FaQuTPaG",
+  "extra_data": {
+    "title": "Paste Deleted: FaQuTPaG"
+  },
+  "extra": "{\"region\": \"\", \"trend\": \"\", \"sentiment\": \"\", \"source_url\": \"\", \"lat\": \"\", \"lon\": \"\", \"city\": \"\", \"country\": \"\"}"
+}

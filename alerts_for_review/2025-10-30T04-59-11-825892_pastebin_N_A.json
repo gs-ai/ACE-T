@@ -1,0 +1,13 @@
+{
+  "timestamp": "2025-10-30T04:59:11.825892",
+  "source": "pastebin",
+  "signal_type": "deletion",
+  "severity": "medium",
+  "trigger_id": "N/A",
+  "context": "Paste LCxxNQXT deleted",
+  "title": "Paste Deleted: LCxxNQXT",
+  "extra_data": {
+    "title": "Paste Deleted: LCxxNQXT"
+  },
+  "extra": "{\"region\": \"\", \"trend\": \"\", \"sentiment\": \"\", \"source_url\": \"\", \"lat\": \"\", \"lon\": \"\", \"city\": \"\", \"country\": \"\"}"
+}
