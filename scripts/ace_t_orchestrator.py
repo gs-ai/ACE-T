@@ -9,6 +9,36 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 # REPO_ROOT is one level up from scripts/
 REPO_ROOT = os.path.abspath(os.path.join(PROJECT_ROOT, ".."))
 PYTHON = sys.executable
+import shutil
+import urllib.request
+import urllib.error
+
+def _conda_run_prefix():
+    """Return command prefix list to run commands under the ace-t-env conda env if conda is available.
+
+    Returns an empty list if conda or the env isn't available. The caller should prepend the
+    returned list to the command.
+    """
+    conda_path = shutil.which("conda")
+    if not conda_path:
+        return []
+    # Return prefix that avoids capturing output and uses the named env
+    return ["conda", "run", "-n", "ace-t-env", "--no-capture-output"]
+
+def wait_for_backend(url="http://127.0.0.1:8000/openapi.json", timeout=30):
+    """Poll the backend OpenAPI endpoint until ready or timeout (seconds).
+
+    Returns True if reachable, False on timeout.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with urllib.request.urlopen(url, timeout=3) as r:
+                if r.status == 200:
+                    return True
+        except Exception:
+            time.sleep(0.5)
+    return False
 
 def run_backend():
     print("[DEBUG] Launching backend API (FastAPI)...")
@@ -19,7 +49,8 @@ def run_backend():
         print("[orchestrator] Backend API disabled by environment variable.")
         return None
     # prefer module invocation for robustness
-    return subprocess.Popen([PYTHON, "-m", "uvicorn", "backend.app.main:app", "--reload"], cwd=REPO_ROOT)
+    cmd = _conda_run_prefix() + [PYTHON, "-m", "uvicorn", "backend.app.main:app", "--reload"]
+    return subprocess.Popen(cmd, cwd=REPO_ROOT)
 
 def run_osint_monitor():
     print("[DEBUG] Launching OSINT monitor (all modules)...")
@@ -28,8 +59,8 @@ def run_osint_monitor():
     if not enable:
         print("[orchestrator] OSINT monitor disabled by environment variable.")
         return None
-    # run as module to avoid file-path issues
-    return subprocess.Popen([PYTHON, "-m", "ace_t_osint.monitor.main"], cwd=REPO_ROOT)
+    cmd = _conda_run_prefix() + [PYTHON, "-m", "ace_t_osint.monitor.main"]
+    return subprocess.Popen(cmd, cwd=REPO_ROOT)
 
 def run_log_ingest():
     print("[DEBUG] Launching log ingester...")
@@ -38,7 +69,8 @@ def run_log_ingest():
     if not enable:
         print("[orchestrator] Log ingester disabled by environment variable.")
         return None
-    return subprocess.Popen([PYTHON, "-m", "ace_t_osint.ingest.log_ingest"], cwd=REPO_ROOT)
+    cmd = _conda_run_prefix() + [PYTHON, "-m", "ace_t_osint.ingest.log_ingest"]
+    return subprocess.Popen(cmd, cwd=REPO_ROOT)
 
 def run_alert_gui():
     print("[DEBUG] Launching alert GUI...")
@@ -47,7 +79,8 @@ def run_alert_gui():
     if not enable:
         print("[orchestrator] Alert GUI disabled by environment variable.")
         return None
-    return subprocess.Popen([PYTHON, "-m", "ace_t_osint.gui.alert_gui"], cwd=REPO_ROOT)
+    cmd = _conda_run_prefix() + [PYTHON, "-m", "ace_t_osint.gui.alert_gui"]
+    return subprocess.Popen(cmd, cwd=REPO_ROOT)
 
 def run_analytics():
     print("[DEBUG] Launching analytics...")
@@ -56,7 +89,8 @@ def run_analytics():
     if not enable:
         print("[orchestrator] Analytics disabled by environment variable.")
         return None
-    return subprocess.Popen([PYTHON, "-m", "ace_t_osint.analytics.analytics"], cwd=REPO_ROOT)
+    cmd = _conda_run_prefix() + [PYTHON, "-m", "ace_t_osint.analytics.analytics"]
+    return subprocess.Popen(cmd, cwd=REPO_ROOT)
 
 def run_web_crawlers(spider_name=None):
     """
@@ -101,7 +135,11 @@ def main():
         print("[orchestrator] Launching module: log ingester")
         time.sleep(2)
         print("Launching alert GUI...")
-        procs.append(run_alert_gui())
+        # Wait for backend to be ready before starting dependent components
+        if wait_for_backend(timeout=20):
+            procs.append(run_alert_gui())
+        else:
+            print("[orchestrator] Backend did not become ready in time; skipping GUI/start of dependent components.")
         print("[orchestrator] Launching module: alert GUI")
         time.sleep(2)
         print("Launching web crawlers...")

@@ -135,3 +135,65 @@ def load_triggers(path=None):
         path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "triggers", "triggers.json")
     with open(path, "r") as f:
         return json.load(f)
+
+
+def normalize_triggers(raw):
+    """Normalize triggers to a list of trigger dicts with a canonical shape.
+
+    Accepts either a dict containing a 'rules' array, or a list of rules.
+
+    Returns: list of dicts with keys:
+      - include: list of include patterns (may be empty)
+      - pattern: single pattern string (optional)
+      - severity: string
+      - trigger_id: string
+      - context: string
+    """
+    rules = []
+    if raw is None:
+        return []
+    if isinstance(raw, dict):
+        # prefer 'rules' key if present
+        if "rules" in raw and isinstance(raw["rules"], list):
+            rules = raw["rules"]
+        else:
+            # maybe the top-level is itself a list-like dict (unlikely)
+            # fall back to empty
+            rules = []
+    elif isinstance(raw, list):
+        rules = raw
+    else:
+        return []
+
+    out = []
+    for r in rules:
+        if isinstance(r, str):
+            out.append({
+                "include": [r],
+                "pattern": r,
+                "severity": "medium",
+                "trigger_id": r,
+                "context": ""
+            })
+            continue
+        if not isinstance(r, dict):
+            continue
+        includes = []
+        if "include" in r and isinstance(r.get("include"), list):
+            includes = r.get("include")
+        elif "pattern" in r and isinstance(r.get("pattern"), str):
+            includes = [r.get("pattern")]
+        elif "regex" in r and isinstance(r.get("regex"), list):
+            # keep regex list in include as-is (consumer can interpret as needed)
+            includes = r.get("regex")
+        severity = str(r.get("severity", r.get("level", "medium")))
+        trigger_id = r.get("trigger_id", r.get("id", r.get("name", "unknown")))
+        context = r.get("context", r.get("description", ""))
+        out.append({
+            "include": includes,
+            "pattern": includes[0] if includes else None,
+            "severity": severity,
+            "trigger_id": trigger_id,
+            "context": context
+        })
+    return out
