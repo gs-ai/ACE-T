@@ -72,12 +72,33 @@ def run_log_ingest():
     cmd = _conda_run_prefix() + [PYTHON, "-m", "ace_t_osint.ingest.log_ingest"]
     return subprocess.Popen(cmd, cwd=REPO_ROOT)
 
+
+def _check_gui_dependencies():
+    """Return True if tkinter and tkintermapview can be imported in the target python environment.
+
+    This runs a short python -c check using the same environment prefix that would be used
+    when launching the GUI. If the check fails, we skip starting the GUI to avoid an
+    orchestrator-level crash.
+    """
+    check_cmd = _conda_run_prefix() + [PYTHON, "-c", "import tkinter, tkintermapview"]
+    try:
+        res = subprocess.run(check_cmd, cwd=REPO_ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return res.returncode == 0
+    except Exception:
+        return False
+
 def run_alert_gui():
     print("[DEBUG] Launching alert GUI...")
     gui_path = os.path.join(REPO_ROOT, "ace_t_osint", "gui", "alert_gui.py")
     enable = os.environ.get("ENABLE_GUI", "true").lower() in ("1", "true", "yes")
     if not enable:
         print("[orchestrator] Alert GUI disabled by environment variable.")
+        return None
+    # Check for GUI dependencies (tkinter + tkintermapview) before launching. If they
+    # are missing, skip the GUI and continue — the orchestrator should not fail.
+    if not _check_gui_dependencies():
+        print("[orchestrator] GUI dependencies missing: 'tkinter' and/or 'tkintermapview' not importable in the target environment.")
+        print("[orchestrator] Skipping alert GUI. To enable, install the dependency in your environment, e.g.:\n  conda activate ace-t-env\n  pip install tkintermapview")
         return None
     cmd = _conda_run_prefix() + [PYTHON, "-m", "ace_t_osint.gui.alert_gui"]
     return subprocess.Popen(cmd, cwd=REPO_ROOT)

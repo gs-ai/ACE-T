@@ -1,0 +1,13 @@
+{
+  "timestamp": "2025-10-30T05:14:02.906130",
+  "source": "pastebin",
+  "signal_type": "deletion",
+  "severity": "medium",
+  "trigger_id": "N/A",
+  "context": "Paste Q1TmWqD7 deleted",
+  "title": "Paste Deleted: Q1TmWqD7",
+  "extra_data": {
+    "title": "Paste Deleted: Q1TmWqD7"
+  },
+  "extra": "{\"region\": \"\", \"trend\": \"\", \"sentiment\": \"\", \"source_url\": \"\", \"lat\": \"\", \"lon\": \"\", \"city\": \"\", \"country\": \"\"}"
+}
