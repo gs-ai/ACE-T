@@ -13,43 +13,70 @@ PYTHON = sys.executable
 def run_backend():
     print("[DEBUG] Launching backend API (FastAPI)...")
     backend_path = os.path.join(REPO_ROOT, "backend", "app", "main.py")
+    # allow disabling via env
+    enable = os.environ.get("ENABLE_BACKEND", "true").lower() in ("1", "true", "yes")
+    if not enable:
+        print("[orchestrator] Backend API disabled by environment variable.")
+        return None
+    # prefer module invocation for robustness
     return subprocess.Popen([PYTHON, "-m", "uvicorn", "backend.app.main:app", "--reload"], cwd=REPO_ROOT)
 
 def run_osint_monitor():
     print("[DEBUG] Launching OSINT monitor (all modules)...")
     monitor_path = os.path.join(REPO_ROOT, "ace_t_osint", "monitor", "main.py")
-    return subprocess.Popen([PYTHON, monitor_path], cwd=REPO_ROOT)
+    enable = os.environ.get("ENABLE_MONITOR", "true").lower() in ("1", "true", "yes")
+    if not enable:
+        print("[orchestrator] OSINT monitor disabled by environment variable.")
+        return None
+    # run as module to avoid file-path issues
+    return subprocess.Popen([PYTHON, "-m", "ace_t_osint.monitor.main"], cwd=REPO_ROOT)
 
 def run_log_ingest():
     print("[DEBUG] Launching log ingester...")
     ingest_path = os.path.join(REPO_ROOT, "ace_t_osint", "ingest", "log_ingest.py")
-    return subprocess.Popen([PYTHON, ingest_path], cwd=REPO_ROOT)
+    enable = os.environ.get("ENABLE_INGEST", "true").lower() in ("1", "true", "yes")
+    if not enable:
+        print("[orchestrator] Log ingester disabled by environment variable.")
+        return None
+    return subprocess.Popen([PYTHON, "-m", "ace_t_osint.ingest.log_ingest"], cwd=REPO_ROOT)
 
 def run_alert_gui():
     print("[DEBUG] Launching alert GUI...")
     gui_path = os.path.join(REPO_ROOT, "ace_t_osint", "gui", "alert_gui.py")
-    return subprocess.Popen([PYTHON, gui_path], cwd=REPO_ROOT)
+    enable = os.environ.get("ENABLE_GUI", "true").lower() in ("1", "true", "yes")
+    if not enable:
+        print("[orchestrator] Alert GUI disabled by environment variable.")
+        return None
+    return subprocess.Popen([PYTHON, "-m", "ace_t_osint.gui.alert_gui"], cwd=REPO_ROOT)
 
 def run_analytics():
     print("[DEBUG] Launching analytics...")
     analytics_path = os.path.join(REPO_ROOT, "ace_t_osint", "analytics", "analytics.py")
-    return subprocess.Popen([PYTHON, analytics_path], cwd=REPO_ROOT)
+    enable = os.environ.get("ENABLE_ANALYTICS", "true").lower() in ("1", "true", "yes")
+    if not enable:
+        print("[orchestrator] Analytics disabled by environment variable.")
+        return None
+    return subprocess.Popen([PYTHON, "-m", "ace_t_osint.analytics.analytics"], cwd=REPO_ROOT)
 
 def run_web_crawlers(spider_name=None):
     """
     Launch the Scrapy web crawler. Controlled by env var ENABLE_WEB_CRAWLERS (default: True).
     Spider can be selected via env var SCRAPY_SPIDER (default: 'example' or passed arg).
     """
-    enable = os.environ.get("ENABLE_WEB_CRAWLERS", "true").lower() in ("1", "true", "yes")
+    # Web crawlers are disabled by default to avoid accidental spider runs ('example' errors)
+    enable = os.environ.get("ENABLE_WEB_CRAWLERS", "false").lower() in ("1", "true", "yes")
     if not enable:
         print("[orchestrator] Web crawlers are disabled by environment variable.")
-        return None
+        return None, None
     crawlers_path = os.path.join(REPO_ROOT, "web_crawlers", "ace_t_scraper")
     output_dir = os.path.join(REPO_ROOT, "alerts_for_review")
     os.makedirs(output_dir, exist_ok=True)
     timestamp = time.strftime("%Y-%m-%dT%H-%M-%S")
     # Allow dynamic spider selection
-    spider = spider_name or os.environ.get("SCRAPY_SPIDER", "example")
+    spider = spider_name or os.environ.get("SCRAPY_SPIDER")
+    if not spider:
+        print("[orchestrator] SCRAPY_SPIDER not set; skipping web crawlers.")
+        return None, None
     output_file = os.path.join(output_dir, f"{timestamp}_{spider}.json")
     print(f"[DEBUG] Launching web crawler spider: {spider}")
     proc = subprocess.Popen([
