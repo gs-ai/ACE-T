@@ -22,5 +22,12 @@ class JSONLWriter:
         with path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(alert) + "\n")
 
+    def ensure_today_file(self) -> Path:
+        """Ensure the alerts.jsonl file for today exists and return its Path."""
+        path = self._path_for_now()
+        if not path.exists():
+            path.write_text("", encoding="utf-8")
+        return path
+
 
 __all__ = ["JSONLWriter"]

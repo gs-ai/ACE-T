@@ -237,6 +237,99 @@ Alerts are written to `data/osint.db` and JSONL files under `data/alerts/YYYY/MM
 
 ---
 
+## Useful Local Commands
+
+Copyable snippets to inspect configuration, cache, alerts and run tests locally. All commands assume you are in the repository root and (when appropriate) have activated the `ace-t-env` conda environment.
+
+- Show configured source URLs and count them:
+```bash
+python - <<'PY'
+import yaml
+c=yaml.safe_load(open('ace_t_osint/config.yml'))
+s=c.get('sources',{})
+count=sum(len(v.get('urls',[])) for v in s.values())
+print('source url count:',count)
+for name,conf in s.items():
+  print(name, conf.get('urls',[]))
+PY
+```
+
+- List runtime data files and alerts folder:
+```bash
+ls -la data
+ls -la data/alerts || true
+ls -la data/checkpoints || true
+```
+
+- Show the most recent alerts.jsonl (first 50 lines):
+```bash
+latest=$(find data/alerts -name alerts.jsonl -print0 | xargs -0 ls -1 -t | head -n1)
+echo "latest alert file: $latest"
+[ -n "$latest" ] && head -n 50 "$latest" || echo "no alerts.jsonl found"
+```
+
+- Inspect HTTP cache (first few keys):
+```bash
+python - <<'PY'
+import json
+p='data/http_cache.json'
+try:
+  d=json.load(open(p,'r',encoding='utf-8'))
+except Exception as e:
+  print('no cache or failed to read:',e); raise SystemExit
+print('cached url count:', len(d))
+for i,u in enumerate(list(d.keys())[:10],1):
+  print(i,u)
+PY
+```
+
+- Quick sqlite checks (counts):
+```bash
+sqlite3 -json data/osint.db "SELECT count(*) AS cnt FROM alerts;"
+sqlite3 -json data/osint.db "SELECT count(*) AS cnt FROM runs;"
+sqlite3 -json data/osint.db "SELECT count(*) AS cnt FROM seen;"
+```
+
+- Run tests and the monitoring CLI (after activating conda env):
+```bash
+conda activate ace-t-env
+pytest -q
+# run a single iteration for all configured sources
+python -m ace_t_osint run --sources all --once
+```
+
+## Suggested Additional Public URLs (examples)
+The following list contains 25 public URLs that are safe to add as monitoring targets (they do not require API keys or authentication). These are suggestions only — do not add them automatically. Review each target for suitability and robots/terms before using at scale.
+
+1. https://pastebin.com/archive
+2. https://paste.ee/archive
+3. https://paste.rs/
+4. https://hastebin.com/archive
+5. https://rentry.org/
+6. https://old.reddit.com/r/netsec/
+7. https://old.reddit.com/r/cybersecurity/
+8. https://news.ycombinator.com/newest
+9. https://github.com/trending
+10. https://gist.github.com/discover
+11. https://web.archive.org/web/*/https://example.com/
+12. https://bleepingcomputer.com/forums/ - forum index
+13. https://www.exploit-db.com/ - public exploit DB index
+14. https://pastebin.com/u/ - public user listings (example)
+15. https://boards.4channel.org/g/catalog
+16. https://seclists.org/ - security mailing list archives
+17. https://www.reddit.com/r/OSINT/
+18. https://nitter.net/search?q=security
+19. https://nitter.net/OSINTAlerts
+20. https://t.me/s/telegramchannelname  (public Telegram channel index page)
+21. https://github.com/search?q=password+leak&type=commits
+22. https://www.virustotal.com/gui/home/search
+23. https://pastebin.com/raw/ (used with paste IDs to fetch raw bodies)
+24. https://www.heise.de/news/ (security news in German)
+25. https://www.cert.org/ncas/alerts/ (public CERT advisories)
+
+Note: Replace placeholder channel names (like `telegramchannelname`) with actual public channel slugs if you intend to monitor Telegram. Respect each site's robots.txt and terms of service before scraping at scale.
+
+
 ## Wiki
 
 Comprehensive operator and developer documentation now lives in the project wiki. See the rendered pages at `https://github.com/gs-ai/ACE-T/wiki` (or consult the markdown sources under `wiki/` in this repository when offline).
