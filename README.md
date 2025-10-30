@@ -1,5 +1,6 @@
 
 
+# ACE-T: Advanced Cyber-Enabled Threat Intelligence Platform
 <p align="left">
   <img src="https://img.shields.io/badge/Python-3.11-blue.svg" alt="Python 3.11">
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg" alt="Platform">
@@ -7,11 +8,9 @@
   <img src="https://img.shields.io/badge/Last_Update-2025--10--30-yellow.svg" alt="Last Update">
 </p>
 
-# ACE-T: Advanced Cyber-Enabled Threat Intelligence Platform
-
 ---
 
-> **Date:** October 27, 2025  
+> **Date:** October 30, 2025  
 > **Platform:** macOS, Linux, Windows  
 > **License:** MIT  
 > **Contact:** Project Maintainer (see LICENSE)
