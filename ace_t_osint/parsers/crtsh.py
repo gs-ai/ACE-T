@@ -24,6 +24,11 @@ def parse_results(html: str, base_url: str = "https://crt.sh") -> list[ParsedIte
         href = link_match.group("href") if link_match else None
         url = base_url + href if href and href.startswith("/") else href or base_url
         title = sanitize_html(link_match.group("title")) if link_match else sanitize_html(cells[0])
+        # Normalize wildcard certificates like "*.example.com" -> "example.com"
+        if title:
+            title = title.strip()
+            if title.startswith("*."):
+                title = title[2:].strip()
         content = sanitize_html(" ".join(sanitize_html(cell) for cell in cells))
         items.append(ParsedItem(source="crtsh", url=url, title=title, content=content))
     return items
