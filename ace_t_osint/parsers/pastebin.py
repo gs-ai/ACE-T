@@ -6,20 +6,25 @@ from . import ParsedItem
 from ..utils.html import sanitize_html
 
 
-ROW_PATTERN = re.compile(
-    r"<tr>\s*<td[^>]*>\s*<a[^>]*href=\"(?P<href>[^\"]+)\"[^>]*>(?P<title>[^<]+)</a>.*?</tr>",
-    re.IGNORECASE | re.DOTALL,
-)
+# Find <tr> blocks which contain archive rows. Pastebin markup may change and
+# include nested tags, so pull each <tr> and then extract the first anchor
+# inside it rather than relying on a single rigid regex.
+TR_PATTERN = re.compile(r"<tr[^>]*>.*?</tr>", re.IGNORECASE | re.DOTALL)
+ANCHOR_PATTERN = re.compile(r"<a[^>]*href=\"(?P<href>[^\"]+)\"[^>]*>(?P<title>.*?)</a>", re.IGNORECASE | re.DOTALL)
 
 
 def parse_archive(html: str, base_url: str = "https://pastebin.com") -> list[ParsedItem]:
     items: list[ParsedItem] = []
-    for match in ROW_PATTERN.finditer(html):
-        href = match.group("href")
-        title = sanitize_html(match.group("title"))
+    for tr in TR_PATTERN.findall(html):
+        anchor = ANCHOR_PATTERN.search(tr)
+        if not anchor:
+            continue
+        href = anchor.group("href")
+        title = sanitize_html(anchor.group("title"))
+        if title:
+            title = title.strip()
         url = base_url + href if href.startswith("/") else href
-        snippet_match = match.group(0)
-        content = sanitize_html(snippet_match)
+        content = sanitize_html(tr)
         items.append(ParsedItem(source="pastebin", url=url, title=title, content=content))
     return items
 

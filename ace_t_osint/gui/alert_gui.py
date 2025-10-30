@@ -14,6 +14,10 @@ SEVERITY_COLORS = {
     "high": "#ff4c4c"
 }
 
+# Neon styling for map highlights and UI accents
+NEON_CYAN = "#00f5ff"
+NEON_GLOW = "#00d8e6"
+
 LOG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "output", "logs.csv")
 
 FONT_FAMILY = "JetBrains Mono"
@@ -47,29 +51,36 @@ class AlertGUI(tk.Tk):
             self.attributes('-alpha', 0.97)
         self.config(highlightbackground="#222", highlightcolor="#222", highlightthickness=1)
         self['bd'] = 0
-        header = tk.Label(self, text="ACE-T OSINT ALERTS", font=get_font(18, "bold"), fg="#ffe066", bg="#181a1b", pady=8)
+
+        # Header
+        header = tk.Label(self, text="ACE-T OSINT ALERTS", font=get_font(18, "bold"), fg=NEON_CYAN, bg="#181a1b", pady=8)
         header.pack(fill='x', padx=8, pady=(8, 0))
+
+        # Severity legend (top-right)
         legend = tk.Frame(self, bg="#181a1b")
         for sev, color in SEVERITY_COLORS.items():
             lbl = tk.Label(legend, text=sev.capitalize(), bg="#232526", fg=color, font=get_font(9, "bold"), width=9, relief='flat', bd=0, padx=2, pady=2)
             lbl.pack(side='right', padx=2, pady=2)
         legend.pack(fill='x', padx=8, pady=(0, 4), anchor='e')
+
         # Main content frame (top half: table, bottom half: map)
         self.content_frame = tk.Frame(self, bg="#181a1b")
         self.content_frame.pack(fill='both', expand=True)
+
         # Table for alerts (top half)
         self.table_frame = tk.Frame(self.content_frame, bg="#181a1b")
         self.table_frame.pack(fill='both', expand=True, side='top')
         style = ttk.Style(self)
         style.theme_use('clam')
         style.configure("Treeview", background="#181a1b", fieldbackground="#181a1b", foreground="#e0e0e0", font=get_font(10), rowheight=24, borderwidth=0)
-        style.configure("Treeview.Heading", background="#232526", foreground="#ffe066", font=get_font(10, "bold"))
+        style.configure("Treeview.Heading", background="#232526", foreground=NEON_CYAN, font=get_font(10, "bold"))
         style.map('Treeview', background=[('selected', '#333')])
         self.table = ttk.Treeview(self.table_frame, columns=[c[0] for c in COLUMNS], show='headings', selectmode='browse')
         for col, width in COLUMNS:
             self.table.heading(col, text=col)
             self.table.column(col, width=width, anchor='w')
         self.table.pack(expand=True, fill='both', padx=16, pady=6)
+
         # Map widget (bottom half)
         self.map_frame = tk.Frame(self.content_frame, bg="#181a1b")
         self.map_frame.pack(fill='both', expand=True, side='bottom')
@@ -78,18 +89,30 @@ class AlertGUI(tk.Tk):
         self.map_widget.pack(fill="both", expand=True, padx=8, pady=8)
         self.map_widget.set_position(20, 0)  # Center on world
         self.map_widget.set_zoom(2)  # Zoomed out to show all countries
+
         self.map_markers = []  # Store references to markers
         self.marker_alerts = {}  # (lat, lon) -> [alert details]
+
         # Map legend
         self.map_legend = tk.Frame(self.map_frame, bg="#232526", bd=1, relief='ridge')
-        tk.Label(self.map_legend, text="Map Legend", bg="#232526", fg="#ffe066", font=get_font(10, "bold")).pack(anchor='w', padx=8, pady=(4,0))
+        tk.Label(self.map_legend, text="Map Legend", bg="#232526", fg=NEON_CYAN, font=get_font(10, "bold")).pack(anchor='w', padx=8, pady=(4,0))
         for sev, color in SEVERITY_COLORS.items():
             tk.Label(self.map_legend, text=sev.capitalize(), bg="#232526", fg=color, font=get_font(9), width=12, anchor='w').pack(anchor='w', padx=8)
         self.map_legend.place(relx=0.01, rely=0.75, anchor='w')
+
+        # Keep mapping of table items to marker locations for interactive highlighting
+        self.table_item_to_key = {}
+        self.blink_jobs = {}  # key -> after job id
+        self.blink_markers = {}  # key -> glow marker
+
         self.popup = None  # For temporary alert popup
+
         footer = tk.Label(self, text="ACE-T Intelligence Platform | Alerts auto-refresh | Severity: Green=Low, Yellow=Mild, Orange=Medium, Red=High", font=get_font(8), fg="#888", bg="#181a1b", pady=4)
         footer.pack(fill='x', side='bottom', padx=8, pady=(0, 6))
+
         self.last_line = 0
+        # Bind table selection to show blinking marker
+        self.table.bind('<<TreeviewSelect>>', self.on_table_select)
         self.after(1000, self.check_log)
 
     def parse_extra(self, extra):
@@ -112,8 +135,9 @@ class AlertGUI(tk.Tk):
         region, trend, sentiment, url = self.parse_extra(extra)
         values = [ts, source, signal_type, severity.upper(), trigger_id, context, region, trend, sentiment, url]
         tag = severity.lower()
-        self.table.insert('', 'end', values=values, tags=(tag,))
+        item_id = self.table.insert('', 'end', values=values, tags=(tag,))
         self.table.tag_configure(tag, foreground=SEVERITY_COLORS.get(tag, "#e0e0e0"))
+
         # Only plot if geolocation data is present and has city/country/state/zip/coords
         try:
             data = json.loads(extra.replace("'", '"'))
@@ -134,11 +158,21 @@ class AlertGUI(tk.Tk):
                 self.marker_alerts[key].append(details)
                 # Use a small, unique, classy marker (circle with border)
                 marker = self.map_widget.set_marker(float(lat), float(lon), text='', marker_color_circle=color, marker_color_outside="#232526", marker_size=8, marker_outline_width=2)
-                marker.canvas.bind('<Enter>', lambda e, k=key: self.show_marker_popup(e, k))
-                marker.canvas.bind('<Leave>', lambda e: self.hide_marker_popup())
+                # remember the table item -> key mapping so that clicking a row will highlight the marker
+                try:
+                    self.table_item_to_key[item_id] = key
+                except Exception:
+                    pass
+                try:
+                    marker.canvas.bind('<Enter>', lambda e, k=key: self.show_marker_popup(e, k))
+                    marker.canvas.bind('<Leave>', lambda e: self.hide_marker_popup())
+                except Exception:
+                    # some marker implementations may not expose canvas; ignore
+                    pass
                 self.map_markers.append(marker)
         except Exception:
             pass
+
         # Enhanced alerting: pop to front and play sound on high severity
         if tag == "high":
             self.lift()
@@ -148,10 +182,16 @@ class AlertGUI(tk.Tk):
                 print("\a", end="", flush=True)
             elif platform.system() == "Windows":
                 import winsound
-                winsound.Beep(1000, 300)
+                try:
+                    winsound.Beep(1000, 300)
+                except Exception:
+                    pass
             else:
-                sys.stdout.write("\a")
-                sys.stdout.flush()
+                try:
+                    sys.stdout.write("\a")
+                    sys.stdout.flush()
+                except Exception:
+                    pass
 
     def show_marker_popup(self, event, key):
         if self.popup:
@@ -164,7 +204,7 @@ class AlertGUI(tk.Tk):
         self.popup.geometry(f"+{x+20}+{y+20}")
         alerts = self.marker_alerts.get(key, [])
         for alert in alerts:
-            tk.Label(self.popup, text=alert, bg="#232526", fg="#ffe066", font=get_font(9), justify='left', anchor='w').pack(anchor='w', padx=8, pady=2)
+            tk.Label(self.popup, text=alert, bg="#232526", fg=NEON_CYAN, font=get_font(9), justify='left', anchor='w').pack(anchor='w', padx=8, pady=2)
 
     def hide_marker_popup(self):
         if self.popup:
@@ -180,6 +220,71 @@ class AlertGUI(tk.Tk):
                         self.display_alert(row)
                 self.last_line = len(reader) - 1
         self.after(2000, self.check_log)
+
+    def on_table_select(self, event):
+        sel = self.table.selection()
+        if not sel:
+            return
+        item = sel[0]
+        key = self.table_item_to_key.get(item)
+        if not key:
+            return
+        # Center map on the selected alert and start blinking marker
+        lat, lon = key
+        try:
+            self.map_widget.set_position(lat, lon)
+            self.map_widget.set_zoom(8)
+        except Exception:
+            pass
+        self._start_blink(key)
+
+    def _start_blink(self, key, blink_count=8, interval=400):
+        """Create a temporary glowing marker that blinks for a short while at key (lat, lon)."""
+        # cancel existing blink for this key
+        if key in self.blink_jobs:
+            try:
+                self.after_cancel(self.blink_jobs.pop(key))
+            except Exception:
+                pass
+        # ensure there's only one glow marker per key at a time
+        if key in self.blink_markers and self.blink_markers[key]:
+            try:
+                self.blink_markers[key].delete()
+            except Exception:
+                pass
+            self.blink_markers.pop(key, None)
+
+        def do_blink(count):
+            if count <= 0:
+                # cleanup
+                if key in self.blink_markers and self.blink_markers[key]:
+                    try:
+                        self.blink_markers[key].delete()
+                    except Exception:
+                        pass
+                    self.blink_markers.pop(key, None)
+                return
+            # toggle glow marker on/off
+            if key in self.blink_markers and self.blink_markers[key]:
+                try:
+                    self.blink_markers[key].delete()
+                except Exception:
+                    pass
+                self.blink_markers.pop(key, None)
+            else:
+                try:
+                    lat, lon = key
+                    # larger, neon-colored marker to simulate a glow
+                    glow = self.map_widget.set_marker(lat, lon, text='', marker_color_circle=NEON_CYAN, marker_color_outside=NEON_GLOW, marker_size=18, marker_outline_width=6)
+                    self.blink_markers[key] = glow
+                except Exception:
+                    pass
+            # schedule next toggle
+            try:
+                job = self.after(interval, lambda: do_blink(count-1))
+                self.blink_jobs[key] = job
+            except Exception:
+                pass
 
 def run_gui():
     app = AlertGUI()

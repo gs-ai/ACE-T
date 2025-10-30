@@ -55,7 +55,9 @@ def print_status(modules):
         print(f"[STATUS] Error reading logs: {e}")
 
 if __name__ == "__main__":
-    triggers = utils.load_triggers()
+    triggers_raw = utils.load_triggers()
+    # Normalize triggers to canonical shape so modules receive consistent data
+    triggers = utils.normalize_triggers(triggers_raw)
     modules = [
         pastebin.monitor_pastebin,
         reddit.monitor_reddit,

@@ -1,24 +1,107 @@
-# OSINT runtime artifacts
+# ==========================
+# ACE-T PROJECT .gitignore
+# ==========================
+
+# --- Python build and bytecode ---
 __pycache__/
 *.pyc
-logs/
-data/osint.db
-data/alerts/
-data/checkpoints/
-*.sqlite
-*.db
+*.pyo
+*.pyd
+*.egg-info/
+*.manifest
+*.spec
 
-# Virtual environments
+# --- Virtual environments ---
 .venv/
 .env/
+env/
+venv/
+.conda/
+*.env
+*.env.*
 
-# Coverage and test caches
+# --- Logs and runtime data ---
+logs/
+logs/*.log
+output/
+data/osint.db
+data/osint.db-shm
+data/osint.db-wal
+data/http_cache.json
+data/alerts/
+data/checkpoints/
+data/tmp/
+alerts_for_review/
+*.db
+*.sqlite
+*.sql
+*.log
+*.jsonl
+*.csv
+*.xml
+*.html
+*.bak
+*.tmp
+*.gz
+*.tar
+*.zip
+
+# --- OSINT runtime artifacts ---
+screenshots/
+captures/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.mp4
+*.mov
+*.tif
+*.tiff
+*.heic
+
+# --- Test and coverage artifacts ---
 .pytest_cache/
 .coverage
 htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
 
+# --- IDE & workspace files ---
+.vscode/
+.idea/
 .DS_Store
-logs/osint.log
-data/http_cache.json
-data/osint.db-shm
-data/osint.db-wal
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# --- Local URL lists and private config ---
+additional_urls.txt
+docs/additional_urls.txt
+data/additional_urls.txt
+private_*.yml
+local_*.json
+
+# --- Security and internal metadata ---
+SECURITY.md
+*.key
+*.pem
+*.crt
+
+# --- Alembic and build caches ---
+alembic/versions/*.pyc
+alembic/versions/__pycache__/
+alembic/*.log
+
+# --- Misc runtime cleanup ---
+*.pid
+*.seed
+*.tmpfile
+nohup.out
+
+# --- Ignore OSINT / ML generated datasets ---
+datasets/
+models/
+checkpoints/
+tmp_output/
