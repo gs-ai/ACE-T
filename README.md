@@ -298,6 +298,24 @@ pytest -q
 python -m ace_t_osint run --sources all --once
 ```
 
+## Startup script location (note)
+
+The repository startup script was moved to `scripts/start_ace_t.sh` to keep the repository root cleaner.
+
+- You can still run the original entrypoint at the repo root with:
+
+```sh
+./start_ace_t.sh
+```
+
+This file is a small compatibility shim that forwards to `scripts/start_ace_t.sh`, so existing tooling and CI that call `./start_ace_t.sh` will continue to work.
+
+If you prefer to run the implementation directly, use:
+
+```sh
+./scripts/start_ace_t.sh
+```
+
 ## Suggested Additional Public URLs (examples)
 The following list contains 25 public URLs that are safe to add as monitoring targets (they do not require API keys or authentication). These are suggestions only — do not add them automatically. Review each target for suitability and robots/terms before using at scale.
 
