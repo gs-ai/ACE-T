@@ -6,32 +6,34 @@ import threading
 import logging
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+# REPO_ROOT is one level up from scripts/
+REPO_ROOT = os.path.abspath(os.path.join(PROJECT_ROOT, ".."))
 PYTHON = sys.executable
 
 def run_backend():
     print("[DEBUG] Launching backend API (FastAPI)...")
-    backend_path = os.path.join(PROJECT_ROOT, "../backend", "app", "main.py")
-    return subprocess.Popen([PYTHON, "-m", "uvicorn", "backend.app.main:app", "--reload"], cwd=os.path.join(PROJECT_ROOT, ".."))
+    backend_path = os.path.join(REPO_ROOT, "backend", "app", "main.py")
+    return subprocess.Popen([PYTHON, "-m", "uvicorn", "backend.app.main:app", "--reload"], cwd=REPO_ROOT)
 
 def run_osint_monitor():
     print("[DEBUG] Launching OSINT monitor (all modules)...")
-    monitor_path = os.path.join(PROJECT_ROOT, "ace_t_osint", "monitor", "main.py")
-    return subprocess.Popen([PYTHON, monitor_path], cwd=os.path.join(PROJECT_ROOT, ".."))
+    monitor_path = os.path.join(REPO_ROOT, "ace_t_osint", "monitor", "main.py")
+    return subprocess.Popen([PYTHON, monitor_path], cwd=REPO_ROOT)
 
 def run_log_ingest():
     print("[DEBUG] Launching log ingester...")
-    ingest_path = os.path.join(PROJECT_ROOT, "ace_t_osint", "ingest", "log_ingest.py")
-    return subprocess.Popen([PYTHON, ingest_path], cwd=os.path.join(PROJECT_ROOT, ".."))
+    ingest_path = os.path.join(REPO_ROOT, "ace_t_osint", "ingest", "log_ingest.py")
+    return subprocess.Popen([PYTHON, ingest_path], cwd=REPO_ROOT)
 
 def run_alert_gui():
     print("[DEBUG] Launching alert GUI...")
-    gui_path = os.path.join(PROJECT_ROOT, "ace_t_osint", "gui", "alert_gui.py")
-    return subprocess.Popen([PYTHON, gui_path], cwd=os.path.join(PROJECT_ROOT, ".."))
+    gui_path = os.path.join(REPO_ROOT, "ace_t_osint", "gui", "alert_gui.py")
+    return subprocess.Popen([PYTHON, gui_path], cwd=REPO_ROOT)
 
 def run_analytics():
     print("[DEBUG] Launching analytics...")
-    analytics_path = os.path.join(PROJECT_ROOT, "ace_t_osint", "analytics", "analytics.py")
-    return subprocess.Popen([PYTHON, analytics_path], cwd=os.path.join(PROJECT_ROOT, ".."))
+    analytics_path = os.path.join(REPO_ROOT, "ace_t_osint", "analytics", "analytics.py")
+    return subprocess.Popen([PYTHON, analytics_path], cwd=REPO_ROOT)
 
 def run_web_crawlers(spider_name=None):
     """
@@ -42,8 +44,8 @@ def run_web_crawlers(spider_name=None):
     if not enable:
         print("[orchestrator] Web crawlers are disabled by environment variable.")
         return None
-    crawlers_path = os.path.join(PROJECT_ROOT, "../web_crawlers", "ace_t_scraper")
-    output_dir = os.path.join(PROJECT_ROOT, "..", "alerts_for_review")
+    crawlers_path = os.path.join(REPO_ROOT, "web_crawlers", "ace_t_scraper")
+    output_dir = os.path.join(REPO_ROOT, "alerts_for_review")
     os.makedirs(output_dir, exist_ok=True)
     timestamp = time.strftime("%Y-%m-%dT%H-%M-%S")
     # Allow dynamic spider selection
