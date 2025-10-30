@@ -26,3 +26,4 @@ data/osint.db-wal
 # Ignore local URL list files used for ad-hoc scraping or private seeds
 additional_urls.txt
 docs/additional_urls.txt
+data/additional_urls.txt
