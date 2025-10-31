@@ -1,25 +1,19 @@
 #!/usr/bin/env bash
-# ACE-T Unified Startup Script (robust, portable)
-# - changes working dir to repo root
-# - prefers `conda run -n ace-t-env` when available
-# - falls back to system python3/python
+# ACE-T startup (robust)
+# - change to repo root
+# - prefer `conda run -n ace-t-env` when available
+# - skip failing alembic migrations but attempt them
 
-# Resolve script dir and change to repo root so relative paths work
+set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.." || exit 1
 
-# If user has a local anaconda install, try to source it (non-fatal)
-if [ -f "$HOME/anaconda3/etc/profile.d/conda.sh" ]; then
-  # shellcheck source=/dev/null
-  source "$HOME/anaconda3/etc/profile.d/conda.sh" || true
-fi
-
-# Prefer using `conda run` if available (runs in ace-t-env without requiring activation)
+# Build command prefixes for conda-run if available; otherwise fall back to system python
 if command -v conda >/dev/null 2>&1 && conda run --help >/dev/null 2>&1; then
-  PYTHON_CMD=(conda run -n ace-t-env --no-capture-output python)
-  ALEMBIC_CMD=(conda run -n ace-t-env --no-capture-output alembic)
+  CONDA_RUN=(conda run -n ace-t-env --no-capture-output)
+  PYTHON_CMD=("${CONDA_RUN[@]}" python)
+  ALEMBIC_CMD=("${CONDA_RUN[@]}" alembic)
 else
-  # Fallback to system python3 or python
   PYTHON_BIN="$(command -v python3 || command -v python || true)"
   if [ -z "$PYTHON_BIN" ]; then
     echo "[ERROR] No python interpreter found in PATH. Install python3 or set up conda." >&2
@@ -29,17 +23,15 @@ else
   ALEMBIC_CMD=("$(command -v alembic || true)")
 fi
 
-# Also attempt a non-fatal conda activate for interactive shells
-if command -v conda >/dev/null 2>&1; then
-  conda activate ace-t-env || true
-fi
-
 echo "[+] Cleaning workspace..."
-"${PYTHON_CMD[@]}" scripts/clean_ace_t.py
+"${PYTHON_CMD[@]}" scripts/clean_ace_t.py || true
 
-echo "[+] Running Alembic migrations..."
-if [ -n "${ALEMBIC_CMD[0]}" ]; then
-  "${ALEMBIC_CMD[@]}" upgrade head || echo "[!] alembic upgrade failed (continuing)"
+echo "[+] Running Alembic migrations (attempt)..."
+if [ -n "${ALEMBIC_CMD[0]:-}" ]; then
+  # don't let alembic failure stop the whole startup; log and continue
+  if ! "${ALEMBIC_CMD[@]}" upgrade head; then
+    echo "[!] alembic upgrade failed (continuing)"
+  fi
 else
   echo "[!] alembic not found in PATH; skipping migrations"
 fi

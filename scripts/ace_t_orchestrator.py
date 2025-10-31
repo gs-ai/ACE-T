@@ -19,6 +19,13 @@ def _conda_run_prefix():
     Returns an empty list if conda or the env isn't available. The caller should prepend the
     returned list to the command.
     """
+    # If we're already running inside the target conda env, don't prefix
+    # commands with `conda run` to avoid nested invocation problems.
+    current_env = os.environ.get("CONDA_DEFAULT_ENV") or os.environ.get("CONDA_PREFIX")
+    if current_env:
+        # CONDA_PREFIX holds the path; check if 'ace-t-env' is part of it
+        if "ace-t-env" in current_env:
+            return []
     conda_path = shutil.which("conda")
     if not conda_path:
         return []
@@ -49,7 +56,11 @@ def run_backend():
         print("[orchestrator] Backend API disabled by environment variable.")
         return None
     # prefer module invocation for robustness
-    cmd = _conda_run_prefix() + [PYTHON, "-m", "uvicorn", "backend.app.main:app", "--reload"]
+    # Make --reload opt-in via ENABLE_UVICORN_RELOAD (default: false). This
+    # avoids accidental autorestarts and reduces "address already in use"
+    # surprises during development/runs.
+    reload_flag = os.environ.get("ENABLE_UVICORN_RELOAD", "false").lower() in ("1", "true", "yes")
+    cmd = _conda_run_prefix() + [PYTHON, "-m", "uvicorn", "backend.app.main:app"] + (["--reload"] if reload_flag else [])
     return subprocess.Popen(cmd, cwd=REPO_ROOT)
 
 def run_osint_monitor():
@@ -80,7 +91,9 @@ def _check_gui_dependencies():
     when launching the GUI. If the check fails, we skip starting the GUI to avoid an
     orchestrator-level crash.
     """
-    check_cmd = _conda_run_prefix() + [PYTHON, "-c", "import tkinter, tkintermapview"]
+    # Try importing using the same Python interpreter so we check the actual
+    # environment the GUI will run under.
+    check_cmd = [PYTHON, "-c", "import tkinter, tkintermapview"]
     try:
         res = subprocess.run(check_cmd, cwd=REPO_ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return res.returncode == 0
@@ -100,8 +113,11 @@ def run_alert_gui():
         print("[orchestrator] GUI dependencies missing: 'tkinter' and/or 'tkintermapview' not importable in the target environment.")
         print("[orchestrator] Skipping alert GUI. To enable, install the dependency in your environment, e.g.:\n  conda activate ace-t-env\n  pip install tkintermapview")
         return None
-    cmd = _conda_run_prefix() + [PYTHON, "-m", "ace_t_osint.gui.alert_gui"]
-    return subprocess.Popen(cmd, cwd=REPO_ROOT)
+    # Launch the GUI using the same Python executable the orchestrator is
+    # running under (PYTHON/sys.executable). This ensures the GUI inherits
+    # the active environment and does not open a separate terminal.
+    cmd = [PYTHON, "-m", "ace_t_osint.gui.alert_gui"]
+    return subprocess.Popen(cmd, cwd=REPO_ROOT, env=os.environ.copy())
 
 def run_analytics():
     print("[DEBUG] Launching analytics...")
