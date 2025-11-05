@@ -1,396 +1,163 @@
-
-
 # ACE-T: Advanced Cyber-Enabled Threat Intelligence Platform
-<p align="left">
-  <img src="https://img.shields.io/badge/Python-3.11-blue.svg" alt="Python 3.11">
-  <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg" alt="Platform">
-  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
-  <img src="https://img.shields.io/badge/Last_Update-2025--10--30-yellow.svg" alt="Last Update">
-</p>
-
----
-
-> **Date:** October 30, 2025  
-> **Platform:** macOS, Linux, Windows  
-> **License:** MIT  
-> **Contact:** Project Maintainer (see LICENSE)
-
----
 
 ## Overview
-ACE-T is a next-generation, modular Open-Source Intelligence (OSINT) platform engineered for real-time, actionable insights from a wide range of data sources. It leverages advanced AI, NLP, and analytics to empower analysts and security teams with global visibility, automated alerting, and deep threat context.
 
----
+ACE-T is a next-generation modular Open-Source Intelligence (OSINT) platform for real-time, actionable insights across social, deep, and dark web sources.
+It combines AI, NLP, and analytics to deliver automated alerting, global visibility, and rich contextual intelligence for investigators and security teams.
 
 ## Features
-- Real-time OSINT Monitoring: Ingests and analyzes data from social media, paste sites, forums, code repositories, dark web, and more.
-- Modular Architecture: Each data source is handled by a dedicated module or spider for easy extensibility.
-- AI/NLP Analytics: Entity extraction, sentiment analysis, trend velocity, and threat context for every alert.
-- Rich Metadata: Alerts include geo-info, source URLs, temporal details, threat analysis, tags, and classification.
-- Automated Alerting: Real-time GUI and logs for all detected triggers, with map-based visualization of threats.
-- Role-Based Access: Secure backend API with user management.
-- Extensible Web Crawlers: 15+ spiders for deep/dark web, forums, leaks, and more.
-- Review Workflow: All medium/high alerts are copied to `alerts_for_review/` for analyst triage.
 
----
+- Real-time OSINT Monitoring — social media, paste sites, forums, code repos, dark web, and more
+- Modular Architecture — independent modules for each data source
+- AI/NLP Analytics — entity extraction, sentiment, and trend velocity
+- Rich Metadata — geo-info, source URLs, timestamps, and classification
+- Automated Alerting — live GUI with map-based visualization
+- Role-Based Access Control — secure FastAPI backend
+- Extensible Spiders — 15+ Scrapy crawlers for surface, deep, and dark web
+- Analyst Review Workflow — medium/high alerts routed to alerts_for_review/
 
 ## Quick Start
 
-1. Install dependencies
-   ```sh
-   conda env create -f environment.yml
-   conda activate ace-t-env
-   ```
-2. Initialize the database
-   ```sh
-   alembic upgrade head
-   ```
-3. Start the platform
-   ```sh
-  ./start_ace_t.sh
-  # or
-  make start
-   ```
-  This will clean, initialize, and launch all components (backend, OSINT monitor, log ingester, alert GUI, and all spiders).
-  The GUI will auto-open the Nodes Map in your browser. Nodes appear immediately on first load.
-
-  Troubleshooting:
-  - If you don't see nodes: try Force mode via the "Force: On" button, or open with `?force=1`.
-  - Confirm map is up: `curl -s http://127.0.0.1:8060/health | jq` (should show counts and graph path)
-  - Logs: `tail -n 50 output/gui_prefs/cyto_server.log`
-
-4. Access the API
-   - Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) for interactive API docs.
-
----
-
-## Database Setup & Migrations
-ACE-T uses Alembic for all database schema management and migrations. Do not use manual scripts for table creation.
-
-- To initialize or upgrade the database, run:
-  ```sh
-  alembic upgrade head
-  ```
-- To create a new migration after changing models:
-  ```sh
-  alembic revision --autogenerate -m "Describe your change"
-  ```
-
-See `alembic/README` for more details.
-
----
-
-## OSINT Modules
-Each module runs in parallel and logs alerts with full metadata. All modules use the same trigger system (`ace_t_osint/triggers/triggers.json`).
-
-### Supported Modules
-- pastebin: Monitors Pastebin for new/deleted pastes matching triggers.
-- ghostbin: Monitors Ghostbin for new/deleted pastes.
-- rentry: Monitors Rentry for new/deleted pastes.
-- reddit: Monitors Reddit threads for trigger patterns and sentiment shifts.
-- chans: Monitors 4chan/Endchan boards for regex-based triggers.
-- telegram: Monitors public Telegram channels for triggers and edits/deletes.
-- twitter: Monitors Twitter/X for trigger patterns.
-- archive_org: Observes Archive.org for disappearance/modification of links.
-- github: Monitors GitHub gists and commits for sensitive data or keywords.
-- shodan: Monitors Shodan for honeypot/scan patterns and exposed devices.
-- crtsh: Monitors crt.sh for new domain registrations matching triggers.
-- trends: Monitors Google Trends/pytrends for spikes in search interest.
-
----
-
-## Web Crawler Spiders
-All spiders are located in `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/` and each yields items when results are found. Precise paths:
-
-- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/pastebin_spider.py`: Scrapes Pastebin archive for new pastes.
-- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/pastebin_leak_spider.py`: Extracts leaked credentials and dox content from Pastebin.
-- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/reddit_spider.py`: Scrapes Reddit for new posts in target subreddits.
-- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/twitter_intel_spider.py`: Collects tweets with specific hashtags or accounts (via Nitter).
-- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/telegram_indexer_spider.py`: Extracts posts and group movements from public Telegram channels.
-- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/bleepingcomputer_spider.py`: Scrapes BleepingComputer news for security articles.
-- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/bleepingcomputer_forum_spider.py`: Scrapes BleepingComputer forums for new threads.
-- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/forum_spider.py`: Monitors high-activity forums for conversations and exploits.
-- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/financial_fraud_spider.py`: Extracts BIN lists, CVV dumps, and fraud complaints.
-- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/geo_intel_spider.py`: Tracks military movement and regional flashpoints from OSINT/geopolitical sources.
-- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/news_breach_spider.py`: Parses breach announcements and cybercrime reports from news sites.
-- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/threat_intel_report_spider.py`: Extracts IoCs and threat intelligence from vendor blogs and reports.
-- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/recruitment_spider.py`: Tracks cyberwarfare and hacking group job boards.
-- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/darkweb_listing_spider.py`: Scrapes darknet marketplaces and forums for leaked data listings.
-
-How to run a spider directly and capture results (JSONL):
-
 ```bash
-cd web_crawlers/ace_t_scraper
-# Example: run Pastebin spider and write results to data/alerts/YYYY-MM-DD/pastebin.jsonl
-outdir="$(cd ../.. && pwd)/data/alerts/$(date +%Y)/$(date +%m)/$(date +%d)"; \
-mkdir -p "$outdir"; \
-scrapy crawl pastebin -O "$outdir/pastebin.jsonl"
+conda env create -f environment.yml
+conda activate ace-t-env
+
+alembic upgrade head
+
+./start_ace_t.sh
+# or
+make start
 ```
 
-Robustness: spiders use Scrapy with retries, throttling, robots.txt compliance, and per-item validation (see `web_crawlers/ace_t_scraper/ace_t_scraper/settings.py` and `pipelines.py`). For full platform integration, items can also be forwarded into the unified alert pipeline (`utils.log_signal`) to appear in the GUI and review folders (see Output & Logs below).
+GUI auto-opens the live Nodes Map.
+API available at: http://127.0.0.1:8000/docs
 
----
+## Database Management
 
-## Alert Metadata Structure
+```bash
+alembic upgrade head
+alembic revision --autogenerate -m "Describe change"
+```
 
-Every alert includes:
+## Core OSINT Modules
 
-- geo_info: Country, city, latitude, longitude (if available)
-- source_url: Direct link to the source
-- detected_at, first_seen, last_seen: Timestamps for detection and observation
-- entities: Extracted organizations and keywords
-- threat_analysis: Potential impact, risk vector, related terms
-- trend_velocity: Percent increase, previous/current volume
-- sentiment: Sentiment classification
-- tags, classification: Tags and data classification
+pastebin
+ghostbin
+rentry
+reddit
+chans
+telegram
+twitter
+archive_org
+github
+shodan
+crtsh
+trends
+
+## Web Crawlers
+
+Located in: web_crawlers/ace_t_scraper/ace_t_scraper/spiders/
 
 Example:
 
+```bash
+cd web_crawlers/ace_t_scraper
+outdir="$(cd ../.. && pwd)/data/alerts/$(date +%Y/%m/%d)"
+mkdir -p "$outdir"
+scrapy crawl pastebin -O "$outdir/pastebin.jsonl"
+```
+
+## Alert Metadata Example
+
 ```json
 {
-  "geo_info": {"country": "Germany", "city": "Berlin", "lat": 52.52, "lon": 13.405},
+  "geo_info": {"country": "Germany", "city": "Berlin"},
   "source_url": "https://trends.google.com/trends/explore?q=database+leak&geo=EU",
-  "detected_at": "2025-04-18T23:52:07.395474",
-  "first_seen": "2025-04-18T23:48:02.192038",
-  "last_seen": "2025-04-18T23:51:42.980113",
-  "entities": {"organizations": ["Google", "EU Parliament"], "keywords": ["leak", "dump", "database", "cyberattack"]},
-  "threat_analysis": {"potential_impact": "Data exposure of sensitive EU databases", "risk_vector": "Public search interest spike", "related_terms": ["data breach", "hack", "cybersecurity"]},
-  "trend_velocity": {"increase_percent": 147, "previous_day_volume": 320, "current_volume": 790},
+  "detected_at": "2025-04-18T23:52:07",
+  "entities": {"organizations": ["Google"], "keywords": ["leak","database"]},
+  "threat_analysis": {"potential_impact": "Data exposure"},
+  "trend_velocity": {"increase_percent": 147},
   "sentiment": "negative",
-  "tags": ["osint", "data-leak", "trending", "cyber-intel"],
+  "tags": ["osint","data-leak","cyber-intel"],
   "classification": "Confidential"
 }
 ```
 
----
-
 ## Triggers
 
-- Triggers are defined in `ace_t_osint/triggers/triggers.json`.
-- Each trigger includes a pattern, severity, and context.
-- Example:
+Defined in ace_t_osint/triggers/triggers.json
 
 ```json
 [
-  {"pattern": "database leak", "severity": "high", "context": "Sensitive database leak detected", "trigger_id": "db-leak-001"},
-  {"pattern": "CVE-2025-", "severity": "medium", "context": "Potential new CVE", "trigger_id": "cve-2025"}
+  {"pattern": "database leak", "severity": "high", "trigger_id": "db-leak-001"},
+  {"pattern": "CVE-2025-", "severity": "medium", "trigger_id": "cve-2025"}
 ]
 ```
 
----
-
 ## Output & Logs
 
-- All alerts and logs are written to the project root `output/` directory:
-  - logs.csv (for GUI)
-  - logs.json (for analytics)
-  - Individual per-alert JSON files
-- All medium and high severity alerts are also copied to `alerts_for_review/` for further review.
-- For the refactored monitor pipeline, JSONL alert streams are written under `data/alerts/YYYY/MM/DD/alerts.jsonl` and a local SQLite database at `data/osint.db` is maintained (see Refactored OSINT Monitor below).
-- The alert GUI displays new alerts in real time and maps medium/high alerts with geolocation.
-
----
-
-## GUI & Visualization
-
-- Real-time alert table with severity color-coding.
-- Full-screen dark mode interface.
-- Interactive map (bottom half) with pins for all medium/high alerts (city/region shown if available).
-- Clickable markers show full alert details (time, source, context, region, city, etc).
-
----
-
-## Backend API
-
-- FastAPI backend for user management, alert ingestion, and analytics.
-- Interactive docs at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-
----
-
-## Analytics
-
-- Run `python ace_t_osint/analytics/analytics.py` for summary reports and statistics on OSINT activity.
-
----
-
-## Extending ACE-T
-
-- Add new modules in `ace_t_osint/modules/`.
-- Add new spiders in `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/`.
-- Use `utils.log_signal()` to log alerts with full metadata.
-- Register new modules in `ace_t_osint/monitor/main.py`.
-
----
-
-## Security & Compliance
-
-- All data is stored locally by default.
-- Role-based access and audit logging for backend API.
-- Designed for compliance with privacy and security best practices.
-
----
-
-## License
-
-See LICENSE file for details.
-
----
-
-## Contact
-For support or collaboration, contact the project maintainer.
-
----
-
-<sub>ACE-T is built for the next generation of cyber threat intelligence. Stay sharp. Stay secure.</sub>
+```
+output/             → alert logs and exports
+alerts_for_review/  → medium/high alerts
+data/osint.db       → local SQLite DB
+data/alerts/YYYY/MM/DD/alerts.jsonl
+```
 
 ## Refactored OSINT Monitor
 
-The OSINT framework now uses an asynchronous pipeline located in `ace_t_osint/`. Key commands:
-
-```sh
+```bash
 python -m ace_t_osint run --sources all --once
 python -m ace_t_osint validate
 python -m ace_t_osint vacuum
-```
-
-Before running, initialize the local SQLite schema and sample directories (this also creates `data/osint.db` on demand):
-
-```sh
 python -m ace_t_osint.migrate
 ```
 
-Alerts are written to `data/osint.db` and JSONL files under `data/alerts/YYYY/MM/DD/alerts.jsonl`. The SQLite database and runtime artifacts are git-ignored and will be generated locally when commands run. Checkpointed seen sets are stored in `data/checkpoints/`.
+## Local Tools & Checks
 
-### Troubleshooting
-- Ensure the `tests/fixtures/<source>/sample.html` files exist when running in offline mode.
-- Configure per-source URLs, intervals, and concurrency via `ace_t_osint/config.yml`.
-- If you need to resume after interruption, rerun with `python -m ace_t_osint.cli run --from-checkpoint --once`.
-- For verbose debugging, edit `ace_t_osint/cli.py` to add console logging or update the JSON log at `logs/osint.log`.
-
----
-
-## Useful Local Commands
-
-Copyable snippets to inspect configuration, cache, alerts and run tests locally. All commands assume you are in the repository root and (when appropriate) have activated the `ace-t-env` conda environment.
-
-- Show configured source URLs and count them:
-```bash
-python - <<'PY'
-import yaml
-c=yaml.safe_load(open('ace_t_osint/config.yml'))
-s=c.get('sources',{})
-count=sum(len(v.get('urls',[])) for v in s.values())
-print('source url count:',count)
-for name,conf in s.items():
-  print(name, conf.get('urls',[]))
-PY
+```python
+import yaml; c=yaml.safe_load(open('ace_t_osint/config.yml'))
+for k,v in c.get('sources',{}).items(): print(k, v.get('urls',[]))
 ```
 
-- List runtime data files and alerts folder:
-```bash
-ls -la data
-ls -la data/alerts || true
-ls -la data/checkpoints || true
-```
-
-- Show the most recent alerts.jsonl (first 50 lines):
-```bash
-latest=$(find data/alerts -name alerts.jsonl -print0 | xargs -0 ls -1 -t | head -n1)
-echo "latest alert file: $latest"
-[ -n "$latest" ] && head -n 50 "$latest" || echo "no alerts.jsonl found"
-```
-
-- Inspect HTTP cache (first few keys):
-```bash
-python - <<'PY'
-import json
-p='data/http_cache.json'
-try:
-  d=json.load(open(p,'r',encoding='utf-8'))
-except Exception as e:
-  print('no cache or failed to read:',e); raise SystemExit
-print('cached url count:', len(d))
-for i,u in enumerate(list(d.keys())[:10],1):
-  print(i,u)
-PY
-```
-
-- Quick sqlite checks (counts):
 ```bash
 sqlite3 -json data/osint.db "SELECT count(*) AS cnt FROM alerts;"
-sqlite3 -json data/osint.db "SELECT count(*) AS cnt FROM runs;"
-sqlite3 -json data/osint.db "SELECT count(*) AS cnt FROM seen;"
-```
 
-- Run tests and the monitoring CLI (after activating conda env):
-```bash
 conda activate ace-t-env
 pytest -q
-# run a single iteration for all configured sources
 python -m ace_t_osint run --sources all --once
 ```
 
-## Startup script location (note)
+## Startup Script
 
-The repository startup script was moved to `scripts/start_ace_t.sh` to keep the repository root cleaner.
+scripts/start_ace_t.sh
 
-- You can still run the original entrypoint at the repo root with:
-
-```sh
+```bash
 ./start_ace_t.sh
 ```
 
-This file is a small compatibility shim that forwards to `scripts/start_ace_t.sh`, so existing tooling and CI that call `./start_ace_t.sh` will continue to work.
+## Suggested Public Monitoring Sources
 
-If you prefer to run the implementation directly, use:
-
-```sh
-./scripts/start_ace_t.sh
-```
-
-## Suggested Additional Public URLs (examples)
-The following list contains 25 public URLs that are safe to add as monitoring targets (they do not require API keys or authentication). These are suggestions only — do not add them automatically. Review each target for suitability and robots/terms before using at scale.
-
-1. https://pastebin.com/archive
-2. https://paste.ee/archive
-3. https://paste.rs/
-4. https://hastebin.com/archive
-5. https://rentry.org/
-6. https://old.reddit.com/r/netsec/
-7. https://old.reddit.com/r/cybersecurity/
-8. https://news.ycombinator.com/newest
-9. https://github.com/trending
-10. https://gist.github.com/discover
-11. <https://web.archive.org/web/*/https://seclists.org/*>
-12. https://bleepingcomputer.com/forums/ - forum index
-13. https://www.exploit-db.com/ - public exploit DB index
-14. https://pastebin.com/u/ - public user listings (example)
-15. https://boards.4channel.org/g/catalog
-16. https://seclists.org/ - security mailing list archives
-17. https://www.reddit.com/r/OSINT/
-18. https://nitter.net/search?q=security
-19. https://nitter.net/OSINTAlerts
-20. https://t.me/s/telegramchannelname  (public Telegram channel index page)
-21. https://github.com/search?q=password+leak&type=commits
-22. https://www.virustotal.com/gui/home/search
-23. https://pastebin.com/raw/ (used with paste IDs to fetch raw bodies)
-24. https://www.heise.de/news/ (security news in German)
-25. <https://www.cisa.gov/newsroom/alerts> (public CISA advisories)
-
-Note: Replace placeholder channel names (like `telegramchannelname`) with actual public channel slugs if you intend to monitor Telegram. Respect each site's robots.txt and terms of service before scraping at scale.
-
+https://pastebin.com/archive
+https://rentry.org/
+https://old.reddit.com/r/netsec/
+https://github.com/trending
+https://seclists.org/
+https://bleepingcomputer.com/forums/
+https://www.exploit-db.com/
+https://www.cisa.gov/newsroom/alerts
 
 ## Wiki
 
-Comprehensive operator and developer documentation now lives in the project wiki. See the rendered pages at `https://github.com/gs-ai/ACE-T/wiki` (or consult the markdown sources under `wiki/` in this repository when offline).
+Full documentation: https://github.com/gs-ai/ACE-T/wiki
 
-### Publishing wiki updates
+Publish updates:
 
-Use the helper script to publish the local `wiki/` directory to the GitHub-hosted wiki. The script clones the wiki repository, synchronises the markdown files, commits, and pushes. Provide credentials via your Git configuration or a `GITHUB_TOKEN`-powered credential helper.
-
-```sh
+```bash
 python utilities/publish_wiki.py --remote origin
 ```
 
-Override the inferred wiki URL with `--wiki-url` when working from a fork or mirror. Set `WIKI_COMMIT_MESSAGE` to customise the commit message.
+## License
 
+MIT License — see LICENSE file.
+
+ACE-T is engineered for precision OSINT and cyber threat intelligence operations.
