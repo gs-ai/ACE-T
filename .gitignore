@@ -105,3 +105,10 @@ datasets/
 models/
 checkpoints/
 tmp_output/
+
+# Ignore the export script (local export operations) — absolute path and repo-relative
+/Users/mbaosint/Desktop/Projects/ACE-T/scripts/export_run_data.py
+scripts/export_run_data.py
+
+# --- Backup directories ---
+backups/

@@ -132,7 +132,7 @@ class HttpClientFactory:
 
     def _build_headers(self) -> Dict[str, str]:
         user_agents = self._config.get("user_agents") or [
-            "Mozilla/5.0 (compatible; ACE-T OSINT/1.0; +https://example.com)"
+            "Mozilla/5.0 (compatible; ACE-T OSINT/1.0; +https://github.com/)"
         ]
         # Use system time_ns() rather than relying on event loop providing time_ns
         # (some event loop implementations don't expose time_ns()).

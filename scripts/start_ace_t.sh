@@ -23,6 +23,14 @@ else
   ALEMBIC_CMD=("$(command -v alembic || true)")
 fi
 
+# Optional pre-session export if destination is provided via env
+if [ -n "${ACE_T_EXPORT_DIR:-}" ]; then
+  echo "[+] Exporting run data to: ${ACE_T_EXPORT_DIR}"
+  "${PYTHON_CMD[@]}" scripts/export_run_data.py --dest "${ACE_T_EXPORT_DIR}" --clean || {
+    echo "[!] Export failed (continuing without cleaning sources)" >&2
+  }
+fi
+
 echo "[+] Cleaning workspace..."
 "${PYTHON_CMD[@]}" scripts/clean_ace_t.py || true
 
@@ -37,6 +45,7 @@ else
 fi
 
 echo "[+] Starting ACE-T orchestrator..."
-"${PYTHON_CMD[@]}" scripts/ace_t_orchestrator.py
+# Auto-open the Nodes Map in the GUI on startup so users immediately see nodes
+ACE_T_AUTO_OPEN_NODES_MAP=1 "${PYTHON_CMD[@]}" scripts/ace_t_orchestrator.py
 
 # End of script

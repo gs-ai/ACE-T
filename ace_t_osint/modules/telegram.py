@@ -2,12 +2,12 @@
 Telegram OSINT Module
 --------------------
 Monitors public Telegram channels via t.me/s/ for triggers and edit/delete tracking.
-TODO: Implement actual scraping logic for Telegram.
 """
 import time
 import random
 import re
 from ace_t_osint.utils import utils
+from ..parsers import telegram as telegram_parser
 
 def extract_entities(text):
     organizations = []
@@ -23,54 +23,61 @@ def extract_entities(text):
 
 def monitor_telegram(triggers, interval=180):
     print("[telegram] monitor_telegram started")
-    """Stub: Monitor public Telegram channels for triggers and edits/deletes."""
-    # TODO: Implement actual scraping logic
+    """Monitor public Telegram channels for triggers."""
+    channels = ["anonymous", "killnet", "legion"]  # Public channels to monitor
+    seen_urls = set()
     while True:
-        # Simulate receiving a message from a Telegram channel
-        message = "Example message"
-        channel = "Example channel"
-        url = "https://t.me/s/example_channel"
-        
-        for trig in triggers:
-            if trig["pattern"] in message:
-                meta = {
-                    "title": f"Telegram channel {channel}: {trig['context']}",  # Ensure title is present
-                    "content": message,
-                    "channel": channel,
-                    "url": url,
-                    "source": "telegram",
-                    "geo_info": {
-                        "country": "Unknown",
-                        "city": "Unknown",
-                        "lat": None,
-                        "lon": None
-                    },
-                    "source_url": url,
-                    "detected_at": utils.datetime.utcnow().isoformat() if hasattr(utils, 'datetime') else None,
-                    "first_seen": utils.datetime.utcnow().isoformat() if hasattr(utils, 'datetime') else None,
-                    "last_seen": utils.datetime.utcnow().isoformat() if hasattr(utils, 'datetime') else None,
-                    "entities": extract_entities(message),
-                    "threat_analysis": {
-                        "potential_impact": f"Potential impact related to {trig['pattern']}",
-                        "risk_vector": "Telegram channel message",
-                        "related_terms": ["data breach", "leak", "cybersecurity"]
-                    },
-                    "trend_velocity": {
-                        "increase_percent": random.randint(1, 100),
-                        "previous_day_volume": random.randint(10, 100),
-                        "current_volume": random.randint(101, 500)
-                    },
-                    "sentiment": random.choice(["negative", "neutral", "positive"]),
-                    "tags": ["osint", "telegram", "cyber-intel"],
-                    "classification": "Confidential"
-                }
-                utils.log_signal(
-                    source="telegram",
-                    signal_type="triggered_content",
-                    severity=trig["severity"],
-                    trigger_id=trig["trigger_id"],
-                    context=f"Telegram channel {channel}: {trig['context']}",
-                    extra_data=meta
-                )
-                print("[telegram] Alert logged!")
+        for channel in channels:
+            channel_url = f"https://t.me/s/{channel}"
+            html = utils.stealth_get(channel_url)
+            if not html:
+                continue
+            items = telegram_parser.parse_channel(html, "https://t.me")
+            for item in items:
+                if item.url in seen_urls:
+                    continue
+                seen_urls.add(item.url)
+                content = item.content
+                for trig in triggers:
+                    if trig["pattern"].lower() in content.lower():
+                        meta = {
+                            "title": item.title,
+                            "content": content,
+                            "channel": channel,
+                            "url": item.url,
+                            "source": "telegram",
+                            "geo_info": {
+                                "country": "Unknown",
+                                "city": "Unknown",
+                                "lat": None,
+                                "lon": None
+                            },
+                            "source_url": item.url,
+                            "detected_at": utils.datetime.utcnow().isoformat(),
+                            "first_seen": utils.datetime.utcnow().isoformat(),
+                            "last_seen": utils.datetime.utcnow().isoformat(),
+                            "entities": extract_entities(content),
+                            "threat_analysis": {
+                                "potential_impact": f"Potential impact related to {trig['pattern']}",
+                                "risk_vector": "Telegram channel message",
+                                "related_terms": ["data breach", "leak", "cybersecurity"]
+                            },
+                            "trend_velocity": {
+                                "increase_percent": random.randint(1, 100),
+                                "previous_day_volume": random.randint(10, 100),
+                                "current_volume": random.randint(101, 500)
+                            },
+                            "sentiment": random.choice(["negative", "neutral", "positive"]),
+                            "tags": ["osint", "telegram", "cyber-intel"],
+                            "classification": "Confidential"
+                        }
+                        utils.log_signal(
+                            source="telegram",
+                            signal_type="triggered_content",
+                            severity=trig["severity"],
+                            trigger_id=trig["trigger_id"],
+                            context=f"Telegram channel {channel}: {trig['context']}",
+                            extra_data=meta
+                        )
+                        print(f"[telegram] Alert logged for {item.url}")
         time.sleep(interval)

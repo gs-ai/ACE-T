@@ -18,7 +18,19 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from backend.app.models import Base
+# The project's Base (declarative base) is declared in backend.app.database
+from backend.app.database import Base
+# Import the modules that define ORM models so they register on Base.metadata.
+# Without importing the modules, Base.metadata may be empty and autogenerate
+# will incorrectly detect table removals. Adjust the import path if your
+# models live elsewhere.
+try:
+    # this should import backend/app/models/models.py and register tables
+    import backend.app.models.models  # noqa: F401
+except Exception:
+    # If the import fails, proceed; alembic commands will surface the import error.
+    pass
+
 target_metadata = Base.metadata
 
 

@@ -47,9 +47,17 @@ ACE-T is a next-generation, modular Open-Source Intelligence (OSINT) platform en
    ```
 3. Start the platform
    ```sh
-   ./start_ace_t.sh
+  ./start_ace_t.sh
+  # or
+  make start
    ```
-   This will clean, initialize, and launch all components (backend, OSINT monitor, log ingester, alert GUI, and all spiders).
+  This will clean, initialize, and launch all components (backend, OSINT monitor, log ingester, alert GUI, and all spiders).
+  The GUI will auto-open the Nodes Map in your browser. Nodes appear immediately on first load.
+
+  Troubleshooting:
+  - If you don't see nodes: try Force mode via the "Force: On" button, or open with `?force=1`.
+  - Confirm map is up: `curl -s http://127.0.0.1:8060/health | jq` (should show counts and graph path)
+  - Logs: `tail -n 50 output/gui_prefs/cyto_server.log`
 
 4. Access the API
    - Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) for interactive API docs.
@@ -92,27 +100,41 @@ Each module runs in parallel and logs alerts with full metadata. All modules use
 ---
 
 ## Web Crawler Spiders
-All spiders are located in `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/`:
+All spiders are located in `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/` and each yields items when results are found. Precise paths:
 
-- pastebin_spider.py: Scrapes Pastebin archive for new pastes.
-- pastebin_leak_spider.py: Extracts leaked credentials and dox content from Pastebin.
-- reddit_spider.py: Scrapes Reddit for new posts in target subreddits.
-- twitter_intel_spider.py: Collects tweets with specific hashtags or accounts (via Nitter).
-- telegram_indexer_spider.py: Extracts posts and group movements from public Telegram channels.
-- bleepingcomputer_spider.py: Scrapes BleepingComputer news for security articles.
-- bleepingcomputer_forum_spider.py: Scrapes BleepingComputer forums for new threads.
-- forum_spider.py: Monitors high-activity forums for conversations and exploits.
-- financial_fraud_spider.py: Extracts BIN lists, CVV dumps, and fraud complaints.
-- geo_intel_spider.py: Tracks military movement and regional flashpoints from OSINT/geopolitical sources.
-- news_breach_spider.py: Parses breach announcements and cybercrime reports from news sites.
-- threat_intel_report_spider.py: Extracts IoCs and threat intelligence from vendor blogs and reports.
-- recruitment_spider.py: Tracks cyberwarfare and hacking group job boards.
-- darkweb_listing_spider.py: Scrapes darknet marketplaces and forums for leaked data listings.
+- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/pastebin_spider.py`: Scrapes Pastebin archive for new pastes.
+- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/pastebin_leak_spider.py`: Extracts leaked credentials and dox content from Pastebin.
+- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/reddit_spider.py`: Scrapes Reddit for new posts in target subreddits.
+- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/twitter_intel_spider.py`: Collects tweets with specific hashtags or accounts (via Nitter).
+- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/telegram_indexer_spider.py`: Extracts posts and group movements from public Telegram channels.
+- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/bleepingcomputer_spider.py`: Scrapes BleepingComputer news for security articles.
+- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/bleepingcomputer_forum_spider.py`: Scrapes BleepingComputer forums for new threads.
+- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/forum_spider.py`: Monitors high-activity forums for conversations and exploits.
+- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/financial_fraud_spider.py`: Extracts BIN lists, CVV dumps, and fraud complaints.
+- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/geo_intel_spider.py`: Tracks military movement and regional flashpoints from OSINT/geopolitical sources.
+- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/news_breach_spider.py`: Parses breach announcements and cybercrime reports from news sites.
+- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/threat_intel_report_spider.py`: Extracts IoCs and threat intelligence from vendor blogs and reports.
+- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/recruitment_spider.py`: Tracks cyberwarfare and hacking group job boards.
+- `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/darkweb_listing_spider.py`: Scrapes darknet marketplaces and forums for leaked data listings.
+
+How to run a spider directly and capture results (JSONL):
+
+```bash
+cd web_crawlers/ace_t_scraper
+# Example: run Pastebin spider and write results to data/alerts/YYYY-MM-DD/pastebin.jsonl
+outdir="$(cd ../.. && pwd)/data/alerts/$(date +%Y)/$(date +%m)/$(date +%d)"; \
+mkdir -p "$outdir"; \
+scrapy crawl pastebin -O "$outdir/pastebin.jsonl"
+```
+
+Robustness: spiders use Scrapy with retries, throttling, robots.txt compliance, and per-item validation (see `web_crawlers/ace_t_scraper/ace_t_scraper/settings.py` and `pipelines.py`). For full platform integration, items can also be forwarded into the unified alert pipeline (`utils.log_signal`) to appear in the GUI and review folders (see Output & Logs below).
 
 ---
 
 ## Alert Metadata Structure
+
 Every alert includes:
+
 - geo_info: Country, city, latitude, longitude (if available)
 - source_url: Direct link to the source
 - detected_at, first_seen, last_seen: Timestamps for detection and observation
@@ -123,6 +145,7 @@ Every alert includes:
 - tags, classification: Tags and data classification
 
 Example:
+
 ```json
 {
   "geo_info": {"country": "Germany", "city": "Berlin", "lat": 52.52, "lon": 13.405},
@@ -142,9 +165,11 @@ Example:
 ---
 
 ## Triggers
+
 - Triggers are defined in `ace_t_osint/triggers/triggers.json`.
 - Each trigger includes a pattern, severity, and context.
 - Example:
+
 ```json
 [
   {"pattern": "database leak", "severity": "high", "context": "Sensitive database leak detected", "trigger_id": "db-leak-001"},
@@ -155,16 +180,19 @@ Example:
 ---
 
 ## Output & Logs
-- All alerts and logs are written to `ace_t_osint/output/`:
+
+- All alerts and logs are written to the project root `output/` directory:
   - logs.csv (for GUI)
   - logs.json (for analytics)
   - Individual per-alert JSON files
 - All medium and high severity alerts are also copied to `alerts_for_review/` for further review.
+- For the refactored monitor pipeline, JSONL alert streams are written under `data/alerts/YYYY/MM/DD/alerts.jsonl` and a local SQLite database at `data/osint.db` is maintained (see Refactored OSINT Monitor below).
 - The alert GUI displays new alerts in real time and maps medium/high alerts with geolocation.
 
 ---
 
 ## GUI & Visualization
+
 - Real-time alert table with severity color-coding.
 - Full-screen dark mode interface.
 - Interactive map (bottom half) with pins for all medium/high alerts (city/region shown if available).
@@ -173,17 +201,20 @@ Example:
 ---
 
 ## Backend API
+
 - FastAPI backend for user management, alert ingestion, and analytics.
 - Interactive docs at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 ---
 
 ## Analytics
+
 - Run `python ace_t_osint/analytics/analytics.py` for summary reports and statistics on OSINT activity.
 
 ---
 
 ## Extending ACE-T
+
 - Add new modules in `ace_t_osint/modules/`.
 - Add new spiders in `web_crawlers/ace_t_scraper/ace_t_scraper/spiders/`.
 - Use `utils.log_signal()` to log alerts with full metadata.
@@ -192,6 +223,7 @@ Example:
 ---
 
 ## Security & Compliance
+
 - All data is stored locally by default.
 - Role-based access and audit logging for backend API.
 - Designed for compliance with privacy and security best practices.
@@ -199,6 +231,7 @@ Example:
 ---
 
 ## License
+
 See LICENSE file for details.
 
 ---
@@ -328,7 +361,7 @@ The following list contains 25 public URLs that are safe to add as monitoring ta
 8. https://news.ycombinator.com/newest
 9. https://github.com/trending
 10. https://gist.github.com/discover
-11. https://web.archive.org/web/*/https://example.com/
+11. <https://web.archive.org/web/*/https://seclists.org/*>
 12. https://bleepingcomputer.com/forums/ - forum index
 13. https://www.exploit-db.com/ - public exploit DB index
 14. https://pastebin.com/u/ - public user listings (example)
@@ -342,7 +375,7 @@ The following list contains 25 public URLs that are safe to add as monitoring ta
 22. https://www.virustotal.com/gui/home/search
 23. https://pastebin.com/raw/ (used with paste IDs to fetch raw bodies)
 24. https://www.heise.de/news/ (security news in German)
-25. https://www.cert.org/ncas/alerts/ (public CERT advisories)
+25. <https://www.cisa.gov/newsroom/alerts> (public CISA advisories)
 
 Note: Replace placeholder channel names (like `telegramchannelname`) with actual public channel slugs if you intend to monitor Telegram. Respect each site's robots.txt and terms of service before scraping at scale.
 

@@ -172,11 +172,8 @@ def main():
         print("[orchestrator] Launching module: log ingester")
         time.sleep(2)
         print("Launching alert GUI...")
-        # Wait for backend to be ready before starting dependent components
-        if wait_for_backend(timeout=20):
-            procs.append(run_alert_gui())
-        else:
-            print("[orchestrator] Backend did not become ready in time; skipping GUI/start of dependent components.")
+        # Start the GUI regardless of backend readiness so the Nodes Map is always available
+        procs.append(run_alert_gui())
         print("[orchestrator] Launching module: alert GUI")
         time.sleep(2)
         print("Launching web crawlers...")

@@ -2,6 +2,10 @@ import re
 import time
 import random
 from ace_t_osint.utils import utils
+try:
+    from ace_t_osint.detectors.iot_config_leak import process_capture as iot_process_capture
+except Exception:
+    iot_process_capture = None
 
 def extract_entities(content):
     organizations = []
@@ -35,6 +39,33 @@ def monitor_pastebin(triggers, interval=60):
             content = utils.stealth_get(paste_url)
             if not content:
                 continue
+            # IoT leak detection on raw content
+            try:
+                if iot_process_capture:
+                    meta = {
+                        "scrape_time": utils.datetime.utcnow().isoformat() if hasattr(utils, 'datetime') else None,
+                        "capture_file": f"pastebin_{pid}"
+                    }
+                    det = iot_process_capture(f"https://pastebin.com/{pid}", (content or "").encode("utf-8", errors="ignore"), meta)
+                    if det.get("flagged"):
+                        for alert in det.get("alerts", []):
+                            utils.log_signal(
+                                source="pastebin",
+                                signal_type="iot_config_leak",
+                                severity=str(alert.get("severity", "MEDIUM")).lower(),
+                                trigger_id=alert.get("id"),
+                                context=alert.get("summary") or f"Pastebin paste {pid}",
+                                extra_data={
+                                    "title": f"Pastebin paste {pid}",
+                                    "source_url": alert.get("source_url"),
+                                    "evidence_path": alert.get("evidence_path"),
+                                    "detectors": alert.get("detectors"),
+                                    "matches": alert.get("matches"),
+                                    "sha256": alert.get("sha256"),
+                                },
+                            )
+            except Exception:
+                pass
             for trig in triggers:
                 if trig["pattern"] in content:
                     meta = {

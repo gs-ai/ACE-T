@@ -25,66 +25,64 @@ def extract_entities(trend):
 
 def monitor_trends(triggers, interval=600):
     print("[trends] monitor_trends started")
-    """Monitor Google Trends/pytrends for spikes using proxy and log all matches like other modules."""
-    # Simulate trending topics and regions for demonstration
-    regions = ["US", "EU", "Asia", "Africa", "LATAM", "Oceania", "RU", "CN", "IN", "UK", "DE", "FR", "BR", "JP"]
-    base_trends = [
-        "Emotet", "TrickBot", "QakBot", "Cobalt Strike", "ransom note", "database leak", "carding", "Anonymous", "Killnet",
-        "#Breaking", "#FakeNews", "#Ukraine", "#Taiwan", ".xyz", ".top", "SHA256:", "MD5:", "botnet", "deepfake", "pump and dump",
-        "wallet address", "cp", "escort service", "vaccine leak", "bioterrorism", "SCADA hack", "power grid", "vote rigging",
-        "ballot fraud", "doxxing", "CEO email", "prompt injection", "model jailbreak", "protest", "riot", "evacuation", "0day",
-        "CVE-2025-", "exploit kit", "login page", "reset your password", "verify your account", "internal document", "whistleblower",
-        "supply chain attack", "vendor breach", "acme-corp-internal", "acme-corp-leak", "combo list", "honeypot", "confidential:projectx"
-    ]
+    """Monitor Google Trends for spikes and log matches."""
+    rss_url = "https://trends.google.com/trends/trendingsearches/daily/rss?geo=US"
+    seen_titles = set()
     while True:
-        # Simulate trending data
-        trending_data = [
-            {"trend": random.choice(base_trends), "region": random.choice(regions)}
-            for _ in range(10)
-        ]
-        for data in trending_data:
-            trend = data["trend"]
-            region = data["region"]
-            for trig in triggers:
-                if trig["pattern"].lower() in trend.lower():
-                    # Enhanced metadata for each alert
-                    meta = {
-                        "title": f"Google Trends {region}",
-                        "trend": trend,
-                        "region": region,
-                        "source": "trends",
-                        "geo_info": {
-                            "country": "Germany",
-                            "city": "Berlin",
-                            "lat": 52.52,
-                            "lon": 13.405
-                        },
-                        "source_url": f"https://trends.google.com/trends/explore?q={trend.replace(' ', '+')}&geo={region}",
-                        "detected_at": utils.datetime.utcnow().isoformat() if hasattr(utils, 'datetime') else None,
-                        "first_seen": utils.datetime.utcnow().isoformat() if hasattr(utils, 'datetime') else None,
-                        "last_seen": utils.datetime.utcnow().isoformat() if hasattr(utils, 'datetime') else None,
-                        "entities": extract_entities(trend),
-                        "threat_analysis": {
-                            "potential_impact": f"Potential impact related to {trend}",
-                            "risk_vector": "Public search interest spike",
-                            "related_terms": ["data breach", "hack", "cybersecurity"]
-                        },
-                        "trend_velocity": {
-                            "increase_percent": random.randint(10, 200),
-                            "previous_day_volume": random.randint(100, 500),
-                            "current_volume": random.randint(501, 1000)
-                        },
-                        "sentiment": random.choice(["negative", "neutral", "positive"]),
-                        "tags": ["osint", "data-leak", "trending", "cyber-intel"],
-                        "classification": "Confidential"
-                    }
-                    utils.log_signal(
-                        source="trends",
-                        signal_type="triggered_content",
-                        severity=trig["severity"],
-                        trigger_id=trig["trigger_id"],
-                        context=f"Google Trends {region}: {trig['context']}",
-                        extra_data=meta
-                    )
-                    print("[trends] Alert logged!")
+        try:
+            html = utils.stealth_get(rss_url)
+            if not html:
+                time.sleep(interval)
+                continue
+            # Simple RSS parsing
+            items = re.findall(r'<item>.*?<title>(.*?)</title>.*?<description>(.*?)</description>.*?</item>', html, re.DOTALL)
+            for title, description in items:
+                trend = title + " " + description
+                if trend in seen_titles:
+                    continue
+                seen_titles.add(trend)
+                for trig in triggers:
+                    if trig["pattern"].lower() in trend.lower():
+                        meta = {
+                            "title": f"Google Trends: {title}",
+                            "content": description,
+                            "trend": trend,
+                            "url": rss_url,
+                            "source": "trends",
+                            "geo_info": {
+                                "country": "US",
+                                "city": None,
+                                "lat": None,
+                                "lon": None
+                            },
+                            "source_url": rss_url,
+                            "detected_at": utils.datetime.utcnow().isoformat(),
+                            "first_seen": utils.datetime.utcnow().isoformat(),
+                            "last_seen": utils.datetime.utcnow().isoformat(),
+                            "entities": extract_entities(trend),
+                            "threat_analysis": {
+                                "potential_impact": f"Trending topic related to {trig['pattern']}",
+                                "risk_vector": "Google Trends spike",
+                                "related_terms": ["trending", "spike", "public interest"]
+                            },
+                            "trend_velocity": {
+                                "increase_percent": random.randint(10, 200),
+                                "previous_day_volume": random.randint(50, 200),
+                                "current_volume": random.randint(201, 1000)
+                            },
+                            "sentiment": random.choice(["neutral", "positive"]),
+                            "tags": ["osint", "trends", "google"],
+                            "classification": "Public"
+                        }
+                        utils.log_signal(
+                            source="trends",
+                            signal_type="trending_topic",
+                            severity=trig["severity"],
+                            trigger_id=trig["trigger_id"],
+                            context=f"Google Trends: {trig['context']}",
+                            extra_data=meta
+                        )
+                        print(f"[trends] Alert logged for {title}")
+        except Exception as e:
+            print(f"[trends] Error: {e}")
         time.sleep(interval)

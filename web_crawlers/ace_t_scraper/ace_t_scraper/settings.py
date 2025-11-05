@@ -14,7 +14,7 @@ NEWSPIDER_MODULE = "ace_t_scraper.spiders"
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-USER_AGENT = "ACE-T Web Crawler (+http://www.example.com)"
+USER_AGENT = "ACE-T Web Crawler (+https://github.com/)"
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = True

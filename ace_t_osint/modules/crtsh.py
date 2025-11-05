@@ -15,7 +15,8 @@ def monitor_crtsh(triggers, interval=180):
     try:
         while True:
             # Simulate domain registration monitoring
-            domain = "example.com"
+            # Stub currently does not emit fake domains; implement real feed to enable.
+            domain = ""
             # Support multiple trigger formats. Triggers may be a list of dicts
             # with keys like 'pattern' or 'include', or legacy format.
             for trig in triggers:
@@ -42,12 +43,14 @@ def monitor_crtsh(triggers, interval=180):
                         continue
 
                     # Check patterns against the observed domain
+                    if not patterns:
+                        continue
                     matched = False
                     for p in patterns:
                         if not p:
                             continue
                         # simple substring match; regex support could be added
-                        if p in domain:
+                        if domain and p in domain:
                             matched = True
                             break
                     if matched:
