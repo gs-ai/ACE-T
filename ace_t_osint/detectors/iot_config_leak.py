@@ -19,6 +19,7 @@ Safety/Ethics:
     This tool is for defensive research and lawful investigations. Treat any
     keys/PII as sensitive and follow proper disclosure and handling practices.
 """
+
 from __future__ import annotations
 
 import base64
@@ -34,6 +35,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import yaml
+from cryptography.fernet import Fernet
 
 # --------------------
 # Configuration knobs
@@ -154,7 +156,6 @@ def _scan_lines_for_patterns(text: str) -> List[Match]:
         ]:
             for m in regex.finditer(line):
                 val = m.group(0)
-                # for token pattern, capture group 2 is the value
                 if mtype == "token_like" and m.groups():
                     val = m.group(2)
                 matches.append(Match(type=mtype, value=val, context=line[:240], lineno=lineno))
@@ -163,7 +164,6 @@ def _scan_lines_for_patterns(text: str) -> List[Match]:
 
 def _yaml_safe_load(text: str) -> Optional[Any]:
     try:
-        # Safe load to avoid code execution; cap very large docs by basic size check
         if len(text) > 2_000_000:  # ~2MB
             return None
         return yaml.safe_load(text)
@@ -189,11 +189,8 @@ def _extract_from_yaml(y: Any, raw_text: str) -> List[Match]:
     if not isinstance(y, (dict, list)):
         return matches
     for p, v in _walk_yaml(y):
-        # stringify values for regex checks
         s = str(v)
-        # contextual line number: best-effort by searching raw_text
         lineno = raw_text[: raw_text.find(s)].count("\n") + 1 if s and s in raw_text else 1
-        # detectors
         for regex, mtype in [
             (AES_HEX32, "aes_hex32"),
             (AES_HEX64, "aes_hex64"),
@@ -217,7 +214,6 @@ def _extract_from_yaml(y: Any, raw_text: str) -> List[Match]:
 
 def _severity_from_matches(matches: List[Match], yaml_features: Dict[str, bool]) -> Tuple[str, str]:
     types = {m.type for m in matches}
-    # HIGH criteria
     if (
         any(t in types for t in ("aes_hex32", "aes_hex64", "token_like", "ssid"))
         or yaml_features.get("esphome", False)
@@ -225,10 +221,8 @@ def _severity_from_matches(matches: List[Match], yaml_features: Dict[str, bool])
         or yaml_features.get("wmbus_meter", False)
     ):
         return "HIGH", "Sensitive keys/credentials or ESPHome/WMBus YAML present"
-    # MEDIUM: device IDs, IPs, boards, MQTT host without keys
     if any(t in types for t in ("meter_id", "ipv4", "board_name", "mqtt_host_port")):
         return "MEDIUM", "Device identifiers or infrastructure endpoints detected"
-    # LOW: fallback if any other matches exist
     if matches:
         return "LOW", "Potentially sensitive signals (review)"
     return "NONE", "No relevant indicators found"
@@ -244,7 +238,6 @@ def _hashes(content: bytes) -> Dict[str, str]:
 def _mask_secrets(text: str) -> str:
     if not PLAY_SAFETY_REDACT:
         return text
-    # Mask long hex and base64-like tokens
     text = AES_HEX64.sub(lambda m: m.group(0)[:8] + "…" + m.group(0)[-4:], text)
     text = AES_HEX32.sub(lambda m: m.group(0)[:8] + "…" + m.group(0)[-4:], text)
     text = BASE64_KEY.sub(lambda m: m.group(0)[:8] + "…" + m.group(0)[-4:], text)
@@ -252,6 +245,28 @@ def _mask_secrets(text: str) -> str:
     text = SSID_PATTERN.sub(lambda m: f"{m.group(1)}: ********", text)
     return text
 
+
+# ----------------------
+# Encryption helpers
+# ----------------------
+
+def _get_local_encryption_key() -> Fernet:
+    """Derive a symmetric key from environment or fallback secret."""
+    secret = os.getenv("ACE_T_SECRET_KEY", "default_local_secret_key")
+    key = base64.urlsafe_b64encode(hashlib.sha256(secret.encode()).digest())
+    return Fernet(key)
+
+
+def _write_encrypted_text(filepath: Path, text: str):
+    fernet = _get_local_encryption_key()
+    token = fernet.encrypt(text.encode("utf-8"))
+    with open(filepath, "wb") as f:
+        f.write(token)
+
+
+# ----------------------
+# Evidence writer
+# ----------------------
 
 def _save_evidence(
     source_url: str,
@@ -279,10 +294,11 @@ def _save_evidence(
     with open(evidence_dir / f"{base_stem}.sha256", "w", encoding="utf-8") as f:
         json.dump(h, f)
 
+    # Secure redacted evidence storage (encrypted)
     text = _try_decode(content)
     redacted = _mask_secrets(text)
-    with open(evidence_dir / f"{base_stem}.redacted.txt", "w", encoding="utf-8") as f:
-        f.write(redacted)
+    outfile = evidence_dir / f"{base_stem}.redacted.enc"
+    _write_encrypted_text(outfile, redacted)
 
     alert = {
         "id": _uuid4(),
@@ -315,10 +331,12 @@ def _save_evidence(
         try:
             import urllib.request
 
-            req = urllib.request.Request(ALERT_WEBHOOK, data=json.dumps(alert).encode("utf-8"), headers={
-                "Content-Type": "application/json"
-            })
-            urllib.request.urlopen(req, timeout=5)  # nosec - best-effort notification
+            req = urllib.request.Request(
+                ALERT_WEBHOOK,
+                data=json.dumps(alert).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+            )
+            urllib.request.urlopen(req, timeout=5)
         except Exception as e:
             logger.warning(f"Webhook post failed: {e}")
 
@@ -327,15 +345,15 @@ def _save_evidence(
 
 def _uuid4() -> str:
     import uuid
-
     return str(uuid.uuid4())
 
 
-def process_capture(source_url: str, content: bytes, metadata: Dict[str, Any]) -> Dict[str, Any]:
-    """Scan content for IoT configuration leaks and write evidence upon detection.
+# ----------------------
+# Main process function
+# ----------------------
 
-    Returns a dict with {flagged, alerts, evidence_path}.
-    """
+def process_capture(source_url: str, content: bytes, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """Scan content for IoT configuration leaks and write evidence upon detection."""
     start = datetime.now(timezone.utc)
     text = _try_decode(content)
     filetype = (
@@ -358,12 +376,8 @@ def process_capture(source_url: str, content: bytes, metadata: Dict[str, Any]) -
             yaml_features["wmbus"] = "wmbus" in t_low
             yaml_features["wmbus_meter"] = "wmbus_meter" in t_low
             all_matches.extend(_extract_from_yaml(yaml_obj, text))
-        # even if YAML parsing fails, continue with regex scanning
 
-    # Regex scan on lines regardless of type
     all_matches.extend(_scan_lines_for_patterns(text))
-
-    # Severity scoring
     severity, summary = _severity_from_matches(all_matches, yaml_features)
 
     flagged = severity in {"HIGH", "MEDIUM"}
@@ -396,7 +410,6 @@ def process_capture(source_url: str, content: bytes, metadata: Dict[str, Any]) -
 # Example Usage
 # -----------------
 if __name__ == "__main__":
-    # Minimal example for manual testing
     sample_yaml = b"""
 esphome:
   name: demo
@@ -412,9 +425,3 @@ wmbus_meter:
     meta = {"scrape_time": datetime.now(timezone.utc).isoformat(), "capture_file": "demo_capture"}
     result = process_capture("https://example.com/paste", sample_yaml, meta)
     print(json.dumps(result, indent=2))
-
-
-# -----------------
-# Unit Test Notes
-# -----------------
-# Tests provided in tests/test_iot_config_leak.py
