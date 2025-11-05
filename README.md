@@ -1,4 +1,21 @@
-# ACE-T: Advanced Cyber-Enabled Threat Intelligence Platform
+# ⚡️ ACE-T: Advanced Cyber-Enabled Threat Intelligence Platform
+
+<p align="left">
+  <img src="https://img.shields.io/badge/Python-3.11-blue.svg" alt="Python 3.11">
+  <img src="https://img.shields.io/badge/Platform-macOS%20|%20Linux%20|%20Windows-lightgrey.svg" alt="Platform">
+  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
+  <img src="https://img.shields.io/badge/Last_Update-2025--11--05-yellow.svg" alt="Last Update">
+  <img src="https://img.shields.io/badge/Framework-FastAPI%20%7C%20Scrapy%20%7C%20PyTorch-orange.svg" alt="Frameworks">
+</p>
+
+---
+
+> **Date:** November 5, 2025  
+> **Platform:** macOS • Linux • Windows  
+> **Languages:** Python 3.11, YAML, JSON, JavaScript  
+> **Frameworks:** FastAPI, Scrapy, PyTorch  
+> **License:** MIT  
+> **Maintainer:** gs-ai / ACE-T Team
 
 ## Overview
 
