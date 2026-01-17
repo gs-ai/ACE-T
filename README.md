@@ -23,7 +23,7 @@
 
 ## Overview
 
-ACE-T is a modular Open-Source Intelligence (OSINT) platform for cyber threat intelligence. It provides real-time monitoring of Reddit subreddits and open threat intelligence feeds, with automated data ingestion, normalization, and graph-based visualization. The system processes alerts and indicators of compromise (IOCs), stores them in a SQLite database, and renders interactive 2D and 3D graphs for analysis.
+ACE-T is a modular Open-Source Intelligence (OSINT) platform for cyber threat intelligence. It provides real-time monitoring of Reddit subreddits and open threat intelligence feeds, with automated data ingestion, normalization, and graph-based visualization. The system processes alerts and indicators of compromise (IOCs), stores them in a SQLite database, and renders interactive 3D graphs for analysis.
 
 Key capabilities include:
 - Automated ingestion from Reddit and threat feeds
