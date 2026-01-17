@@ -36,7 +36,7 @@ Key capabilities include:
 
 - **Real-time OSINT Monitoring**: Continuous ingestion from Reddit subreddits and open threat intelligence feeds (ThreatFox, URLhaus, etc.)
 - **Modular Architecture**: Independent adapters for data sources with shared normalization pipeline
-- **Graph-Based Visualization**: Interactive 2D Cytoscape GUI and 3D Three.js interface with stable positioning and clustering
+- **Graph-Based Visualization**: Interactive 3D Three.js interface with stable positioning and clustering
 - **Automated Retention**: Configurable data retention with pruning of old nodes and edges
 - **Database Storage**: SQLite-based persistence for alerts and IOCs with SQLAlchemy ORM
 - **Cross-Source Correlation**: Automatic linking of indicators across different sources
@@ -94,8 +94,7 @@ conda run -n ace-t-env bash run_graph.sh
 ```
 
 This launches:
-- 2D Cytoscape GUI (Dash) on `http://127.0.0.1:8050`
-- 3D Three.js GUI on `http://127.0.0.1:8050/3d`
+- 3D Three.js GUI on `http://127.0.0.1:8050/three_view_3d.html`
 - Ingestion scheduler for continuous data updates
 
 ## Demo
@@ -121,7 +120,7 @@ A demonstration of the 3D graph interface:
 
 ### Screenshots
 
-The banner above shows the 2D Cytoscape interface with filtering controls and graph layout.
+The banner above shows the 3D interface with graph visualization.
 
 ## Configuration
 
@@ -186,7 +185,6 @@ Nodes and edges follow the canonical schema in `docs/GRAPH_SCHEMA.md`:
 - `src/modules/realtime_open_feeds.py`: Feed ingestion
 - `src/adapters/emit_graph.py`: Graph retention and merge
 - `src/three/export_3d.py`: 3D layout generation
-- `cyto_gui.py`: 2D GUI
 - `gui/three_view_3d.html`: 3D GUI
 - `db/alert_writer.py`, `db/ioc_writer.py`: Database persistence
 
