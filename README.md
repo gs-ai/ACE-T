@@ -100,12 +100,28 @@ This launches:
 
 ## Demo
 
+### 3D Graph Visualization
+
+ACE-T SPECTRUM provides interactive 2D and 3D graph visualizations for exploring cyber threat intelligence data. The 3D interface allows for immersive navigation through threat networks, with nodes representing alerts and IOCs, and edges showing relationships.
+
+**Features:**
+- Real-time graph updates from live data ingestion
+- Color-coded nodes by threat severity and source
+- Interactive controls for rotation, zoom, and filtering
+- Stable positioning with clustering algorithms
+
 A demonstration of the 3D graph interface:
 
 <video width="320" height="240" controls>
   <source src="docs/spin1.mov" type="video/quicktime">
   Your browser does not support the video tag.
 </video>
+
+[View full video](docs/spin1.mov)
+
+### Screenshots
+
+The banner above shows the 2D Cytoscape interface with filtering controls and graph layout.
 
 ## Configuration
 
