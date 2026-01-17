@@ -1,0 +1,12 @@
+{
+  "Timestamp": 240,
+  "Source": 72,
+  "Signal Type": 112,
+  "Severity": 128,
+  "Trigger ID": 104,
+  "Context": 240,
+  "Region": 80,
+  "Trend": 64,
+  "Sentiment": 96,
+  "URL": 60
+}

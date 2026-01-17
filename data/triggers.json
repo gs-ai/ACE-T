@@ -1,0 +1,104 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "credential-leak-keywords",
+      "description": "Detect possible credential leaks",
+      "include": ["password", "credential", "login"],
+      "exclude": ["reset"],
+      "window": 200,
+      "context": 3,
+      "tags": ["credential", "leak"],
+      "classification": "credential"
+    },
+    {
+      "id": "pii-ssn-regex",
+      "description": "Detect SSN patterns",
+      "regex": ["\\b[0-9]{3}-[0-9]{2}-[0-9]{4}\\b"],
+      "window": 120,
+      "context": 2,
+      "tags": ["pii"],
+      "classification": "pii"
+    },
+    {
+      "id": "exploit-keyword",
+      "description": "Detect exploit mentions (degrade confidence for scam indicators)",
+      "include": ["exploit"],
+      "exclude": ["500$", "instant", "minutes", "min ago", "earn", "make money", "cash", "rich", "millionaire", "profit", "guide", "working", "easy"],
+      "window": 200,
+      "context": 3,
+      "tags": ["exploit"],
+      "classification": "medium",
+      "weight": 60,
+      "exclusion_penalty": 0.25,
+      "min_confidence": 0.3
+    },
+    {
+      "id": "vulnerability-keyword",
+      "description": "Detect vulnerability mentions",
+      "include": ["vulnerability", "vulnerable", "cve-", "cve ", "zero-day", "rce", "xss", "sql injection", "buffer overflow"],
+      "exclude": [],
+      "window": 200,
+      "context": 3,
+      "tags": ["vulnerability"],
+      "classification": "high",
+      "weight": 80,
+      "min_confidence": 0.15
+    },
+    {
+      "id": "breach-keyword",
+      "description": "Detect data breach mentions",
+      "include": ["breach", "leak", "compromised", "hacked", "data breach"],
+      "exclude": ["not breached", "no breach"],
+      "window": 200,
+      "context": 3,
+      "tags": ["breach"],
+      "classification": "high",
+      "weight": 85,
+      "exclusion_penalty": 0.4,
+      "min_confidence": 0.15
+    },
+    {
+      "id": "malware-keyword",
+      "description": "Detect malware mentions",
+      "include": ["malware", "ransomware", "botnet", "trojan", "worm", "virus", "spyware"],
+      "exclude": [],
+      "window": 200,
+      "context": 3,
+      "tags": ["malware"],
+      "classification": "high",
+      "weight": 75,
+      "min_confidence": 0.2
+    },
+    {
+      "id": "org-mention",
+      "description": "Detect mentions of sensitive organizations",
+      "include": ["microsoft", "google", "apple", "amazon", "facebook", "cisco", "oracle", "ibm"],
+      "exclude": [],
+      "window": 200,
+      "context": 3,
+      "tags": ["org"],
+      "classification": "medium"
+    },
+    {
+      "id": "threat-actor",
+      "description": "Detect threat actor mentions",
+      "include": ["apt", "state-sponsored", "hackers", "cyber criminals", "nation-state"],
+      "exclude": [],
+      "window": 200,
+      "context": 3,
+      "tags": ["threat-actor"],
+      "classification": "high"
+    },
+    {
+      "id": "incident-keyword",
+      "description": "Detect security incident mentions",
+      "include": ["incident", "attack", "intrusion", "compromise", "unauthorized access"],
+      "exclude": [],
+      "window": 200,
+      "context": 3,
+      "tags": ["incident"],
+      "classification": "medium"
+    }
+  ]
+}

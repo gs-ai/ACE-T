@@ -1,0 +1,228 @@
+{
+  "pipeline_id": "acet.osint_spectrum.v1",
+  "version": "1.0.0",
+  "description": "OSINT collection to spectrum-banded intel objects with fusion, scoring, and exports for graph and timeline.",
+  "io_contract": {
+    "input": {
+      "seed": {
+        "type": "object",
+        "required": ["case_id", "targets"],
+        "properties": {
+          "case_id": { "type": "string" },
+          "targets": { "type": "array", "items": { "type": "object" } },
+          "options": { "type": "object" }
+        }
+      }
+    },
+    "output": {
+      "intel_bundle": "schemas/acet_intel.schema.json"
+    }
+  },
+  "stages": [
+    {
+      "id": "S00_VALIDATE_SEEDS",
+      "type": "validate",
+      "inputs": ["seed"],
+      "outputs": ["validated_targets"],
+      "rules": {
+        "normalize_handles": true,
+        "normalize_domains": true,
+        "dedupe_targets": true
+      }
+    },
+    {
+      "id": "S10_COLLECT_VISIBLE",
+      "type": "collect",
+      "band": "VISIBLE",
+      "inputs": ["validated_targets"],
+      "outputs": ["artifacts_visible"],
+      "collectors": ["web_profiles", "posts", "public_pages", "public_docs"],
+      "options": {
+        "respect_rate_limits": true,
+        "capture_html": true,
+        "capture_screenshots": true
+      }
+    },
+    {
+      "id": "S11_COLLECT_SHORTWAVE",
+      "type": "collect",
+      "band": "SHORTWAVE",
+      "inputs": ["validated_targets", "artifacts_visible"],
+      "outputs": ["artifacts_mirrors"],
+      "collectors": ["archives", "mirrors", "cache_hunts", "reuploads"],
+      "options": {
+        "hash_match": true,
+        "lineage_capture": true
+      }
+    },
+    {
+      "id": "S12_COLLECT_TV",
+      "type": "collect",
+      "band": "TV",
+      "inputs": ["validated_targets"],
+      "outputs": ["artifacts_narrative"],
+      "collectors": ["news", "press", "high_reach_mentions"],
+      "options": {
+        "topic_tracking": true,
+        "stance_capture": true
+      }
+    },
+    {
+      "id": "S13_COLLECT_FM",
+      "type": "collect",
+      "band": "FM",
+      "inputs": ["validated_targets"],
+      "outputs": ["artifacts_structured"],
+      "collectors": ["rss", "open_datasets", "official_feeds", "public_apis"],
+      "options": {
+        "schema_map": true,
+        "validation": true
+      }
+    },
+    {
+      "id": "S20_EXTRACT_UV_IR",
+      "type": "extract",
+      "inputs": [
+        "artifacts_visible",
+        "artifacts_mirrors",
+        "artifacts_narrative",
+        "artifacts_structured"
+      ],
+      "outputs": ["signals_uv", "signals_ir", "claims", "events_raw"],
+      "extractors": [
+        {
+          "name": "metadata_uv",
+          "band": "UV",
+          "emits": ["DOC_META", "TIME", "URL", "RELATIONSHIP"]
+        },
+        {
+          "name": "behavioral_ir",
+          "band": "IR",
+          "emits": ["LINGUISTIC", "BEHAVIORAL", "TOPIC"]
+        },
+        {
+          "name": "claims_extractor",
+          "band": "VISIBLE",
+          "emits": ["claim"]
+        },
+        {
+          "name": "event_builder",
+          "band": "UV",
+          "emits": ["event"]
+        }
+      ]
+    },
+    {
+      "id": "S30_COLLECT_XRAY_INFRA",
+      "type": "collect",
+      "band": "XRAY",
+      "inputs": ["validated_targets", "signals_uv"],
+      "outputs": ["artifacts_infra", "signals_infra"],
+      "collectors": ["dns", "certs", "asns", "repos", "exposure_discovery"],
+      "options": {
+        "pivot_from_domains": true,
+        "pivot_from_urls": true
+      }
+    },
+    {
+      "id": "S40_GAMMA_ATTRIBUTION",
+      "type": "resolve",
+      "band": "GAMMA",
+      "inputs": [
+        "signals_uv",
+        "signals_ir",
+        "signals_infra",
+        "artifacts_visible",
+        "artifacts_mirrors",
+        "artifacts_narrative",
+        "artifacts_structured",
+        "artifacts_infra"
+      ],
+      "outputs": ["entities", "edges_identity", "clusters_identity"],
+      "resolvers": [
+        {
+          "name": "entity_resolution",
+          "methods": ["handle_collision", "bio_overlap", "media_hash", "temporal_signature", "infra_linkage"],
+          "emit_edges": ["SAME_AS", "LIKELY_SAME_AS"],
+          "thresholds": { "same_as": 0.92, "likely_same_as": 0.78 }
+        }
+      ]
+    },
+    {
+      "id": "S50_RADAR_MONITORING_EVENTS",
+      "type": "track",
+      "band": "RADAR",
+      "inputs": ["validated_targets", "entities", "artifacts_visible"],
+      "outputs": ["events_tracking", "signals_deltas"],
+      "trackers": ["diff_profiles", "diff_posts", "diff_domains", "diff_relationships"],
+      "options": {
+        "emit_change_events": true,
+        "emit_delta_signals": true
+      }
+    },
+    {
+      "id": "S60_SCORE_AND_WEIGHT",
+      "type": "score",
+      "inputs": [
+        "entities",
+        "claims",
+        "events_raw",
+        "events_tracking",
+        "signals_uv",
+        "signals_ir",
+        "signals_infra",
+        "edges_identity"
+      ],
+      "outputs": ["scored_objects"],
+      "scoring": {
+        "band_weights": {
+          "GAMMA": 1.9,
+          "XRAY": 1.6,
+          "UV": 1.3,
+          "IR": 1.3,
+          "VISIBLE": 1.0,
+          "RADAR": 1.2,
+          "FM": 1.4,
+          "TV": 0.9,
+          "SHORTWAVE": 1.1,
+          "AM": 0.6
+        },
+        "edge_weight_rules": [
+          { "edge_type": "SAME_AS", "base": 90 },
+          { "edge_type": "LIKELY_SAME_AS", "base": 65 },
+          { "edge_type": "USES_INFRA", "base": 55 },
+          { "edge_type": "ASSOCIATED_WITH", "base": 40 },
+          { "edge_type": "AMPLIFIES", "base": 35 },
+          { "edge_type": "REPOSTED", "base": 25 }
+        ],
+        "confidence_rules": {
+          "evidence_count_boost": 0.04,
+          "cross_band_boost": 0.06,
+          "contradiction_penalty": 0.10
+        }
+      }
+    },
+    {
+      "id": "S70_FUSION_GRAPH_BUILD",
+      "type": "build",
+      "inputs": ["scored_objects", "artifacts_visible", "artifacts_infra", "artifacts_structured"],
+      "outputs": ["graph_objects", "timeline_objects"],
+      "builders": [
+        { "name": "graph_builder", "emit": ["entity", "edge", "cluster"] },
+        { "name": "timeline_builder", "emit": ["event"] }
+      ]
+    },
+    {
+      "id": "S80_EXPORT",
+      "type": "export",
+      "inputs": ["graph_objects", "timeline_objects", "artifacts_visible", "artifacts_infra"],
+      "outputs": ["intel_bundle", "exports"],
+      "exporters": [
+        { "name": "bundle_json", "format": "json", "path": "data/intel_bundle.json" },
+        { "name": "graph_json", "format": "json", "path": "data/graph_data.json" },
+        { "name": "timeline_json", "format": "json", "path": "data/timeline.json" },
+        { "name": "artifact_manifest", "format": "json", "path": "data/artifacts.json" }
+      ]
+    }
+  ]
+}

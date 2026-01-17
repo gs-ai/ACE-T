@@ -1,0 +1,64 @@
+{
+  "case_id": "ace-t",
+  "targets": [
+    {
+      "type": "handle",
+      "value": "infosecnews"
+    },
+    {
+      "type": "handle",
+      "value": "pwnhub"
+    },
+    {
+      "type": "handle",
+      "value": "osint"
+    },
+    {
+      "type": "handle",
+      "value": "threatintel"
+    },
+    {
+      "type": "handle",
+      "value": "malware"
+    },
+    {
+      "type": "handle",
+      "value": "reverseengineering"
+    },
+    {
+      "type": "handle",
+      "value": "computerforensics"
+    },
+    {
+      "type": "handle",
+      "value": "phishing"
+    },
+    {
+      "type": "handle",
+      "value": "blueteamsec"
+    },
+    {
+      "type": "handle",
+      "value": "netsec"
+    },
+    {
+      "type": "handle",
+      "value": "redteamsec"
+    },
+    {
+      "type": "handle",
+      "value": "sysadmin"
+    },
+    {
+      "type": "handle",
+      "value": "cybersecurity"
+    },
+    {
+      "type": "handle",
+      "value": "incidentresponse"
+    }
+  ],
+  "options": {
+    "retention_days": 30
+  }
+}

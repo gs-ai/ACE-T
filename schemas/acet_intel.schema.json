@@ -1,0 +1,311 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ace-t.local/schemas/acet_intel.schema.json",
+  "title": "ACE-T Intelligence Model (Spectrum-Fused OSINT)",
+  "type": "object",
+  "required": ["case", "objects", "provenance", "version"],
+  "properties": {
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "case": {
+      "type": "object",
+      "required": ["case_id", "created_at"],
+      "properties": {
+        "case_id": { "type": "string", "minLength": 3, "maxLength": 128 },
+        "name": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "tags": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["producer", "produced_at"],
+      "properties": {
+        "producer": { "type": "string" },
+        "produced_at": { "type": "string", "format": "date-time" },
+        "toolchain": { "type": "array", "items": { "type": "string" } },
+        "run_id": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "objects": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/IntelObject" }
+    }
+  },
+  "$defs": {
+    "SpectrumBand": {
+      "type": "string",
+      "enum": [
+        "GAMMA",
+        "XRAY",
+        "UV",
+        "VISIBLE",
+        "IR",
+        "RADAR",
+        "FM",
+        "TV",
+        "SHORTWAVE",
+        "AM"
+      ]
+    },
+    "Confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "HashBundle": {
+      "type": "object",
+      "properties": {
+        "sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" },
+        "sha1": { "type": "string", "pattern": "^[a-fA-F0-9]{40}$" },
+        "md5": { "type": "string", "pattern": "^[a-fA-F0-9]{32}$" }
+      },
+      "additionalProperties": false
+    },
+    "EvidenceRef": {
+      "type": "object",
+      "required": ["artifact_id"],
+      "properties": {
+        "artifact_id": { "type": "string" },
+        "selector": { "type": "string", "description": "Optional: CSS selector, timecode, page range, JSONPath, etc." },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "BaseObject": {
+      "type": "object",
+      "required": ["id", "type", "created_at"],
+      "properties": {
+        "id": { "type": "string", "minLength": 6, "maxLength": 128 },
+        "type": {
+          "type": "string",
+          "enum": ["artifact", "signal", "entity", "edge", "event", "claim", "cluster"]
+        },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" },
+        "band": { "$ref": "#/$defs/SpectrumBand" },
+        "confidence": { "$ref": "#/$defs/Confidence" },
+        "labels": { "type": "array", "items": { "type": "string" } },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" }
+      }
+    },
+    "Artifact": {
+      "allOf": [
+        { "$ref": "#/$defs/BaseObject" },
+        {
+          "type": "object",
+          "required": ["uri", "captured_at", "content_type"],
+          "properties": {
+            "type": { "const": "artifact" },
+            "uri": { "type": "string" },
+            "captured_at": { "type": "string", "format": "date-time" },
+            "content_type": { "type": "string" },
+            "source": {
+              "type": "object",
+              "required": ["platform"],
+              "properties": {
+                "platform": { "type": "string" },
+                "channel": { "type": "string" },
+                "account_handle": { "type": "string" },
+                "collection_method": {
+                  "type": "string",
+                  "enum": ["BROWSER", "HTTP", "API", "RSS", "ARCHIVE", "MANUAL", "INGEST"]
+                }
+              },
+              "additionalProperties": false
+            },
+            "hashes": { "$ref": "#/$defs/HashBundle" },
+            "size_bytes": { "type": "integer", "minimum": 0 },
+            "local_path": { "type": "string" },
+            "mime_hint": { "type": "string" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "Signal": {
+      "allOf": [
+        { "$ref": "#/$defs/BaseObject" },
+        {
+          "type": "object",
+          "required": ["signal_type", "value"],
+          "properties": {
+            "type": { "const": "signal" },
+            "signal_type": {
+              "type": "string",
+              "enum": [
+                "HANDLE",
+                "EMAIL",
+                "PHONE",
+                "DOMAIN",
+                "IP",
+                "ASN",
+                "GEO",
+                "TIME",
+                "MEDIA_HASH",
+                "DOC_META",
+                "LINGUISTIC",
+                "BEHAVIORAL",
+                "RELATIONSHIP",
+                "TOPIC",
+                "URL",
+                "ID_TOKEN"
+              ]
+            },
+            "value": { "type": ["string", "number", "object", "array", "boolean", "null"] },
+            "normalized": { "type": ["string", "number", "object", "array", "boolean", "null"] },
+            "evidence": { "type": "array", "items": { "$ref": "#/$defs/EvidenceRef" } }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "Entity": {
+      "allOf": [
+        { "$ref": "#/$defs/BaseObject" },
+        {
+          "type": "object",
+          "required": ["entity_type", "name"],
+          "properties": {
+            "type": { "const": "entity" },
+            "entity_type": {
+              "type": "string",
+              "enum": ["PERSON", "ORG", "ACCOUNT", "DOMAIN", "HOST", "DEVICE", "DOCUMENT", "LOCATION", "TOPIC"]
+            },
+            "name": { "type": "string" },
+            "aliases": { "type": "array", "items": { "type": "string" } },
+            "attributes": { "type": "object" },
+            "evidence": { "type": "array", "items": { "$ref": "#/$defs/EvidenceRef" } }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "Edge": {
+      "allOf": [
+        { "$ref": "#/$defs/BaseObject" },
+        {
+          "type": "object",
+          "required": ["from", "to", "edge_type", "weight"],
+          "properties": {
+            "type": { "const": "edge" },
+            "from": { "type": "string" },
+            "to": { "type": "string" },
+            "edge_type": {
+              "type": "string",
+              "enum": [
+                "OWNS",
+                "OPERATES",
+                "POSTED",
+                "MENTIONED",
+                "LINKED",
+                "REPOSTED",
+                "FOLLOWS",
+                "FRIENDS_WITH",
+                "CO_OCCURS_WITH",
+                "SAME_AS",
+                "LIKELY_SAME_AS",
+                "ASSOCIATED_WITH",
+                "LOCATED_AT",
+                "HOSTS",
+                "USES_INFRA",
+                "AMPLIFIES",
+                "CONTRADICTS",
+                "SUPPORTS"
+              ]
+            },
+            "weight": { "type": "number", "minimum": 0.0, "maximum": 1000.0 },
+            "direction": { "type": "string", "enum": ["DIRECTED", "UNDIRECTED"] },
+            "evidence": { "type": "array", "items": { "$ref": "#/$defs/EvidenceRef" } }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "Event": {
+      "allOf": [
+        { "$ref": "#/$defs/BaseObject" },
+        {
+          "type": "object",
+          "required": ["event_type", "time_start"],
+          "properties": {
+            "type": { "const": "event" },
+            "event_type": {
+              "type": "string",
+              "enum": [
+                "ACCOUNT_CREATED",
+                "PROFILE_UPDATED",
+                "POST_PUBLISHED",
+                "POST_DELETED",
+                "DOMAIN_REGISTERED",
+                "DNS_CHANGED",
+                "CERT_ISSUED",
+                "FILE_PUBLISHED",
+                "MEETING_OCCURRED",
+                "INCIDENT_REPORTED",
+                "NARRATIVE_SHIFT",
+                "COORDINATION_SPIKE"
+              ]
+            },
+            "time_start": { "type": "string", "format": "date-time" },
+            "time_end": { "type": "string", "format": "date-time" },
+            "participants": { "type": "array", "items": { "type": "string" } },
+            "evidence": { "type": "array", "items": { "$ref": "#/$defs/EvidenceRef" } },
+            "metrics": { "type": "object" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "Claim": {
+      "allOf": [
+        { "$ref": "#/$defs/BaseObject" },
+        {
+          "type": "object",
+          "required": ["text"],
+          "properties": {
+            "type": { "const": "claim" },
+            "text": { "type": "string" },
+            "claim_type": {
+              "type": "string",
+              "enum": ["ASSERTION", "DENIAL", "ALIBI", "ACCUSATION", "PROMISE", "THREAT", "NARRATIVE_FRAME"]
+            },
+            "about": { "type": "array", "items": { "type": "string" } },
+            "evidence": { "type": "array", "items": { "$ref": "#/$defs/EvidenceRef" } }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "Cluster": {
+      "allOf": [
+        { "$ref": "#/$defs/BaseObject" },
+        {
+          "type": "object",
+          "required": ["cluster_type", "members"],
+          "properties": {
+            "type": { "const": "cluster" },
+            "cluster_type": { "type": "string", "enum": ["RUMOR", "NARRATIVE", "AMPLIFIER", "INFRA", "IDENTITY"] },
+            "members": { "type": "array", "items": { "type": "string" } },
+            "centroid": { "type": "object" },
+            "evidence": { "type": "array", "items": { "$ref": "#/$defs/EvidenceRef" } }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "IntelObject": {
+      "oneOf": [
+        { "$ref": "#/$defs/Artifact" },
+        { "$ref": "#/$defs/Signal" },
+        { "$ref": "#/$defs/Entity" },
+        { "$ref": "#/$defs/Edge" },
+        { "$ref": "#/$defs/Event" },
+        { "$ref": "#/$defs/Claim" },
+        { "$ref": "#/$defs/Cluster" }
+      ]
+    }
+  }
+}

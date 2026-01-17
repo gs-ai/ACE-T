@@ -1,0 +1,3 @@
+name: ace-t-env
+channels: [defaults]
+dependencies: []

@@ -1,0 +1,38 @@
+{
+  "updated_at": "2026-01-15T15:28:34.117986+00:00",
+  "tasks": {
+    "reddit:posts": {
+      "status": "ok",
+      "last_run": "2026-01-15T15:28:24.705435+00:00",
+      "last_run_ts": 1768490904.7054348,
+      "last_success": "2026-01-15T15:28:34.117919+00:00",
+      "last_success_ts": 1768490914.117919,
+      "last_duration": 9.41,
+      "last_error": "",
+      "next_run": "2026-01-15T15:30:58.663069+00:00",
+      "next_run_ts": 1768491058.6630688
+    },
+    "reddit:comments": {
+      "status": "ok",
+      "last_run": "2026-01-15T15:21:14.155074+00:00",
+      "last_run_ts": 1768490474.1550741,
+      "last_success": "2026-01-15T15:22:32.768203+00:00",
+      "last_success_ts": 1768490552.768203,
+      "last_duration": 78.61,
+      "last_error": "",
+      "next_run": "2026-01-15T15:30:54.054182+00:00",
+      "next_run_ts": 1768491054.0541823
+    },
+    "feeds:realtime_open": {
+      "status": "ok",
+      "last_run": "2026-01-15T15:22:32.768672+00:00",
+      "last_run_ts": 1768490552.768672,
+      "last_success": "2026-01-15T15:22:34.370531+00:00",
+      "last_success_ts": 1768490554.370531,
+      "last_duration": 1.6,
+      "last_error": "",
+      "next_run": "2026-01-15T15:33:51.357858+00:00",
+      "next_run_ts": 1768491231.3578577
+    }
+  }
+}
