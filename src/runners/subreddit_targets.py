@@ -22,7 +22,6 @@ SUBREDDITS = {
         "redteamsec/new/",
         "sysadmin/new/",
         "cybersecurity/new/",
-        "IncidentResponse/new/",
     ],
 }
 
