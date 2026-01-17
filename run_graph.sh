@@ -93,8 +93,8 @@ cleanup() {
 
 trap cleanup INT TERM
 
-echo "[*] Launching GUI"
-"${PYTHON_BIN}" "${ROOT}/cyto_gui.py" --reload 5 &
+echo "[*] Launching 3D GUI"
+cd "${ROOT}/gui" && "${PYTHON_BIN}" -m http.server 8050 &
 GUI_PID=$!
 
 sleep 2
@@ -114,24 +114,8 @@ PY
 }
 
 if [ "${OPEN_BROWSER:-1}" = "1" ]; then
-  # Open both 2D and 3D graph views once the server responds.
-  (
-  "${PYTHON_BIN}" - <<'PY'
-import time
-import urllib.request
-
-base = "http://127.0.0.1:8050"
-deadline = time.time() + 60.0
-while time.time() < deadline:
-    try:
-        urllib.request.urlopen(base, timeout=1)
-        break
-    except Exception:
-        time.sleep(0.5)
-PY
-  open_url "http://127.0.0.1:8050"
-  open_url "http://127.0.0.1:8050/3d"
-  ) &
+  # Open 3D graph view
+  open_url "http://127.0.0.1:8050/three_view_3d.html"
   BROWSER_PID=$!
 fi
 
