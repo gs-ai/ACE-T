@@ -29,7 +29,7 @@ Key capabilities include:
 - Automated ingestion from Reddit and threat feeds
 - Graph assembly with cross-source correlation
 - Retention management for data freshness
-- Dual visualization interfaces (2D Cytoscape, 3D Three.js)
+- 3D Three.js visualization interface
 - Configurable YAML-based settings
 
 ## Features
@@ -51,7 +51,7 @@ Key capabilities include:
 2. **Normalization**: Adapters convert raw data into standardized graph nodes and edges
 3. **Graph Assembly**: New data is merged into `data/graph_data.json` with retention enforcement
 4. **Storage**: Alerts and IOCs are written to `db/osint.db`
-5. **Rendering**: 2D Cytoscape GUI and 3D Three.js interface display the graph
+5. **Rendering**: 3D Three.js interface displays the graph
 
 ### Key Components
 
