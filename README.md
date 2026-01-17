@@ -120,7 +120,9 @@ A demonstration of the 3D graph interface:
 
 ### Screenshots
 
-The banner above shows the 3D interface with graph visualization.
+![3D Graph Visualization Interface](docs/screenshot-3d-interface.png)
+
+*The banner above shows the 3D interface with graph visualization.*
 
 ## Configuration
 
