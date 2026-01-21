@@ -35,17 +35,18 @@ def _normalize_subreddit(raw: str) -> str:
     parsed = urlparse(value)
     if parsed.scheme and parsed.netloc:
         hostname = (parsed.hostname or "").lower()
-        if not _is_reddit_hostname(hostname):
+        if not hostname.endswith("reddit.com"):
             return ""
         value = parsed.path
-    else:
-        first_segment = value.split("/", 1)[0].lower()
-        if _is_reddit_hostname(first_segment):
-            value = value[len(first_segment) :]
+    elif value.startswith("www.reddit.com"):
+        parsed = urlparse(f"https://{value}")
+        hostname = (parsed.hostname or "").lower()
+        if not hostname.endswith("reddit.com"):
+            return ""
+        value = parsed.path
     marker = "/r/"
-    parts = value.split(marker, 1)
-    if len(parts) > 1:
-        value = parts[1]
+    if marker in value:
+        value = value.split(marker, 1)[1]
     value = value.strip("/")
     lower_value = value.lower()
     if lower_value.endswith("/new"):
