@@ -38,6 +38,10 @@ def _normalize_subreddit(raw: str) -> str:
         if not _is_reddit_hostname(hostname):
             return ""
         value = parsed.path
+    else:
+        first_segment = value.split("/", 1)[0].lower()
+        if _is_reddit_hostname(first_segment):
+            value = value[len(first_segment) :]
     marker = "/r/"
     if marker in value:
         value = value.split(marker, 1)[1]
