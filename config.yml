@@ -8,7 +8,7 @@
 # 
 # IMPORTANT: Never commit real API credentials to version control!
 #
-# The application code (reddit_live_ingest.py) automatically gives PRIORITY
+# The application code (src/runners/reddit_live_ingest.py) automatically gives PRIORITY
 # to environment variables over config file values for security.
 #
 # RECOMMENDED APPROACH (most secure):
