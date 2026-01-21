@@ -33,11 +33,6 @@ def _normalize_subreddit(raw: str) -> str:
     if not value:
         return ""
     parsed = urlparse(value)
-    # If there is no explicit scheme/netloc but the value looks like a
-    # bare reddit.com-style URL, prepend a default scheme before parsing.
-    if not parsed.scheme and not parsed.netloc:
-        if value.startswith("www.reddit.com/") or value.startswith("reddit.com/"):
-            parsed = urlparse(f"https://{value}")
     if parsed.scheme and parsed.netloc:
         hostname = (parsed.hostname or "").lower()
         if not _is_reddit_hostname(hostname):
