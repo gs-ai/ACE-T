@@ -48,9 +48,18 @@ def _normalize_subreddit(raw: str) -> str:
     if marker in value:
         value = value.split(marker, 1)[1]
     value = value.strip("/")
-    if value.endswith("new"):
-        value = value[: -len("new")]
+    lower_value = value.lower()
+    if lower_value.endswith("/new"):
+        value = value[: -len("/new")]
+    elif lower_value == "new":
+        return ""
     return value.strip("/").lower()
+
+
+def _is_reddit_hostname(hostname: str) -> bool:
+    if not hostname:
+        return False
+    return hostname == "reddit.com" or hostname.endswith(".reddit.com")
 
 
 def _hsl_to_rgb(h: float, s: float, l: float) -> Tuple[int, int, int]:
