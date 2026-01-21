@@ -106,7 +106,7 @@ munkres==1.1.4
 murmurhash==1.0.13
 narwhals==2.14.0
 nbclient==0.10.3
-nbconvert==7.16.6
+nbconvert==7.16.7
 nbformat==5.10.4
 nest-asyncio==1.6.0
 nltk==3.9.2
@@ -130,7 +130,7 @@ pandocfilters==1.5.1
 parsel==1.10.0
 parso==0.8.5
 patsy @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_patsy_1760998269/work
-pdfminer.six==20250506
+pdfminer.six==20250705
 pexpect==4.9.0
 pickleshare==0.7.5
 pillow==12.0.0
@@ -196,7 +196,7 @@ rpds-py==0.30.0
 scikit-learn==1.7.2
 scipy @ file:///Users/runner/miniforge3/conda-bld/scipy-split_1757681250483/work/dist/scipy-1.16.2-cp311-cp311-macosx_11_0_arm64.whl#sha256=158d1e5e5d629cb8130f720e0ae0a4e4fb6c8788f1d3c2a64e703ccdf56d3ca6
 scrapling==0.3.11
-Scrapy==2.14.1
+Scrapy==2.15.0
 screeninfo==0.8.1
 seaborn @ file:///home/conda/feedstock_root/build_artifacts/seaborn-split_1733730015268/work
 selenium==4.39.0
