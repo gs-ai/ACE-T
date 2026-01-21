@@ -43,8 +43,9 @@ def _normalize_subreddit(raw: str) -> str:
         if _is_reddit_hostname(first_segment):
             value = value[len(first_segment) :]
     marker = "/r/"
-    if marker in value:
-        value = value.split(marker, 1)[1]
+    parts = value.split(marker, 1)
+    if len(parts) > 1:
+        value = parts[1]
     value = value.strip("/")
     if value.endswith("new"):
         value = value[: -len("new")]
