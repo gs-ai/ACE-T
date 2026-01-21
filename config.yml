@@ -8,21 +8,19 @@
 # 
 # IMPORTANT: Never commit real API credentials to version control!
 #
-# This configuration supports both direct values AND environment variable
-# references using the ${VAR_NAME} syntax. However, the application code
-# (reddit_live_ingest.py) gives PRIORITY to environment variables over
-# config file values for security.
+# The application code (reddit_live_ingest.py) automatically gives PRIORITY
+# to environment variables over config file values for security.
 #
 # RECOMMENDED APPROACH (most secure):
-#   1. Set environment variables:
+#   1. Set environment variables before running the application:
 #      export REDDIT_CLIENT_ID="your_actual_client_id"
 #      export REDDIT_CLIENT_SECRET="your_actual_secret"
 #      export REDDIT_USER_AGENT="ACE-T:v2.0.0 (by /u/yourname)"
 #   
 #   2. Leave placeholder values in this config.yml (as shown below)
 #
-# The application will automatically use environment variables if set,
-# falling back to config.yml values only if env vars are not present.
+# The application checks for environment variables first, then falls back
+# to config.yml values only if environment variables are not set.
 #
 # For production deployments, use secure secret management solutions
 # like AWS Secrets Manager, HashiCorp Vault, or Kubernetes Secrets.
@@ -30,9 +28,10 @@
 
 reddit:
   # Required for authenticated API access
-  # Use environment variables REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET instead of hardcoding here
-  client_id: "${REDDIT_CLIENT_ID}"  # Your Reddit app client ID (set via environment variable)
-  client_secret: "${REDDIT_CLIENT_SECRET}"  # Your Reddit app secret (set via environment variable)
+  # SECURITY: Set environment variables REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET instead of hardcoding credentials here
+  # The values below are placeholders - the application will use environment variables if they are set
+  client_id: ""  # Placeholder - set REDDIT_CLIENT_ID environment variable with your Reddit app client ID
+  client_secret: ""  # Placeholder - set REDDIT_CLIENT_SECRET environment variable with your Reddit app secret
   user_agent: "ACE-T:v2.0.0 (by /u/sirarthurconand)"  # Custom user agent
 
   # Optional: Rate limiting (requests per minute)
