@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Iterable, List, Set, Tuple
+from urllib.parse import urlparse
 
 # ============================================================
 # ACE-T — Subreddit Target Ingestion List
@@ -30,14 +31,32 @@ def _normalize_subreddit(raw: str) -> str:
     value = (raw or "").strip()
     if not value:
         return ""
-    if "reddit.com" in value:
-        marker = "/r/"
-        if marker in value:
-            value = value.split(marker, 1)[1]
+    parsed = urlparse(value)
+    if parsed.scheme and parsed.netloc:
+        hostname = (parsed.hostname or "").lower()
+        if not _is_reddit_hostname(hostname):
+            return ""
+        value = parsed.path
+    else:
+        first_segment = value.split("/", 1)[0].lower()
+        if _is_reddit_hostname(first_segment):
+            value = value[len(first_segment) :]
+    marker = "/r/"
+    if marker in value:
+        value = value.split(marker, 1)[1]
     value = value.strip("/")
-    if value.endswith("new"):
-        value = value[: -len("new")]
+    lower_value = value.lower()
+    if lower_value.endswith("/new"):
+        value = value[: -len("/new")]
+    elif lower_value == "new":
+        return ""
     return value.strip("/").lower()
+
+
+def _is_reddit_hostname(hostname: str) -> bool:
+    if not hostname:
+        return False
+    return hostname == "reddit.com" or hostname.endswith(".reddit.com")
 
 
 def _hsl_to_rgb(h: float, s: float, l: float) -> Tuple[int, int, int]:

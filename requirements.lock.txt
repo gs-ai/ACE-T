@@ -1,5 +1,5 @@
 aiohappyeyeballs==2.6.1
-aiohttp==3.13.2
+aiohttp==3.13.3
 aiohttp_socks==0.11.0
 aiosignal==1.4.0
 aiosqlite==0.22.0
@@ -55,7 +55,7 @@ executing==2.2.1
 fastapi==0.126.0
 fastapi-cli @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_fastapi-cli_1758405759/work
 fastjsonschema==2.21.2
-filelock==3.20.1
+filelock==3.20.3
 Flask==3.1.2
 flask-cors==6.0.2
 fonttools @ file:///Users/runner/miniforge3/conda-bld/fonttools_1759187188865/work
@@ -106,7 +106,7 @@ munkres==1.1.4
 murmurhash==1.0.13
 narwhals==2.14.0
 nbclient==0.10.3
-nbconvert==7.16.6
+nbconvert==7.16.7
 nbformat==5.10.4
 nest-asyncio==1.6.0
 nltk==3.9.2
@@ -130,7 +130,6 @@ pandocfilters==1.5.1
 parsel==1.10.0
 parso==0.8.5
 patsy @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_patsy_1760998269/work
-pdfminer.six==20250506
 pexpect==4.9.0
 pickleshare==0.7.5
 pillow==12.0.0
@@ -150,7 +149,7 @@ psutil==7.1.3
 ptyprocess==0.7.0
 pure_eval==0.2.3
 py-spy==0.4.1
-pyasn1==0.6.1
+pyasn1==0.6.2
 pyasn1_modules==0.4.2
 pycparser==2.23
 pydantic==2.12.5
@@ -196,7 +195,7 @@ rpds-py==0.30.0
 scikit-learn==1.7.2
 scipy @ file:///Users/runner/miniforge3/conda-bld/scipy-split_1757681250483/work/dist/scipy-1.16.2-cp311-cp311-macosx_11_0_arm64.whl#sha256=158d1e5e5d629cb8130f720e0ae0a4e4fb6c8788f1d3c2a64e703ccdf56d3ca6
 scrapling==0.3.11
-Scrapy==2.13.4
+Scrapy==2.15.2
 screeninfo==0.8.1
 seaborn @ file:///home/conda/feedstock_root/build_artifacts/seaborn-split_1733730015268/work
 selenium==4.39.0
@@ -241,7 +240,7 @@ ua-parser==1.0.1
 ua-parser-builtins==0.18.0.post1
 unicodedata2 @ file:///Users/runner/miniforge3/conda-bld/unicodedata2_1756494537241/work
 Unidecode==1.4.0
-urllib3==2.6.2
+urllib3==2.6.3
 uvicorn @ file:///home/conda/feedstock_root/build_artifacts/uvicorn_1760803785189/work
 uvloop @ file:///Users/runner/miniforge3/conda-bld/uvloop_1760702384469/work
 w3lib==2.3.1
@@ -252,7 +251,7 @@ weasel==0.4.2
 webencodings==0.5.1
 websocket-client==1.9.0
 websockets @ file:///Users/runner/miniforge3/conda-bld/bld/rattler-build_websockets_1756476451/work/dist
-Werkzeug==3.1.4
+Werkzeug==3.1.5
 wrapt==1.17.3
 wsproto==1.3.2
 yarg==0.1.9
