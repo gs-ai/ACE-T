@@ -11,4 +11,4 @@ def ingest_ghostbin() -> None:
     if not ENABLED:
         print("[ghostbin] disabled (set ACE_T_ENABLE_GHOSTBIN=1 to enable)")
         return
-    print("[ghostbin] enabled but not implemented in ACE-T SPECTRUM yet")
+    print("[ghostbin] enabled but not implemented in ACE-T-SPECTRUM yet")

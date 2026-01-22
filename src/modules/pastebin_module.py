@@ -11,4 +11,4 @@ def ingest_pastebin() -> None:
     if not ENABLED:
         print("[pastebin] disabled (set ACE_T_ENABLE_PASTEBIN=1 to enable)")
         return
-    print("[pastebin] enabled but not implemented in ACE-T SPECTRUM yet")
+    print("[pastebin] enabled but not implemented in ACE-T-SPECTRUM yet")

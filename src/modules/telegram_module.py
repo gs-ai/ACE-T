@@ -11,4 +11,4 @@ def ingest_telegram() -> None:
     if not ENABLED:
         print("[telegram] disabled (set ACE_T_ENABLE_TELEGRAM=1 to enable)")
         return
-    print("[telegram] enabled but not implemented in ACE-T SPECTRUM yet")
+    print("[telegram] enabled but not implemented in ACE-T-SPECTRUM yet")
