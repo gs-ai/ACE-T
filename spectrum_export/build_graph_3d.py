@@ -42,6 +42,18 @@ REDDIT_POST_RE = re.compile(r"reddit\\.com/r/[^/]+/comments/([a-z0-9]+)/", re.IG
 REDDIT_SHORT_RE = re.compile(r"redd\\.it/([a-z0-9]+)", re.IGNORECASE)
 
 
+def _is_reddit_domain(url: str) -> bool:
+    """Check if URL is from a legitimate Reddit domain using proper parsing."""
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url.lower())
+        domain = parsed.netloc
+        # Check for exact reddit.com domain or www.reddit.com
+        return domain in ('reddit.com', 'www.reddit.com')
+    except Exception:
+        return False
+
+
 def _load_json(path: Path, default: Any) -> Any:
     try:
         return json.loads(path.read_text())
@@ -242,7 +254,7 @@ def _is_reddit_post_url(url: str) -> bool:
 def _derive_source_url(node: Dict[str, Any]) -> str:
     direct = _first_url(node)
     if direct:
-        if _is_reddit_source(node) and "reddit.com" in direct and not _is_reddit_post_url(direct):
+        if _is_reddit_source(node) and _is_reddit_domain(direct) and not _is_reddit_post_url(direct):
             direct = ""
         if direct:
             return direct
@@ -466,7 +478,7 @@ def build_graph_3d(
         if not nid:
             continue
         candidate = _derive_source_url(node)
-        if candidate and _is_reddit_source(node) and "reddit.com" in candidate and not _is_reddit_post_url(candidate):
+        if candidate and _is_reddit_source(node) and _is_reddit_domain(candidate) and not _is_reddit_post_url(candidate):
             candidate = ""
         url_cache[nid] = candidate
 
