@@ -1,20 +1,20 @@
 # ACE-T-SPECTRUM: Advanced Cyber-Enabled Threat Intelligence Platform
 
 <p align="center">
-  <img src="docs/af4a3946-938f-4a9b-94e6-096c3bb949ed.png" alt="ACE-T Banner" style="width:100%; max-width:800px; border-radius:8px; box-shadow:0 4px 8px rgba(0,0,0,0.1);">
+  <img src="docs/ace-t-screenshot.png" alt="ACE-T Screenshot" style="width:100%; max-width:800px; border-radius:8px; box-shadow:0 4px 8px rgba(0,0,0,0.1);">
 </p>
 
 <p align="left">
   <img src="https://img.shields.io/badge/Python-3.11-blue.svg" alt="Python 3.11">
   <img src="https://img.shields.io/badge/Platform-macOS%20|%20Linux%20|%20Windows-lightgrey.svg" alt="Platform">
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
-  <img src="https://img.shields.io/badge/Last_Update-2026--01--17-yellow.svg" alt="Last Update">
+  <img src="https://img.shields.io/badge/Last_Update-2026--01--21-yellow.svg" alt="Last Update">
   <img src="https://img.shields.io/badge/Framework-Three.js-orange.svg" alt="Frameworks">
 </p>
 
 ---
 
-> **Date:** January 17, 2026  
+> **Date:** January 21, 2026  
 > **Platform:** macOS • Linux • Windows  
 > **Languages:** Python 3.11, YAML, JSON, JavaScript  
 > **Frameworks:** Three.js, SQLAlchemy  
@@ -112,7 +112,7 @@ ACE-T-SPECTRUM provides interactive 3D graph visualizations for exploring cyber 
 
 ### Screenshots
 
-![3D Graph Visualization Interface](docs/Screenshot 2026-01-20 at 9.05.18 PM.png)
+![3D Graph Visualization Interface](docs/ace-t-screenshot.png)
 
 *The banner above shows the 3D interface with graph visualization.*
 
