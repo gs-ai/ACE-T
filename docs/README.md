@@ -1,7 +1,7 @@
 # ACE-T-SPECTRUM: Advanced Cyber-Enabled Threat Intelligence Platform
 
 <p align="center">
-  <img src="docs/ace-t-screenshot.png" alt="ACE-T Screenshot" style="width:100%; max-width:800px; border-radius:8px; box-shadow:0 4px 8px rgba(0,0,0,0.1);">
+  <img src="ace-t-screenshot.png" alt="ACE-T Screenshot" style="width:100%; max-width:800px; border-radius:8px; box-shadow:0 4px 8px rgba(0,0,0,0.1);">
 </p>
 
 <p align="left">
