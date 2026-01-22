@@ -4,10 +4,6 @@
 
 # ACE-T-SPECTRUM: Advanced Cyber-Enabled Threat Intelligence Platform
 
-<p align="center">
-  <img src="ace-t-screenshot.png" alt="ACE-T Screenshot" style="width:100%; max-width:800px; border-radius:8px; box-shadow:0 4px 8px rgba(0,0,0,0.1);">
-</p>
-
 <p align="left">
   <img src="https://img.shields.io/badge/Python-3.11-blue.svg" alt="Python 3.11">
   <img src="https://img.shields.io/badge/Platform-macOS%20|%20Linux%20|%20Windows-lightgrey.svg" alt="Platform">
@@ -116,7 +112,7 @@ ACE-T-SPECTRUM provides interactive 3D graph visualizations for exploring cyber 
 
 ### Screenshots
 
-![3D Graph Visualization Interface](docs/ace-t-screenshot.png)
+![3D Graph Visualization Interface](ace-t-screenshot.png)
 
 *The banner above shows the 3D interface with graph visualization.*
 
