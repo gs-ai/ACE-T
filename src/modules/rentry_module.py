@@ -11,4 +11,4 @@ def ingest_rentry() -> None:
     if not ENABLED:
         print("[rentry] disabled (set ACE_T_ENABLE_RENTRY=1 to enable)")
         return
-    print("[rentry] enabled but not implemented in ACE-T SPECTRUM yet")
+    print("[rentry] enabled but not implemented in ACE-T-SPECTRUM yet")

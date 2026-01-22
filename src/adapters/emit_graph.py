@@ -12,15 +12,38 @@ from pathlib import Path
 from typing import Dict, Iterable, Tuple
 
 from schema import validate_elements
-from core.band import band_weight, dominant_band
+from core.band import BAND_WEIGHTS, band_weight, dominant_band
+
+try:
+    from spectrum_core.core import (
+        band_weight_from_severity,
+        clamp01,
+        compute_convergence_scalar,
+        compute_spectrum_index,
+        spectral_color,
+        spectral_color_from_source,
+    )
+except Exception:
+    band_weight_from_severity = None
+    clamp01 = None
+    compute_convergence_scalar = None
+    compute_spectrum_index = None
+    spectral_color = None
+    spectral_color_from_source = None
+
+try:
+    from sources.source_colors import SOURCE_COLORS
+except Exception:
+    SOURCE_COLORS = {}
 
 OUT_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "graph_data.json"
 POS_CACHE = OUT_PATH.with_name("graph_positions.json")
 
-# Weights used to give the graph semantic gravity
-DEGREE_WEIGHT = 1.6
-CONFIDENCE_WEIGHT = 12.0
-RECENCY_WEIGHT = 10.0
+# Volume-only sizing
+VOLUME_MIN_SIZE = 12
+VOLUME_MAX_SIZE = 100
+VOLUME_SCALE = 16.0
+BAND_WEIGHT_MAX = max(BAND_WEIGHTS.values()) if BAND_WEIGHTS else 1.0
 
 RELATION_BASE_WEIGHTS = {
     "source_cluster": 1.2,
@@ -135,6 +158,34 @@ def _node_domain(node: Dict) -> str:
     return ""
 
 
+def _volume_count(node: Dict) -> int:
+    alert_count = node.get("alert_count") or node.get("alerts") or node.get("alertTotal")
+    ioc_count = node.get("ioc_count") or node.get("iocs") or node.get("iocTotal")
+    evidence_count = node.get("evidence_count") or node.get("volume")
+    total = 0
+    for v in (alert_count, ioc_count, evidence_count):
+        try:
+            total += int(v or 0)
+        except Exception:
+            continue
+    if total <= 0:
+        kind = str(node.get("kind") or "").lower()
+        total = 1 if kind in {"alert", "ioc"} else 1
+    return max(1, total)
+
+
+def _band_to_unit(band: str | None, severity: str | None) -> float:
+    raw = band_weight(band)
+    if BAND_WEIGHT_MAX > 0:
+        norm = raw / BAND_WEIGHT_MAX
+    else:
+        norm = 1.0
+    if band_weight_from_severity is not None:
+        fallback = band_weight_from_severity(severity)
+        return max(fallback, min(1.0, norm))
+    return max(0.0, min(1.0, norm))
+
+
 def _infer_band(node: Dict) -> str:
     band = str(node.get("band") or "").strip().upper()
     if band:
@@ -183,6 +234,9 @@ def emit_graph(nodes: Iterable[Dict], edges: Iterable[Dict]) -> None:
 
     # Global retention: drop nodes/edges older than ACE_T_RETENTION_DAYS (default 30)
     now = time.time()
+    indicator_hits: Dict[str, int] = {nid: 0 for nid in node_map}
+    temporal_sum: Dict[str, float] = {nid: 0.0 for nid in node_map}
+    temporal_count: Dict[str, int] = {nid: 0 for nid in node_map}
     try:
         retention_days = int(os.getenv("ACE_T_RETENTION_DAYS") or "30")
     except Exception:
@@ -304,26 +358,22 @@ def emit_graph(nodes: Iterable[Dict], edges: Iterable[Dict]) -> None:
         n["confidence"] = adjusted_confidence
 
         adjusted_recency = decay * (1.0 + (signal_density * 0.15))
+        if clamp01 is not None:
+            adjusted_recency = clamp01(adjusted_recency, 0.0)
+        else:
+            adjusted_recency = max(0.0, min(1.0, adjusted_recency))
         n["recency"] = round(adjusted_recency, 4)
         n["domain_convergence_score"] = round(domain_convergence_score, 4)
         n["cross_source_degree"] = int(x_degree)
         n["same_source_degree"] = int(s_degree)
         n["signal_density"] = round(signal_density, 4)
 
-        decay = adjusted_recency
-        confidence = adjusted_confidence
         band_w = node_band_weight.get(nid, 1.0)
         n["band_weight"] = round(band_w, 3)
-        node_mass = (
-            degree.get(nid, 0) * DEGREE_WEIGHT
-            + (confidence * CONFIDENCE_WEIGHT * band_w)
-            + decay * RECENCY_WEIGHT
-        )
-        # Store mass for styling + layout weighting
-        n["mass"] = round(node_mass, 3)
-        # Size scales off mass but stays bounded
-        size = 14.0 + (node_mass * 1.3)
-        n["size"] = max(12, min(100, int(round(size))))
+        volume = _volume_count(n)
+        n["volume_count"] = int(volume)
+        size = VOLUME_MIN_SIZE + (math.log1p(volume) * VOLUME_SCALE)
+        n["size"] = max(VOLUME_MIN_SIZE, min(VOLUME_MAX_SIZE, int(round(size))))
         # Preserve existing color/opacity if set
         n.setdefault("opacity", 1.0)
 
@@ -515,6 +565,12 @@ def emit_graph(nodes: Iterable[Dict], edges: Iterable[Dict]) -> None:
             temporal_alignment = math.exp(-diff / (48.0 * 3600.0))
         else:
             temporal_alignment = 0.0
+        if src in temporal_sum:
+            temporal_sum[src] += temporal_alignment
+            temporal_count[src] += 1
+        if tgt in temporal_sum:
+            temporal_sum[tgt] += temporal_alignment
+            temporal_count[tgt] += 1
         a_domain = node_domain.get(src, "")
         b_domain = node_domain.get(tgt, "")
         cross_domain_flag = bool(a_domain and b_domain and a_domain != b_domain)
@@ -525,6 +581,11 @@ def emit_graph(nodes: Iterable[Dict], edges: Iterable[Dict]) -> None:
         e["cross_domain_flag"] = bool(cross_domain_flag)
         e["temporal_alignment"] = round(temporal_alignment, 4)
         e["evidence_count"] = int(evidence_count)
+        if relation in {"indicator_overlap", "domain_overlap", "cross_match"}:
+            if src in indicator_hits:
+                indicator_hits[src] += 1
+            if tgt in indicator_hits:
+                indicator_hits[tgt] += 1
         src_band = node_band.get(src, "")
         tgt_band = node_band.get(tgt, "")
         edge_band = dominant_band([src_band, tgt_band])
@@ -532,19 +593,98 @@ def emit_graph(nodes: Iterable[Dict], edges: Iterable[Dict]) -> None:
             e["band"] = edge_band
         e.setdefault("object_type", "edge")
 
+    # Spectrum index + convergence (continuous)
+    for nid, n in node_map.items():
+        if clamp01 is not None and n.get("spectrum_index") is not None:
+            _ = clamp01(n.get("spectrum_index"), 0.0, "spectrum_index", f"node={nid}")
+        band = node_band.get(nid, "")
+        band_unit = _band_to_unit(band, n.get("severity"))
+        temporal_align = temporal_sum.get(nid, 0.0) / max(1, temporal_count.get(nid, 0))
+        domain_conv = float(n.get("domain_convergence_score", 0.0) or 0.0)
+        indicator_conv = 0.0
+        if degree.get(nid, 0) > 0:
+            indicator_conv = indicator_hits.get(nid, 0) / max(1.0, float(degree.get(nid, 0)))
+        cross_sources = cross_source_degree.get(nid, 0)
+        evidence = n.get("volume_count", 1)
+
+        if compute_spectrum_index is not None:
+            spectrum_index = compute_spectrum_index(
+                band_unit,
+                n.get("confidence", 0.5),
+                cross_sources,
+                evidence,
+                domain_conv,
+                indicator_conv,
+                temporal_align,
+            )
+        else:
+            spectrum_index = max(0.0, min(1.0, band_unit))
+
+        if compute_convergence_scalar is not None:
+            convergence = compute_convergence_scalar(
+                cross_sources,
+                evidence,
+                domain_conv,
+                indicator_conv,
+                temporal_align,
+            )
+        else:
+            convergence = max(0.0, min(1.0, temporal_align))
+
+        n["temporal_alignment"] = round(temporal_align, 4)
+        n["indicator_convergence"] = round(indicator_conv, 4)
+        n["spectrum_band_weight"] = round(band_unit, 4)
+        n["spectrum_index"] = round(spectrum_index, 4)
+        n["convergence"] = round(convergence, 4)
+        energy_mass = 0.8 + (spectrum_index * 2.8) + (convergence * 1.6)
+        n["mass"] = round(energy_mass, 3)
+
+        src_key = node_source_key.get(nid, "")
+        source_color = SOURCE_COLORS.get(src_key, "")
+        if spectral_color_from_source is not None:
+            spectral = spectral_color_from_source(
+                spectrum_index,
+                n.get("confidence", 0.5),
+                n.get("recency", 0.5),
+                source_color,
+            )
+        elif spectral_color is not None:
+            spectral = spectral_color(spectrum_index, n.get("confidence", 0.5), n.get("recency", 0.5))
+        else:
+            spectral = n.get("color") or source_color or "#22d3ee"
+        n["spectral_color"] = spectral
+        if source_color:
+            n["source_color"] = source_color
+        n["color"] = spectral
+
     # Edge weights for bundling + tension
     for e in edge_map.values():
         src = e.get("source")
         tgt = e.get("target")
-        src_mass = node_map.get(src, {}).get("mass", 1.0)
-        tgt_mass = node_map.get(tgt, {}).get("mass", 1.0)
-        avg_mass = max(1.0, (src_mass + tgt_mass) / 2.0)
-        src_bw = node_band_weight.get(src, 1.0)
-        tgt_bw = node_band_weight.get(tgt, 1.0)
-        band_factor = 0.6 + (0.4 * ((src_bw + tgt_bw) / 2.0))
-        e["weight"] = round(avg_mass * band_factor, 3)
+        src_spec = float(node_map.get(src, {}).get("spectrum_index", _band_to_unit("", None)))
+        tgt_spec = float(node_map.get(tgt, {}).get("spectrum_index", _band_to_unit("", None)))
+        spec_avg = (src_spec + tgt_spec) / 2.0
+        min_spec = min(src_spec, tgt_spec)
+        dispersion = abs(src_spec - tgt_spec)
+        coherence = max(0.05, 1.0 - dispersion)
+        conv_boost = max(
+            float(node_map.get(src, {}).get("convergence", 0.0)),
+            float(node_map.get(tgt, {}).get("convergence", 0.0)),
+        )
+        e["spectrum_low"] = round(min(src_spec, tgt_spec), 4)
+        e["spectrum_high"] = round(max(src_spec, tgt_spec), 4)
+        energy_weight = (0.8 + (spec_avg * 1.4) + (conv_boost * 1.0)) * (0.6 + (0.8 * coherence))
+        e["weight"] = round(energy_weight, 3)
+        e["dispersion"] = round(dispersion, 4)
+        e["edge_strength"] = round(coherence, 4)
+        edge_opacity = 0.08 + (0.72 * coherence) * (0.45 + (0.55 * min_spec))
+        edge_opacity *= 0.5 + (0.5 * float(e.get("temporal_alignment", 0.0)))
+        edge_opacity *= 0.7 + (conv_boost * 0.6)
+        e["edge_opacity"] = round(max(0.05, min(0.95, edge_opacity)), 4)
+        e["edge_thickness"] = round(0.35 + (2.2 * coherence) * (0.5 + (0.5 * min_spec)), 3)
         # Stable control-point offset keeps bundled edges separated without overdraw
-        e["curve_offset"] = _hash_float(str(e.get("id", f"{src}-{tgt}")), "curve", -120.0, 120.0)
+        curve_base = _hash_float(str(e.get("id", f"{src}-{tgt}")), "curve", -120.0, 120.0)
+        e["curve_offset"] = curve_base * (0.5 + (dispersion * 1.1) + ((1.0 - min_spec) * 0.6))
 
     elements = []
 
@@ -560,57 +700,6 @@ def emit_graph(nodes: Iterable[Dict], edges: Iterable[Dict]) -> None:
 
     for e in edge_map.values():
         elements.append({"data": e})
-
-    # Add synthetic source hubs + edges so 2D/3D stay consistent and nodes cluster by feed
-    by_source = {}
-    for n in node_map.values():
-        src = n.get("subsource") or n.get("source")
-        if not src:
-            continue
-        entry = by_source.setdefault(src, {"ids": []})
-        entry["ids"].append(n.get("id"))
-
-    existing_ids = {e.get("data", {}).get("id") for e in elements}
-    existing_edge_ids = {e.get("data", {}).get("id") for e in elements if "source" in (e.get("data") or {})}
-    for src, data in by_source.items():
-        hub_id = f"hub::{src}"
-        if hub_id not in existing_ids:
-            hub_node = {
-                "data": {
-                    "id": hub_id,
-                    "label": src,
-                    "kind": "source_hub",
-                    "severity": "low",
-                    "source": src,
-                    "subsource": src,
-                    "size": 24,
-                    "confidence": 1.0,
-                    "timestamp": int(time.time()),
-                }
-            }
-            elements.append(hub_node)
-            existing_ids.add(hub_id)
-        for nid in data.get("ids", []):
-            if not nid:
-                continue
-            eid = f"{hub_id}→{nid}"
-            if eid in existing_edge_ids:
-                continue
-            edge = {
-                "data": {
-                    "id": eid,
-                    "source": hub_id,
-                    "target": nid,
-                    "relation": "source_cluster",
-                    "weight": 1.2,
-                    "semantic_weight": 1.2,
-                    "cross_domain_flag": False,
-                    "temporal_alignment": 0.0,
-                    "evidence_count": 1,
-                }
-            }
-            elements.append(edge)
-            existing_edge_ids.add(eid)
 
     validate_elements(elements)
 

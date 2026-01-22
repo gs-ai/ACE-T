@@ -1,0 +1,2346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ACE-T Intelligence Graph - 3D Visualization v2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000000;
+            color: #00E5FF;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #three-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Intelligence-grade UI */
+        .intel-header {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #00E5FF;
+            border-radius: 5px;
+            padding: 10px;
+            font-size: 12px;
+            z-index: 1000;
+            -webkit-backdrop-filter: blur(5px);
+            backdrop-filter: blur(5px);
+        }
+
+        .intel-title {
+            color: #00E5FF;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+        }
+
+        .intel-controls {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .control-label {
+            color: #00E5FF;
+            font-size: 10px;
+            text-transform: uppercase;
+            opacity: 0.8;
+        }
+
+        .control-input {
+            background: rgba(0, 229, 255, 0.1);
+            border: 1px solid #00E5FF;
+            color: #00E5FF;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            min-width: 80px;
+        }
+
+        .control-input:focus {
+            outline: none;
+            box-shadow: 0 0 5px #00E5FF;
+        }
+
+        .intel-button {
+            background: rgba(0, 229, 255, 0.1);
+            border: 1px solid #00E5FF;
+            color: #00E5FF;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+
+        .intel-button:hover {
+            background: rgba(0, 229, 255, 0.2);
+            box-shadow: 0 0 8px #00E5FF;
+        }
+
+        .intel-button.active {
+            background: #00E5FF;
+            color: #000000;
+        }
+
+        /* Panel for node details */
+        .intel-panel {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            width: 300px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #00E5FF;
+            border-radius: 5px;
+            padding: 15px;
+            font-size: 11px;
+            z-index: 1000;
+            -webkit-backdrop-filter: blur(5px);
+            backdrop-filter: blur(5px);
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .panel-title {
+            color: #00E5FF;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #00E5FF;
+            padding-bottom: 5px;
+        }
+
+        .panel-content {
+            color: #FFFFFF;
+        }
+
+        .panel-field {
+            margin-bottom: 8px;
+        }
+
+        .field-label {
+            color: #00E5FF;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 9px;
+        }
+
+        .field-value {
+            color: #FFFFFF;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        /* make long labels wrap and preserve line breaks */
+        .field-value.label {
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        .field-links {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .field-link {
+            color: #00E5FF;
+            text-decoration: none;
+        }
+
+        .field-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Legend */
+        .intel-legend {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #00E5FF;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 10px;
+            z-index: 1000;
+            -webkit-backdrop-filter: blur(5px);
+            backdrop-filter: blur(5px);
+            width: 240px;
+            min-width: 200px;
+            max-width: 45vw;
+            overflow: hidden;
+        }
+
+        .intel-legend summary {
+            list-style: none;
+            cursor: pointer;
+            color: #00E5FF;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 4px 2px 6px 2px;
+            border-bottom: 1px solid rgba(0, 229, 255, 0.45);
+        }
+
+        .intel-legend summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .legend-caret {
+            font-size: 11px;
+            transition: transform 160ms ease;
+        }
+
+        .intel-legend[open] .legend-caret {
+            transform: rotate(180deg);
+        }
+
+        .legend-list {
+            margin-top: 8px;
+            max-height: calc(100vh - 180px);
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .legend-item {
+            display: grid;
+            grid-template-columns: 12px minmax(0, 1fr) auto;
+            align-items: center;
+            margin-bottom: 6px;
+            padding: 6px;
+            border-radius: 6px;
+            transition: background 140ms ease, transform 140ms ease;
+            column-gap: 8px;
+        }
+
+        .legend-item.inactive { opacity: 0.28; transform: translateY(0px); }
+        .legend-item:hover { background: rgba(0,229,255,0.02); transform: translateY(-2px); cursor: pointer; }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            margin-right: 8px;
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .legend-label {
+            color: #FFFFFF;
+            text-transform: uppercase;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .legend-count {
+            min-width: 34px;
+            text-align: right;
+            color: rgba(255,255,255,0.62);
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        .legend-resizer {
+            position: absolute;
+            left: -6px;
+            top: 0;
+            width: 12px;
+            height: 100%;
+            cursor: ew-resize;
+            z-index: 1001;
+        }
+
+        /* Status indicators */
+        .status-indicator {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #00E5FF;
+            border-radius: 5px;
+            padding: 8px;
+            font-size: 10px;
+            z-index: 1000;
+            -webkit-backdrop-filter: blur(5px);
+            backdrop-filter: blur(5px);
+        }
+
+        .status-text {
+            color: #00E5FF;
+            text-transform: uppercase;
+        }
+
+        /* Loading overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            -webkit-backdrop-filter: blur(5px);
+            backdrop-filter: blur(5px);
+        }
+
+        .loading-text {
+            color: #00E5FF;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Hide elements initially */
+        .intel-panel, .intel-legend, .status-indicator {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="three-canvas"></canvas>
+
+        <!-- Intelligence Header -->
+        <div class="intel-header">
+            <div class="intel-title">ACE-T Intelligence Graph</div>
+            <div class="intel-controls">
+                <div class="control-group">
+                    <label class="control-label">Severity</label>
+                    <select id="severity-filter" class="control-input" title="Filter nodes by severity level">
+                        <option value="all">All</option>
+                        <option value="critical">Critical</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Time Window</label>
+                    <select id="time-filter" class="control-input" title="Filter nodes by time window">
+                        <option value="all">All Data</option>
+                        <option value="1d">Last 24h</option>
+                        <option value="7d">Last 7d</option>
+                        <option value="30d">Last 30d</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Search</label>
+                    <input type="text" id="search-input" class="control-input" placeholder="Search nodes...">
+                </div>
+                <button id="fit-button" class="intel-button">Fit View</button>
+                <button id="spin-button" class="intel-button active">Auto Spin</button>
+                <button id="reset-button" class="intel-button">Reset</button>
+            </div>
+        </div>
+
+        <!-- Node Details Panel -->
+        <div class="intel-panel" id="node-panel">
+            <div class="panel-title">Node Details</div>
+            <div class="panel-content" id="panel-content">
+                <div class="panel-field">
+                    <div class="field-label">Status</div>
+                    <div class="field-value">Click a node to view details</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <details class="intel-legend" id="legend">
+            <summary>
+                Sources
+                <span class="legend-caret">▾</span>
+            </summary>
+            <div class="legend-resizer" id="legend-resizer" title="Drag to resize"></div>
+            <div class="legend-list" id="legend-content"></div>
+        </details>
+
+        <!-- Status Indicator -->
+        <div class="status-indicator">
+            <div class="status-text" id="status-text">Initializing...</div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="loading-text">Loading Intelligence Data...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from '/gui/three/vendor/three.module.js';
+        import { OrbitControls } from '/gui/three/vendor/controls/OrbitControls.js';
+
+        // Intelligence Graph Configuration
+        const CONFIG = {
+            backgroundColor: 0x000000,
+            nodeColor: 0x00E5FF,
+            edgeColor: 0x00E5FF,
+            nodeOpacity: 0.78,
+            depthBoost: 3.1,
+            depthJitter: 90.0,
+            surveillanceColors: {
+                low: 0xFFB347,    // Amber
+                moderate: 0x00D0FF, // Cyan
+                high: 0xFF3B7A   // Magenta
+            },
+            zPlanes: {
+                temporal: -100,
+                confidence: 0,
+                source: 100
+            },
+            crystalGeometry: {
+                // Restore larger crystal size for better visibility
+                radius: 14.0,
+                detail: 2
+            },
+            nodeRadius: {
+                base: 6.0,
+                scale: 3.2,
+                min: 3.0,
+                max: 24.0
+            },
+            animation: {
+                pulseSpeed: 2.0,
+                rotationSpeed: 0.0028,
+                surveillancePulseMultiplier: 1.5
+            }
+        };
+
+        class IntelligenceGraph3D {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.controls = null;
+                this.nodes = [];
+                this.edges = [];
+                this.nodeMeshes = [];
+                this.instancedMeshes = [];
+                this.sharedNodeGeometry = null;
+                this.edgeLines = [];
+                this.selectedNode = null;
+                this.autoSpin = true;
+                this.clock = new THREE.Clock();
+                this.pollHandle = null;
+                this.nodeState = new Map();
+                this.edgeState = [];
+                this.nodeMeshesById = {};
+                this.dragging = null;
+                this.dragMoved = false;
+                this.autoSpinBeforeDrag = null;
+                this.searchQuery = '';
+                this.sourceDefs = null;
+                this.activeSources = null;
+                this.metaSources = null;
+                this.graphEndpoint = null;
+                this.loadRetryHandle = null;
+                this.physics = {
+                    enabled: true,
+                    springK: 0.0022,
+                    tetherK: 0.0028,
+                    damping: 0.84,
+                    maxVelocity: 3.2,
+                    dragStrength: 0.55,
+                    dragDirect: 0.18,
+                    repulseK: 0.22,
+                    noiseK: 0.18
+                };
+
+                this.init();
+                this.setupEventListeners();
+                // Fetch canonical source defs first so legend can include all sources (even with 0 count)
+                this.fetchSourceDefs().then(() => this.loadData());
+                this.animate();
+            }
+
+            async fetchSourceDefs() {
+                const endpoints = ['/data/sources.json', '/sources'];
+                let lastError = null;
+                for (const url of endpoints) {
+                    try {
+                        const resp = await fetch(url, { cache: 'no-store' });
+                        if (!resp.ok) {
+                            lastError = new Error(`HTTP ${resp.status}`);
+                            continue;
+                        }
+                        const j = await resp.json();
+                        this.sourceDefs = {};
+                        (j.sources || []).forEach(s => { this.sourceDefs[s.name] = s.color; });
+                        // Active set initially includes all known sources
+                        this.activeSources = new Set(Object.keys(this.sourceDefs));
+                        return;
+                    } catch (e) {
+                        lastError = e;
+                    }
+                }
+                if (lastError) {
+                    console.warn('[3D] Source defs unavailable', lastError);
+                }
+                this.sourceDefs = null;
+                this.activeSources = null;
+            }
+
+            getGraphEndpointList() {
+                if (this.graphEndpoint) return [this.graphEndpoint];
+                return ['/data/graph_3d.json', '/graph_3d.json'];
+            }
+
+            async fetchGraphPayload() {
+                const endpoints = this.getGraphEndpointList();
+                let lastError = null;
+                for (const url of endpoints) {
+                    try {
+                        const requestUrl = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+                        console.log(`[3D] Fetching ${requestUrl}`);
+                        const response = await fetch(requestUrl, { cache: 'no-store' });
+                        console.log('[3D] Fetch response', response.status, response.statusText);
+                        if (!response.ok) {
+                            const txt = await response.text().catch(() => '<no-body>');
+                            console.warn('[3D] Non-OK response from', url, response.status, txt);
+                            lastError = new Error(`HTTP ${response.status}`);
+                            continue;
+                        }
+                        const data = await response.json();
+                        this.graphEndpoint = url;
+                        return { data, response };
+                    } catch (e) {
+                        console.warn('[3D] Failed to fetch', url, e);
+                        lastError = e;
+                    }
+                }
+                throw lastError || new Error('No graph endpoint responded');
+            }
+
+            mergeSourceDefsFromNodes() {
+                const defs = this.sourceDefs || {};
+                this.sourceDefs = defs;
+                let updated = false;
+                if (Array.isArray(this.metaSources)) {
+                    this.metaSources.forEach(s => {
+                        if (!s || !s.name) return;
+                        const key = String(s.name).toLowerCase();
+                        if (!defs[key] && s.color) {
+                            defs[key] = s.color;
+                            updated = true;
+                        }
+                    });
+                }
+                (this.nodes || []).forEach(n => {
+                    const key = this.getSourceKey(n);
+                    if (!key) return;
+                    if (!defs[key]) {
+                        const color = n.source_color || n.sourceColor || this.getSourceColor(key);
+                        defs[key] = color;
+                        updated = true;
+                    }
+                });
+                if (!this.activeSources || this.activeSources.size === 0) {
+                    const keys = Object.keys(defs);
+                    if (keys.length) this.activeSources = new Set(keys);
+                }
+                return updated;
+            }
+
+            getActiveSourceSet() {
+                if (this.activeSources && this.activeSources.size > 0) return this.activeSources;
+                const defs = this.sourceDefs || {};
+                const keys = Object.keys(defs);
+                if (keys.length) return new Set(keys);
+                return null;
+            }
+
+            scheduleLoadRetry() {
+                if (this.loadRetryHandle) return;
+                this.loadRetryHandle = setTimeout(() => {
+                    this.loadRetryHandle = null;
+                    this.loadData();
+                }, 2000);
+            }
+
+            getSourceKey(node) {
+                if (!node) return '';
+                const sub = (node.subsource || '').trim();
+                return (sub || (node.source || '')).trim().toLowerCase();
+            }
+
+            getActiveSeverity() {
+                const el = document.getElementById('severity-filter');
+                const value = (el && el.value ? el.value : 'all');
+                return String(value || 'all').toLowerCase();
+            }
+
+            getActiveTimeWindow() {
+                const el = document.getElementById('time-filter');
+                const value = (el && el.value ? el.value : 'all');
+                return String(value || 'all').toLowerCase();
+            }
+
+            getTimeWindowSeconds(value) {
+                const map = {
+                    '1d': 24 * 60 * 60,
+                    '7d': 7 * 24 * 60 * 60,
+                    '30d': 30 * 24 * 60 * 60
+                };
+                return map[value] || null;
+            }
+
+            coerceTimestamp(value) {
+                if (value === null || value === undefined || value === '') return null;
+                if (typeof value === 'number' && isFinite(value)) {
+                    if (value > 1e12) return value / 1000;
+                    return value;
+                }
+                if (typeof value === 'string') {
+                    const trimmed = value.trim();
+                    if (!trimmed) return null;
+                    const numeric = Number(trimmed);
+                    if (!isNaN(numeric) && /^-?\d+(\.\d+)?$/.test(trimmed)) return this.coerceTimestamp(numeric);
+                    const parsedDate = new Date(trimmed);
+                    if (!isNaN(parsedDate.getTime())) return parsedDate.getTime() / 1000;
+                }
+                return null;
+            }
+
+            getNodeTimestamp(node) {
+                const keys = [
+                    'timestamp', 'detected_at', 'detectedAt', 'created_utc', 'created',
+                    'posted_at', 'post_date', 'published_at', 'published', 'ingested_at',
+                    'last_activity', 'last_seen', 'last_updated', 'updated_at'
+                ];
+                for (const k of keys) {
+                    if (node && node[k] !== undefined && node[k] !== null && node[k] !== '') {
+                        const ts = this.coerceTimestamp(node[k]);
+                        if (ts !== null) return ts;
+                    }
+                }
+                if (node && node.payload && typeof node.payload === 'object') {
+                    for (const k of keys) {
+                        if (node.payload[k] !== undefined && node.payload[k] !== null && node.payload[k] !== '') {
+                            const ts = this.coerceTimestamp(node.payload[k]);
+                            if (ts !== null) return ts;
+                        }
+                    }
+                }
+                return null;
+            }
+
+            buildSearchText(node) {
+                const parts = [
+                    node && node.id,
+                    node && node.label,
+                    node && node.name,
+                    node && node.title,
+                    node && node.kind,
+                    node && node.source,
+                    node && node.subsource,
+                    node && node.url,
+                    node && node.post_url,
+                    node && node.author_url
+                ];
+                return parts.filter(Boolean).join(' ').toLowerCase();
+            }
+
+            getBlendTarget(node) {
+                const baseKey = this.getSourceKey(node);
+                const counts = (this.adjacency && node && node.id) ? (this.adjacency[node.id] || {}) : {};
+                let topKey = null;
+                let topCount = 0;
+                let total = 0;
+                Object.keys(counts).forEach(key => {
+                    const count = counts[key] || 0;
+                    total += count;
+                    if (key && key !== baseKey && count > topCount) {
+                        topKey = key;
+                        topCount = count;
+                    }
+                });
+                if (!topKey || topCount <= 0) return null;
+                const strength = Math.min(0.65, topCount / Math.max(1, total));
+                return { key: topKey, strength };
+            }
+
+            getSpectrumValue(node) {
+                if (!node) return 0.35;
+                const raw = node.spectrum_index !== undefined ? node.spectrum_index : node.spectrumIndex;
+                if (typeof raw === 'number' && isFinite(raw)) return Math.min(1, Math.max(0, raw));
+                const sev = String(node.severity || '').toLowerCase();
+                const map = { critical: 0.92, high: 0.7, medium: 0.45, low: 0.2 };
+                return map[sev] !== undefined ? map[sev] : 0.35;
+            }
+
+            getConvergenceValue(node) {
+                if (!node) return 0.0;
+                const raw = node.convergence !== undefined ? node.convergence : node.convergenceIndex;
+                if (typeof raw === 'number' && isFinite(raw)) return Math.min(1, Math.max(0, raw));
+                return 0.0;
+            }
+
+            getRecencyValue(node) {
+                if (!node) return 0.5;
+                const raw = node.recency !== undefined ? node.recency : null;
+                if (typeof raw === 'number' && isFinite(raw)) return Math.min(1, Math.max(0, raw));
+                if (node.timestamp) {
+                    const age = (Date.now() / 1000) - node.timestamp;
+                    const half = 48 * 3600;
+                    return Math.exp(-Math.log(2) * Math.max(0, age) / half);
+                }
+                return 0.5;
+            }
+
+            clampValue(value, min, max) {
+                return Math.max(min, Math.min(max, value));
+            }
+
+            getConfidenceValue(node) {
+                if (!node) return 0.5;
+                const raw = node.confidence !== undefined ? node.confidence : null;
+                if (typeof raw === 'number' && isFinite(raw)) {
+                    return Math.min(1, Math.max(0, raw));
+                }
+                return 0.5;
+            }
+
+            computeNodeRadius(node) {
+                const volume = node.volume_weight || node.volumeWeight || node.volume_count || node.volumeCount || 1;
+                const base = CONFIG.nodeRadius.base;
+                const scale = CONFIG.nodeRadius.scale;
+                const radius = base + (scale * Math.log1p(Math.max(1, volume)));
+                return this.clampValue(radius, CONFIG.nodeRadius.min, CONFIG.nodeRadius.max);
+            }
+
+            getSpectrumBand(node, bandCount) {
+                const spec = this.getSpectrumValue(node);
+                const idx = Math.floor(spec * bandCount);
+                return Math.max(0, Math.min(bandCount - 1, idx));
+            }
+
+            computeBandStats(nodes) {
+                let specSum = 0;
+                let confSum = 0;
+                const colorSum = new THREE.Color(0, 0, 0);
+                nodes.forEach(node => {
+                    const spec = this.getSpectrumValue(node);
+                    const conf = this.getConfidenceValue(node);
+                    const c = new THREE.Color(this.resolveNodeColor(node));
+                    specSum += spec;
+                    confSum += conf;
+                    colorSum.r += c.r;
+                    colorSum.g += c.g;
+                    colorSum.b += c.b;
+                });
+                const count = Math.max(1, nodes.length);
+                return {
+                    spectrum: specSum / count,
+                    confidence: confSum / count,
+                    color: new THREE.Color(colorSum.r / count, colorSum.g / count, colorSum.b / count)
+                };
+            }
+
+            createGlassMaterial(stats) {
+                const spec = stats.spectrum;
+                const conf = stats.confidence;
+                const opacity = this.clampValue(0.25 + (conf * 0.6), 0.25, 0.85);
+                const transmission = this.clampValue(0.4 + (spec * 0.5), 0.4, 0.9);
+                const roughness = this.clampValue(1.0 - spec, 0.15, 0.85);
+                const emissiveIntensity = this.clampValue(spec * 0.6, 0.0, 0.8);
+
+                const material = new THREE.MeshPhysicalMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity,
+                    transmission,
+                    roughness,
+                    metalness: 0.0,
+                    clearcoat: 0.4,
+                    clearcoatRoughness: 0.25,
+                    ior: 1.35,
+                    thickness: 1.5,
+                    emissive: stats.color,
+                    emissiveIntensity,
+                    vertexColors: true
+                });
+                material.depthWrite = false;
+                material.depthTest = true;
+                return material;
+            }
+
+            syncInstance(proxy) {
+                if (!proxy || !proxy.instanceMesh) return;
+                proxy.updateMatrix();
+                proxy.instanceMesh.setMatrixAt(proxy.instanceId, proxy.matrix);
+                proxy.instanceMesh.instanceMatrix.needsUpdate = true;
+            }
+
+            resolveProxyFromHit(hit) {
+                if (!hit || !hit.object) return null;
+                const idx = hit.instanceId;
+                if (idx === undefined || idx === null) return null;
+                const map = hit.object.userData && hit.object.userData.instanceIdToProxy;
+                const proxy = map ? map[idx] : null;
+                if (!proxy || proxy.visible === false) return null;
+                return proxy;
+            }
+
+            hashScalar(seed) {
+                const text = String(seed || '');
+                let hash = 0;
+                for (let i = 0; i < text.length; i++) {
+                    hash = ((hash << 5) - hash) + text.charCodeAt(i);
+                    hash |= 0;
+                }
+                return (Math.abs(hash) % 1000) / 1000;
+            }
+
+            init() {
+                // Scene setup
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(CONFIG.backgroundColor);
+
+                // Camera setup
+                this.camera = new THREE.PerspectiveCamera(
+                    75,
+                    window.innerWidth / window.innerHeight,
+                    0.1,
+                    4000
+                );
+                this.camera.position.set(0, 0, 420);
+
+                // Renderer setup
+                this.renderer = new THREE.WebGLRenderer({
+                    canvas: document.getElementById('three-canvas'),
+                    antialias: true,
+                    alpha: false
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+                // Controls setup
+                this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.controls.enablePan = true;
+                this.controls.enableZoom = true;
+                this.controls.enableRotate = true;
+
+                // Lighting setup
+                this.setupLighting();
+
+                // Show UI
+                this.showUI();
+            }
+
+            setupLighting() {
+                // Ambient light
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+                this.scene.add(ambientLight);
+
+                // Point lights for glass refraction highlights
+                const cameraLight = new THREE.PointLight(0x66CCFF, 1.1, 0, 2);
+                cameraLight.position.set(0, 0, 180);
+                this.camera.add(cameraLight);
+                this.scene.add(this.camera);
+
+                const centerLight = new THREE.PointLight(0x4499FF, 0.9, 0, 2);
+                centerLight.position.set(0, 0, 0);
+                this.scene.add(centerLight);
+
+                // Key light
+                const keyLight = new THREE.DirectionalLight(0x00E5FF, 0.8);
+                keyLight.position.set(100, 100, 50);
+                keyLight.castShadow = true;
+                keyLight.shadow.mapSize.width = 2048;
+                keyLight.shadow.mapSize.height = 2048;
+                this.scene.add(keyLight);
+
+                // Fill light
+                const fillLight = new THREE.DirectionalLight(0x0080FF, 0.4);
+                fillLight.position.set(-100, -100, -50);
+                this.scene.add(fillLight);
+
+                // Rim light
+                const rimLight = new THREE.DirectionalLight(0x00FFFF, 0.6);
+                rimLight.position.set(0, 0, 100);
+                this.scene.add(rimLight);
+            }
+
+            setupEventListeners() {
+                // Window resize
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+
+                // Mouse events
+                this.renderer.domElement.addEventListener('click', (event) => {
+                    this.handleNodeClick(event);
+                });
+                this.renderer.domElement.addEventListener('pointerdown', (event) => {
+                    this.handlePointerDown(event);
+                });
+                window.addEventListener('pointermove', (event) => {
+                    this.handlePointerMove(event);
+                });
+                window.addEventListener('pointerup', () => {
+                    this.handlePointerUp();
+                });
+
+                // Control buttons
+                document.getElementById('fit-button').addEventListener('click', () => {
+                    this.fitCameraToNodes();
+                });
+
+                document.getElementById('spin-button').addEventListener('click', () => {
+                    this.toggleAutoSpin();
+                });
+
+                document.getElementById('reset-button').addEventListener('click', () => {
+                    this.resetView();
+                });
+
+                // Filters
+                document.getElementById('severity-filter').addEventListener('change', () => {
+                    this.applyFilters();
+                });
+
+                document.getElementById('time-filter').addEventListener('change', () => {
+                    this.applyFilters();
+                });
+
+                document.getElementById('search-input').addEventListener('input', (e) => {
+                    this.searchNodes(e.target.value);
+                });
+
+                // Legend resize handle
+                const legend = document.getElementById('legend');
+                const resizer = document.getElementById('legend-resizer');
+                if (legend && resizer) {
+                    let resizing = false;
+                    let startX = 0;
+                    let startWidth = 0;
+                    const minWidth = 200;
+                    const maxWidth = Math.max(260, Math.floor(window.innerWidth * 0.45));
+
+                    const onMouseMove = (e) => {
+                        if (!resizing) return;
+                        const delta = startX - e.clientX;
+                        const next = Math.max(minWidth, Math.min(maxWidth, startWidth + delta));
+                        legend.style.width = `${next}px`;
+                    };
+
+                    const onMouseUp = () => {
+                        if (!resizing) return;
+                        resizing = false;
+                        document.body.style.cursor = '';
+                    };
+
+                    resizer.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        resizing = true;
+                        startX = e.clientX;
+                        startWidth = legend.getBoundingClientRect().width;
+                        document.body.style.cursor = 'ew-resize';
+                    });
+
+                    window.addEventListener('mousemove', onMouseMove);
+                    window.addEventListener('mouseup', onMouseUp);
+                }
+            }
+
+            async loadData() {
+                try {
+                    this.updateStatus('Fetching intelligence data...');
+                    const { data, response } = await this.fetchGraphPayload();
+                    console.log('[3D] Received data', { nodes: (data.nodes || []).length, edges: (data.edges || []).length });
+
+                    this.nodes = data.nodes || [];
+                    this.edges = data.edges || [];
+                    this.metaSources = (data.meta && Array.isArray(data.meta.sources)) ? data.meta.sources : null;
+                    this.mergeSourceDefsFromNodes();
+
+                    this.updateStatus(`Loaded ${this.nodes.length} nodes, ${this.edges.length} connections`);
+
+                    // prefer built_at header when server strips meta payload
+                    const hdrBuilt = parseInt(response.headers.get('X-Graph-Built-At') || '0') || null;
+
+                    // fallback: fetch explicit meta endpoint to get built_at if header/payload lacks it
+                    if (hdrBuilt) {
+                        this.builtAt = hdrBuilt;
+                    } else {
+                        const canFetchMeta = this.graphEndpoint === '/graph_3d.json';
+                        if (canFetchMeta) {
+                            try {
+                                const metaResp = await fetch('/graph_3d/meta');
+                                if (metaResp.ok) {
+                                    const metaJson = await metaResp.json();
+                                    this.builtAt = metaJson.meta && metaJson.meta.built_at ? metaJson.meta.built_at : null;
+                                } else {
+                                    console.warn('[3D] /graph_3d/meta returned', metaResp.status);
+                                    this.builtAt = (data.meta && data.meta.built_at) ? data.meta.built_at : null;
+                                }
+                            } catch (e) {
+                                console.warn('[3D] Failed to fetch /graph_3d/meta', e);
+                                this.builtAt = (data.meta && data.meta.built_at) ? data.meta.built_at : null;
+                            }
+                        } else {
+                            this.builtAt = (data.meta && data.meta.built_at) ? data.meta.built_at : null;
+                        }
+                    }
+
+                    this.processData();
+                    this.createVisualization();
+                    this.fitCameraToNodes();
+                    if (this.loadRetryHandle) {
+                        clearTimeout(this.loadRetryHandle);
+                        this.loadRetryHandle = null;
+                    }
+
+                    // Hide loading overlay
+                    document.getElementById('loading-overlay').style.display = 'none';
+
+                    // Start polling for updates if not already
+                    if (!this.pollHandle) {
+                        this.pollHandle = setInterval(() => this.pollData(), 5000);
+                    }
+
+                    // Update legend using fetched source defs (ensures all sources visible)
+                    this.updateLegend();
+
+                } catch (error) {
+                    console.error('[3D] Failed to load graph data:', error);
+                    this.updateStatus('Waiting for intelligence data...');
+                    this.scheduleLoadRetry();
+                }
+            }
+
+            async pollData() {
+                try {
+                    // Poll the active 3D payload so we pick up computed layout changes
+                    const { data, response } = await this.fetchGraphPayload();
+                    const hdrBuilt = parseInt(response.headers.get('X-Graph-Built-At') || '0') || null;
+                    let newBuiltAt = hdrBuilt ? hdrBuilt : ((data.meta && data.meta.built_at) ? data.meta.built_at : null);
+                    if (!newBuiltAt) {
+                        if (this.graphEndpoint === '/graph_3d.json') {
+                            try {
+                                const metaResp = await fetch('/graph_3d/meta');
+                                if (metaResp.ok) {
+                                    const metaJson = await metaResp.json();
+                                    newBuiltAt = metaJson.meta && metaJson.meta.built_at ? metaJson.meta.built_at : null;
+                                }
+                            } catch (e) {
+                                console.warn('[3D] Poll: failed to fetch meta', e);
+                            }
+                        }
+                    }
+                    const newNodeCount = (data.nodes || []).length;
+                    const newEdgeCount = (data.edges || []).length;
+
+                    // Update if the exporter reports a new build timestamp OR node/edge counts changed
+                    if (newBuiltAt !== this.builtAt || newNodeCount !== this.nodes.length || newEdgeCount !== this.edges.length) {
+                        console.log('[3D] Detected graph change - updating visualization');
+                        this.nodes = data.nodes || [];
+                        this.edges = data.edges || [];
+                        this.metaSources = (data.meta && Array.isArray(data.meta.sources)) ? data.meta.sources : null;
+                        this.mergeSourceDefsFromNodes();
+                        this.builtAt = newBuiltAt;
+                        this.processData();
+                        this.createVisualization();
+                        this.updateStatus(`Updated ${this.nodes.length} nodes, ${this.edges.length} edges`);
+                    }
+                    // Always refresh the legend order/counts without reloading the whole page
+                    this.updateLegend();
+                } catch (e) {
+                    console.warn('[3D] Poll failed', e);
+                }
+            }
+
+
+
+            processData() {
+                // Assign Z-planes based on data attributes, but preserve exported z if present
+                this.nodes.forEach(node => {
+                    // If exporter provided a z coordinate, keep it
+                    if (node.z !== undefined && node.z !== null) {
+                        // preserve existing node.z
+                    } else {
+                        // Temporal plane (based on timestamp)
+                        if (node.timestamp) {
+                            const age = Date.now() / 1000 - node.timestamp;
+                            const ageDays = age / (24 * 60 * 60);
+                            node.z = CONFIG.zPlanes.temporal + (ageDays * 10); // Spread over time
+                        }
+                        // Confidence plane
+                        else if (node.confidence !== undefined) {
+                            node.z = CONFIG.zPlanes.confidence + (node.confidence * 50);
+                        }
+                        // Source plane
+                        else {
+                            node.z = CONFIG.zPlanes.source;
+                        }
+                    }
+
+                    // Ensure coordinates exist
+                    node.x = node.x || (Math.random() - 0.5) * 400;
+                    node.y = node.y || (Math.random() - 0.5) * 400;
+                    node.z = (node.z !== undefined && node.z !== null) ? node.z : 0;
+
+                    // Boost depth so clusters read as 3D even at distance
+                    const id = String(node.id || '');
+                    let hash = 0;
+                    for (let i = 0; i < id.length; i++) {
+                        hash = ((hash << 5) - hash) + id.charCodeAt(i);
+                        hash |= 0;
+                    }
+                    const jitter = (Math.abs(hash) % 1000) / 1000;
+                    node.z = (node.z * CONFIG.depthBoost) + (CONFIG.depthJitter * (jitter - 0.5));
+                });
+
+                // Recentre nodes so auto-spin stays on a tight central axis
+                if (this.nodes.length > 0) {
+                    let sx = 0, sy = 0, sz = 0;
+                    this.nodes.forEach(n => { sx += n.x; sy += n.y; sz += n.z; });
+                    const cx = sx / this.nodes.length;
+                    const cy = sy / this.nodes.length;
+                    const cz = sz / this.nodes.length;
+                    this.nodes.forEach(n => { n.x -= cx; n.y -= cy; n.z -= cz; });
+                }
+            }
+
+            createVisualization() {
+                // Clear existing meshes
+                this.instancedMeshes.forEach(mesh => this.scene.remove(mesh));
+                this.edgeLines.forEach(line => this.scene.remove(line));
+
+                this.nodeMeshes = [];
+                this.instancedMeshes = [];
+                this.edgeLines = [];
+                this.nodesById = {};
+                this.nodes.forEach(n => { if (n && n.id) this.nodesById[n.id] = n; });
+
+                // Create nodes
+                const active = this.getActiveSourceSet();
+                const visibleById = {};
+                this.nodes.forEach(node => {
+                    if (!node || !node.id) return;
+                    const sourceKey = this.getSourceKey(node);
+                    visibleById[node.id] = !active || active.has(sourceKey);
+                });
+                const renderEdgeResult = this.buildRenderEdges(visibleById);
+                const edgesToRender = renderEdgeResult.edges;
+
+                this.adjacency = {};
+                edgesToRender.forEach(edge => {
+                    const sNode = this.nodesById[edge.source];
+                    const tNode = this.nodesById[edge.target];
+                    if (!sNode || !tNode) return;
+                    const sKey = this.getSourceKey(sNode);
+                    const tKey = this.getSourceKey(tNode);
+                    if (sKey) {
+                        this.adjacency[edge.source] = this.adjacency[edge.source] || {};
+                        this.adjacency[edge.source][tKey] = (this.adjacency[edge.source][tKey] || 0) + 1;
+                    }
+                    if (tKey) {
+                        this.adjacency[edge.target] = this.adjacency[edge.target] || {};
+                        this.adjacency[edge.target][sKey] = (this.adjacency[edge.target][sKey] || 0) + 1;
+                    }
+                });
+                this.nodeMeshesById = {};
+                const bandCount = 6;
+                const bandBuckets = Array.from({ length: bandCount }, () => []);
+                this.nodes.forEach(node => {
+                    const band = this.getSpectrumBand(node, bandCount);
+                    bandBuckets[band].push(node);
+                });
+
+                if (!this.sharedNodeGeometry) {
+                    this.sharedNodeGeometry = new THREE.SphereGeometry(1, 24, 24);
+                }
+
+                bandBuckets.forEach((bucket, bandIndex) => {
+                    if (!bucket.length) return;
+                    const stats = this.computeBandStats(bucket);
+                    const material = this.createGlassMaterial(stats);
+                    const mesh = new THREE.InstancedMesh(this.sharedNodeGeometry, material, bucket.length);
+                    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+                    mesh.renderOrder = 3;
+                    mesh.frustumCulled = false;
+                    mesh.userData.instanceIdToProxy = [];
+                    mesh.userData.bandIndex = bandIndex;
+
+                    bucket.forEach((node, i) => {
+                        const sourceKey = this.getSourceKey(node);
+                        const radius = this.computeNodeRadius(node);
+                        const proxy = new THREE.Object3D();
+                        proxy.position.set(node.x, node.y, node.z);
+                        proxy.scale.setScalar(radius);
+                        proxy.userData = node;
+                        proxy.userData.sourceKey = sourceKey;
+                        proxy.baseScale = radius;
+                        proxy.visible = !active || active.has(sourceKey);
+                        proxy.instanceMesh = mesh;
+                        proxy.instanceId = i;
+                        proxy.updateMatrix();
+                        mesh.setMatrixAt(i, proxy.matrix);
+                        mesh.setColorAt(i, new THREE.Color(this.resolveNodeColor(node)));
+                        this.nodeMeshes.push(proxy);
+                        if (proxy.userData && proxy.userData.id) {
+                            this.nodeMeshesById[proxy.userData.id] = proxy;
+                        }
+                        mesh.userData.instanceIdToProxy[i] = proxy;
+                    });
+
+                    if (mesh.instanceColor) {
+                        mesh.instanceColor.needsUpdate = true;
+                    }
+                    mesh.instanceMatrix.needsUpdate = true;
+                    this.scene.add(mesh);
+                    this.instancedMeshes.push(mesh);
+                });
+
+                // Create edges
+                edgesToRender.forEach(edge => {
+                    const line = this.createEdgeLine(edge);
+                    if (line) {
+                        // edge visible only if both endpoints' sources are active
+                        const s = this.getSourceKey(this.nodes.find(n => n.id === edge.source));
+                        const t = this.getSourceKey(this.nodes.find(n => n.id === edge.target));
+                        const svis = !active || active.has(s);
+                        const tvis = !active || active.has(t);
+                        line.visible = svis && tvis;
+                        this.edgeLines.push(line);
+                        this.scene.add(line);
+                    }
+                });
+
+                this.initPhysics();
+
+                // Update legend
+                this.updateLegend();
+                this.applyLocalFilter();
+                this.searchNodes(this.searchQuery || '');
+            }
+
+            createCrystalNode(node) {
+                // Crystal geometry - polished sphere for marble look
+                // size/config: allow exporter-provided sizes, fall back to a slightly larger default for better visibility
+                const geometry = new THREE.SphereGeometry(
+                    CONFIG.crystalGeometry.radius,
+                    16,
+                    12
+                );
+
+                const nodeColor = this.resolveNodeColor(node);
+                const accentColor = this.getAccentColor(node);
+
+                const blend = this.getBlendTarget(node);
+                const blendColorHex = blend ? this.getSourceColor(blend.key) : accentColor;
+                const blendStrength = blend ? blend.strength : 0.0;
+
+                // Custom shader material for crystal marble effect (enhanced specular + fresnel)
+                const material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        time: { value: 0 },
+                        baseColor: { value: new THREE.Color(nodeColor) },
+                        accentColor: { value: new THREE.Color(accentColor) },
+                        blendColor: { value: new THREE.Color(blendColorHex) },
+                        blendStrength: { value: blendStrength },
+                        surveillanceLevel: { value: this.getSurveillanceLevel(node) },
+                        surveillanceColor: { value: new THREE.Color(this.getSurveillanceColor(node)) },
+                        // make nodes pop more: higher emissive intensity
+                        emissiveIntensity: { value: 0.95 }
+                    },
+                    vertexShader: `
+                        varying vec3 vNormal;
+                        varying vec3 vPosition;
+                        varying vec3 vViewDir;
+
+                        void main() {
+                            vNormal = normalize(normalMatrix * normal);
+                            vPosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
+                            vViewDir = normalize(-vPosition);
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                        }
+                    `,
+                    fragmentShader: `
+                        uniform float time;
+                        uniform vec3 baseColor;
+                        uniform vec3 blendColor;
+                        uniform vec3 accentColor;
+                        uniform float blendStrength;
+                        uniform float surveillanceLevel;
+                        uniform vec3 surveillanceColor;
+                        uniform float emissiveIntensity;
+
+                        varying vec3 vNormal;
+                        varying vec3 vPosition;
+                        varying vec3 vViewDir;
+
+                        // simple pseudo-random for tiny sparkle
+                        float rand(vec2 co){
+                            return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+                        }
+
+                        void main() {
+                            // Fresnel-based rim lighting
+                            float fresnel = pow(1.0 - max(0.0, dot(normalize(vNormal), normalize(vec3(0.0, 0.0, 1.0)))), 2.0);
+
+                            // Surveillance pulsing
+                            float pulse = surveillanceLevel > 0.0 ?
+                                (0.85 + 0.35 * sin(time * ${CONFIG.animation.pulseSpeed} * surveillanceLevel)) : 1.0;
+
+                            // base color mixed with surveillance tint
+                            vec3 finalColor = mix(baseColor, surveillanceColor, surveillanceLevel * 0.65);
+                            float blendPulse = blendStrength * (0.35 + 0.65 * sin(time * 0.6));
+                            vec3 blended = mix(finalColor, blendColor, blendPulse);
+
+                            // stronger specular highlight for polished marble
+                            vec3 reflectDir = reflect(normalize(vec3(0.0, 0.0, 1.0)), normalize(vNormal));
+                            float spec = pow(max(0.0, dot(reflectDir, vViewDir)), 60.0);
+
+                            // small sparkle
+                            float sparkle = pow(rand(vPosition.xy * 0.1 + time * 0.3), 2.0) * 0.14;
+
+                            // combined glow (boost specular contribution)
+                            float internalGlow = fresnel * emissiveIntensity * pulse + spec * 0.85 + sparkle * 0.8;
+
+                            vec3 colorOut = blended * 1.05 + vec3(internalGlow) * 0.9 + (baseColor * 0.35);
+                            vec3 accentMix = mix(colorOut, accentColor, clamp(fresnel * 0.65, 0.0, 1.0));
+                            colorOut = mix(colorOut, accentMix, 0.45);
+
+                            gl_FragColor = vec4(colorOut, ${CONFIG.nodeOpacity});
+                        }
+                    `,
+                    transparent: true,
+                    side: THREE.DoubleSide,
+                    blending: THREE.NormalBlending,
+                    depthWrite: false,
+                    depthTest: false
+                });
+
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(node.x, node.y, node.z);
+                mesh.userData = node;
+
+                // Scale nodes by volume only (alerts + IOCs), not energy.
+                const volume = node.volume_count || node.volumeCount || 1;
+                const size = node.size || (8 + (Math.log1p(volume) * 6.0));
+                const scale = Math.max(0.6, Math.min(2.4, size / 14.0));
+                mesh.scale.setScalar(scale);
+                mesh.userData.baseScale = scale;
+                mesh.userData.baseEmissive = material.uniforms.emissiveIntensity.value;
+
+                // Render nodes after edges and prefer additive blending so they pop through dense edge clouds
+                mesh.renderOrder = 3;
+                if (mesh.material) {
+                    mesh.material.depthWrite = false;
+                    mesh.material.depthTest = false;
+                    mesh.material.transparent = true;
+                    mesh.material.needsUpdate = true;
+                }
+
+                return mesh;  
+            }
+
+            hashDirection(seed) {
+                const text = String(seed || '');
+                let hash = 0;
+                for (let i = 0; i < text.length; i++) {
+                    hash = ((hash << 5) - hash) + text.charCodeAt(i);
+                    hash |= 0;
+                }
+                const angle = (Math.abs(hash) % 360) * (Math.PI / 180);
+                const z = ((hash >> 8) % 200) / 200 - 0.5;
+                return new THREE.Vector3(Math.cos(angle), Math.sin(angle), z).normalize();
+            }
+
+            createEdgeLine(edge) {
+                const sourceNode = this.nodes.find(n => n.id === edge.source);
+                const targetNode = this.nodes.find(n => n.id === edge.target);
+
+                if (!sourceNode || !targetNode) return null;
+
+                const geometry = new THREE.BufferGeometry();
+                let dispersion = typeof edge.dispersion === 'number' ? edge.dispersion : null;
+                if (dispersion === null) {
+                    dispersion = Math.abs(this.getSpectrumValue(sourceNode) - this.getSpectrumValue(targetNode));
+                }
+                if (dispersion > 0.55 && !edge.synthetic) return null;
+
+                let curveOffset = typeof edge.curve_offset === 'number' ? edge.curve_offset : 0;
+                if (!curveOffset) {
+                    const seed = (this.hashScalar(edge.id || `${edge.source}-${edge.target}`) - 0.5);
+                    curveOffset = seed * (16 + (dispersion * 24));
+                }
+                const jitter = curveOffset;
+                const mid = new THREE.Vector3(
+                    (sourceNode.x + targetNode.x) / 2,
+                    (sourceNode.y + targetNode.y) / 2,
+                    (sourceNode.z + targetNode.z) / 2
+                );
+                if (jitter !== 0) {
+                    const dir = this.hashDirection(edge.id || `${edge.source}-${edge.target}`);
+                    mid.addScaledVector(dir, jitter);
+                }
+                const positions = new Float32Array([
+                    sourceNode.x, sourceNode.y, sourceNode.z,
+                    mid.x, mid.y, mid.z,
+                    targetNode.x, targetNode.y, targetNode.z
+                ]);
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+                const edgeColor = this.getEdgeColor(sourceNode, targetNode);
+                const coherence = typeof edge.coherence === 'number' ? edge.coherence : this.computeEdgeMetrics(sourceNode, targetNode).coherence;
+                let edgeOpacity = 0.12 + (coherence * 0.12);
+                if (dispersion > 0.35) {
+                    edgeOpacity = 0.08 + (coherence * 0.06);
+                } else if (dispersion <= 0.2) {
+                    edgeOpacity = 0.18 + (coherence * 0.17);
+                }
+                edgeOpacity = this.clampValue(edgeOpacity, 0.08, 0.35);
+                if (edge.synthetic) {
+                    edgeOpacity = Math.min(edgeOpacity, 0.12);
+                }
+
+                let thickness = 0.6 + (coherence * 0.6);
+                if (dispersion > 0.35) thickness *= 0.8;
+                thickness = this.clampValue(thickness, 0.5, 1.2);
+                if (edge.synthetic) thickness = 0.5;
+                const material = new THREE.LineBasicMaterial({
+                    color: edgeColor,
+                    transparent: true,
+                    // thinner, dimmer connectors to keep nodes visible
+                    opacity: edgeOpacity,
+                });
+                material.linewidth = thickness;
+                material.depthWrite = false;
+
+                const line = new THREE.Line(geometry, material);
+                line.userData = {
+                    sourceId: edge.source,
+                    targetId: edge.target,
+                    curveOffset: jitter,
+                    curveDir: jitter ? this.hashDirection(edge.id || `${edge.source}-${edge.target}`) : null
+                };
+                line.renderOrder = 1;
+                return line;
+            }
+
+            getSurveillanceLevel(node) {
+                if (node.surveillance) {
+                    switch (node.activity_level) {
+                        case 'high': return 3.0;
+                        case 'moderate': return 2.0;
+                        case 'low': return 1.0;
+                        default: return 1.0;
+                    }
+                }
+                return 0.0;
+            }
+
+            getSurveillanceColor(node) {
+                if (!node.surveillance) return CONFIG.nodeColor;
+
+                switch (node.activity_level) {
+                    case 'high': return CONFIG.surveillanceColors.high;
+                    case 'moderate': return CONFIG.surveillanceColors.moderate;
+                    case 'low': return CONFIG.surveillanceColors.low;
+                    default: return CONFIG.surveillanceColors.low;
+                }
+            }
+
+            raycastNode(event) {
+                const rect = this.renderer.domElement.getBoundingClientRect();
+                const mouse = new THREE.Vector2(
+                    ((event.clientX - rect.left) / rect.width) * 2 - 1,
+                    -((event.clientY - rect.top) / rect.height) * 2 + 1
+                );
+
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(mouse, this.camera);
+
+                const intersects = raycaster.intersectObjects(this.instancedMeshes, false);
+                if (intersects.length === 0) return null;
+                const hit = intersects[0];
+                const proxy = this.resolveProxyFromHit(hit);
+                if (!proxy) return null;
+                hit.proxy = proxy;
+                return hit;
+            }
+
+            handlePointerDown(event) {
+                const hit = this.raycastNode(event);
+                if (!hit || !hit.proxy) return;
+                const proxy = hit.proxy;
+                if (!proxy.userData || !proxy.userData.id) return;
+
+                const normal = new THREE.Vector3();
+                this.camera.getWorldDirection(normal);
+                const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, proxy.position);
+                const lastPoint = new THREE.Vector3();
+                if (!this._intersectPlane(event, plane, lastPoint)) {
+                    return;
+                }
+
+                this.dragging = { id: proxy.userData.id, plane, lastPoint };
+                this.dragMoved = false;
+                this.autoSpinBeforeDrag = this.autoSpin;
+                this.autoSpin = false;
+                this.controls.enabled = false;
+            }
+
+            handlePointerMove(event) {
+                if (!this.dragging || !this.dragging.id) return;
+                const state = this.nodeState.get(this.dragging.id);
+                if (!state) return;
+                const nextPoint = new THREE.Vector3();
+                if (!this._intersectPlane(event, this.dragging.plane, nextPoint)) {
+                    return;
+                }
+                const delta = nextPoint.clone().sub(this.dragging.lastPoint);
+                if (delta.lengthSq() < 0.0001) {
+                    return;
+                }
+                this.dragMoved = true;
+                this.dragging.lastPoint.copy(nextPoint);
+                state.velocity.add(delta.multiplyScalar(this.physics.dragStrength));
+                state.position.add(delta.multiplyScalar(this.physics.dragDirect));
+                state.proxy.position.copy(state.position);
+                this.syncInstance(state.proxy);
+            }
+
+            handlePointerUp() {
+                if (this.dragging) {
+                    this.dragging = null;
+                    this.controls.enabled = true;
+                    if (this.autoSpinBeforeDrag !== null) {
+                        this.autoSpin = this.autoSpinBeforeDrag;
+                        this.autoSpinBeforeDrag = null;
+                    }
+                }
+            }
+
+            _intersectPlane(event, plane, out) {
+                const rect = this.renderer.domElement.getBoundingClientRect();
+                const mouse = new THREE.Vector2(
+                    ((event.clientX - rect.left) / rect.width) * 2 - 1,
+                    -((event.clientY - rect.top) / rect.height) * 2 + 1
+                );
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(mouse, this.camera);
+                return raycaster.ray.intersectPlane(plane, out) ? true : false;
+            }
+
+            handleNodeClick(event) {
+                if (this.dragMoved) {
+                    this.dragMoved = false;
+                    return;
+                }
+                const rect = this.renderer.domElement.getBoundingClientRect();
+                const mouse = new THREE.Vector2(
+                    ((event.clientX - rect.left) / rect.width) * 2 - 1,
+                    -((event.clientY - rect.top) / rect.height) * 2 + 1
+                );
+
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(mouse, this.camera);
+
+                const intersects = raycaster.intersectObjects(this.instancedMeshes, false);
+                if (intersects.length > 0) {
+                    const proxy = this.resolveProxyFromHit(intersects[0]);
+                    if (!proxy) {
+                        this.deselectNode();
+                        return;
+                    }
+                    this.selectNode(proxy.userData);
+                } else {
+                    this.deselectNode();
+                }
+            }
+
+            selectNode(node) {
+                this.selectedNode = node;
+                this.updateNodePanel(node);
+
+                // Stop auto-spin when selecting
+                this.autoSpin = false;
+                document.getElementById('spin-button').classList.remove('active');
+                this.updateSelectionHighlight();
+            }
+
+            deselectNode() {
+                this.selectedNode = null;
+                this.updateNodePanel(null);
+                this.updateSelectionHighlight();
+            }
+
+            updateSelectionHighlight() {
+                const selectedId = this.selectedNode && this.selectedNode.id;
+                this.nodeMeshes.forEach(proxy => {
+                    const baseScale = proxy.baseScale || 1.0;
+                    const isSelected = selectedId && proxy.userData && proxy.userData.id === selectedId;
+                    const isSearchHit = !!(proxy.userData && proxy.userData.searchHit);
+                    let scale = baseScale;
+                    if (isSearchHit && !isSelected) {
+                        scale = baseScale * 1.15;
+                    }
+                    if (isSelected) {
+                        scale = baseScale * 1.35;
+                    }
+                    if (!proxy.visible) {
+                        scale = 0.0001;
+                    }
+                    proxy.scale.setScalar(scale);
+                    this.syncInstance(proxy);
+                });
+            }
+
+            updateNodePanel(node) {
+                const panel = document.getElementById('node-panel');
+                const content = document.getElementById('panel-content');
+
+                if (!node) {
+                    content.innerHTML = `
+                        <div class="panel-field">
+                            <div class="field-label">Status</div>
+                            <div class="field-value">Click a node to view intelligence details</div>
+                        </div>
+                    `;
+                    panel.style.display = 'none';
+                    return;
+                }
+
+                panel.style.display = 'block';
+
+                // build link elements (safe-ish, project is internal GUI)
+                const links = [];
+                const linkSet = new Set();
+                const pushLink = (href, label) => {
+                    if (!href) return;
+                    const clean = String(href).trim();
+                    if (!clean || linkSet.has(clean)) return;
+                    linkSet.add(clean);
+                    links.push(`<a href="${clean}" target="_blank" rel="noopener" class="field-link">${label}</a>`);
+                };
+                pushLink(node.post_url, 'Post Source');
+                pushLink(node.author_url, 'Author Profile');
+                pushLink(node.url, 'Direct Link');
+                pushLink(node.source_url, 'Source URL');
+
+                // confidence formatting: show decimal and percent when numeric
+                function formatConfidence(v) {
+                    if (v === undefined || v === null || v === '') return 'N/A';
+                    const n = Number(v);
+                    if (isNaN(n)) return String(v);
+                    return `${n.toFixed(2)} (${(n * 100).toFixed(0)}%)`;
+                }
+
+                // last activity: accept several possible timestamp keys and nested payloads
+                function pickTimestamp(obj) {
+                    const keys = ['last_activity','last_seen','last_updated','updated_at','timestamp','detected_at','detectedAt','created_utc','created','posted_at','post_date','published_at','published','ingested_at'];
+                    for (const k of keys) {
+                        if (obj[k] !== undefined && obj[k] !== null && obj[k] !== '') return obj[k];
+                    }
+                    if (obj.payload) {
+                        for (const k of keys) {
+                            if (obj.payload[k] !== undefined && obj.payload[k] !== null && obj.payload[k] !== '') return obj.payload[k];
+                        }
+                    }
+                    if (obj.meta && obj.meta.built_at) return obj.meta.built_at;
+                    return null;
+                }
+
+                function prettyTime(ts) {
+                    if (!ts && ts !== 0) return 'N/A';
+
+                    // handle strings like ISO timestamps
+                    if (typeof ts === 'string') {
+                        const d = new Date(ts);
+                        if (!isNaN(d.getTime())) {
+                            const agoMs = Date.now() - d.getTime();
+                            return `${d.toLocaleString()} (${formatRelative(agoMs)})`;
+                        }
+                        // try numeric parse
+                        const n = Number(ts);
+                        if (!isNaN(n)) ts = n;
+                    }
+
+                    // if numeric, assume seconds if small-ish
+                    let t = Number(ts);
+                    if (!isFinite(t)) return String(ts);
+                    if (t > 1e12) { /* already ms */ }
+                    else if (t > 1e9) { t = t * 1000; } // seconds -> ms
+                    else if (t < 1e10) { t = t * 1000; } // fallback seconds
+
+                    const d = new Date(t);
+                    if (isNaN(d.getTime())) return String(ts);
+                    const agoMs = Date.now() - d.getTime();
+                    return `${d.toLocaleString()} (${formatRelative(agoMs)})`;
+                }
+
+                function formatRelative(agoMs) {
+                    const sec = Math.floor(agoMs / 1000);
+                    if (sec < 60) return `${sec}s ago`;
+                    if (sec < 3600) return `${Math.floor(sec/60)}m ago`;
+                    if (sec < 86400) return `${Math.floor(sec/3600)}h ago`;
+                    return `${Math.floor(sec/86400)}d ago`;
+                }
+
+                const postTs = pickTimestamp(node) || null;
+                const lastTs = pickTimestamp(node) || null; // same pick covers most cases; we may show both if different
+                const conf = formatConfidence(node.confidence);
+                const surv = node.surveillance ? (`Active${node.activity_level ? ' (' + node.activity_level + ')' : ''}`) : 'Inactive';
+                let sourceUrl = node.source_url || node.url || '';
+                if (!sourceUrl && node.label && /^https?:\/\//i.test(String(node.label))) {
+                    sourceUrl = String(node.label).trim();
+                }
+
+                // try to prefer a distinct post timestamp when available in payload
+                const explicitPost = (node.payload && (node.payload.created_utc || node.payload.posted_at || node.payload.post_date)) ? (node.payload.created_utc || node.payload.posted_at || node.payload.post_date) : null;
+                const postDisplay = explicitPost ? prettyTime(explicitPost) : (node.posted_at || node.created_utc || node.timestamp ? prettyTime(node.posted_at || node.created_utc || node.timestamp) : 'N/A');
+                const lastDisplay = (node.last_activity || node.last_seen || node.updated_at || node.detected_at || node.meta && node.meta.built_at) ? prettyTime(pickTimestamp(node)) : 'N/A';
+
+                content.innerHTML = `
+                    <div class="panel-field">
+                        <div class="field-label">ID</div>
+                        <div class="field-value">${node.id}</div>
+                    </div>
+                    <div class="panel-field">
+                        <div class="field-label">Label</div>
+                        <div class="field-value label">${(node.label || 'Unknown')}</div>
+                    </div>
+                    <div class="panel-field">
+                        <div class="field-label">Kind</div>
+                        <div class="field-value">${node.kind || 'n/a'}</div>
+                    </div>
+                    <div class="panel-field">
+                        <div class="field-label">Severity</div>
+                        <div class="field-value">${(node.severity || 'unknown').toUpperCase()}</div>
+                    </div>
+                    <div class="panel-field">
+                        <div class="field-label">Source</div>
+                        <div class="field-value">${node.subsource || node.source || 'Unknown'}</div>
+                    </div>
+                    <div class="panel-field">
+                        <div class="field-label">Source URL</div>
+                        <div class="field-value">${sourceUrl ? `<a href="${sourceUrl}" target="_blank" rel="noopener" class="field-link">${sourceUrl}</a>` : 'N/A'}</div>
+                    </div>
+                    <div class="panel-field">
+                        <div class="field-label">Confidence</div>
+                        <div class="field-value">${conf}</div>
+                    </div>
+                    <div class="panel-field">
+                        <div class="field-label">Posted</div>
+                        <div class="field-value">${postDisplay}</div>
+                    </div>
+                    <div class="panel-field">
+                        <div class="field-label">Last Activity</div>
+                        <div class="field-value">${lastDisplay}</div>
+                    </div>
+                    <div class="panel-field">
+                        <div class="field-label">Surveillance</div>
+                        <div class="field-value">${surv}</div>
+                    </div>
+                    ${links.length > 0 ? `
+                    <div class="panel-field">
+                        <div class="field-label">Links</div>
+                        <div class="field-value field-links">${links.join('')}</div>
+                    </div>
+                    ` : ''}
+                `;
+            }
+
+            updateLegend() {
+                const legendContent = document.getElementById('legend-content');
+                // Use canonical source defs so we include all known sources even with zero counts
+                this.mergeSourceDefsFromNodes();
+                const known = Object.keys(this.sourceDefs || {});
+
+                // count nodes per source
+                const counts = {};
+                (this.nodes || []).forEach(n => {
+                    const s = this.getSourceKey(n);
+                    counts[s] = (counts[s] || 0) + 1;
+                });
+
+                // Sort by count desc, then name
+                known.sort((a, b) => {
+                    const ca = counts[a] || 0;
+                    const cb = counts[b] || 0;
+                    if (cb !== ca) return cb - ca;
+                    return a.localeCompare(b);
+                });
+
+                legendContent.innerHTML = known.map(source => {
+                    const color = this.sourceDefs[source] || '#00E5FF';
+                    const count = counts[source] || 0;
+                    const active = this.activeSources && this.activeSources.has(source);
+                    const cls = active ? 'legend-item' : 'legend-item inactive';
+                    const label = source.toUpperCase();
+                    return `
+                    <div class="${cls}" data-source="${source}" style="cursor:pointer;">
+                        <div class="legend-color" style="background: ${color}; border-color: ${color};"></div>
+                        <div class="legend-label" title="${label}">${label}</div>
+                        <div class="legend-count">(${count})</div>
+                    </div>
+                `
+                }).join('');
+
+                // add click handlers for interactive filtering
+                Array.from(legendContent.querySelectorAll('[data-source]')).forEach(el => {
+                    el.addEventListener('click', (e) => {
+                        const src = el.getAttribute('data-source');
+                        if (!this.activeSources) this.activeSources = new Set(Object.keys(this.sourceDefs || {}));
+                        if (this.activeSources.has(src)) this.activeSources.delete(src);
+                        else this.activeSources.add(src);
+                        this.applyLocalFilter();
+                        // toggle visual state
+                        el.classList.toggle('inactive', !this.activeSources.has(src));
+                    });
+                });
+
+                document.getElementById('legend').style.display = known.length > 0 ? 'block' : 'none';
+            }
+
+            getSourceColor(source) {
+                // Prefer server-provided sourceDefs when available
+                if (this.sourceDefs && this.sourceDefs[source]) return this.sourceDefs[source];
+                const key = (source || '').toLowerCase();
+                let hash = 0;
+                for (let i = 0; i < key.length; i++) {
+                    hash = ((hash << 5) - hash) + key.charCodeAt(i);
+                    hash |= 0;
+                }
+                const hue = Math.abs(hash) % 360;
+                const sat = 70;
+                const light = 52;
+                const h = hue / 360;
+                const s = sat / 100;
+                const l = light / 100;
+                const hue2rgb = (p, q, t) => {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1/6) return p + (q - p) * 6 * t;
+                    if (t < 1/2) return q;
+                    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                    return p;
+                };
+                let r, g, b;
+                if (s === 0) {
+                    r = g = b = l;
+                } else {
+                    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                    const p = 2 * l - q;
+                    r = hue2rgb(p, q, h + 1/3);
+                    g = hue2rgb(p, q, h);
+                    b = hue2rgb(p, q, h - 1/3);
+                }
+                const toHex = v => {
+                    const h = Math.round(v * 255).toString(16).padStart(2, '0');
+                    return h;
+                };
+                return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+            }
+
+            resolveNodeColor(node) {
+                if (!node) return CONFIG.nodeColor;
+                if (node.spectrum_color) return node.spectrum_color;
+                if (node.spectral_color) return node.spectral_color;
+                if (node.spectralColor) return node.spectralColor;
+                if (node.color && String(node.color).length) return node.color;
+                return CONFIG.nodeColor;
+            }
+
+            getAccentColor(node) {
+                if (!node) return CONFIG.nodeColor;
+                if (node.source_color) return node.source_color;
+                const sourceKey = this.getSourceKey(node);
+                if (this.sourceDefs && this.sourceDefs[sourceKey]) {
+                    const v = this.sourceDefs[sourceKey];
+                    if (typeof v === 'string') return v;
+                    if (v && v.color) return v.color;
+                }
+                return node.color || CONFIG.nodeColor;
+            }
+
+            getEdgeColor(sourceNode, targetNode) {
+                const aKey = this.getSourceKey(sourceNode);
+                const bKey = this.getSourceKey(targetNode);
+                const aColor = new THREE.Color(this.resolveNodeColor(sourceNode));
+                if (!bKey || aKey === bKey) {
+                    return aColor;
+                }
+                const bColor = new THREE.Color(this.resolveNodeColor(targetNode));
+                return aColor.lerp(bColor, 0.5);
+            }
+
+            computeEdgeMetrics(sourceNode, targetNode) {
+                const sSpec = this.getSpectrumValue(sourceNode);
+                const tSpec = this.getSpectrumValue(targetNode);
+                const sConf = this.getConfidenceValue(sourceNode);
+                const tConf = this.getConfidenceValue(targetNode);
+                const dispersion = Math.abs(sSpec - tSpec);
+                const coherence = Math.max(0, (1.0 - dispersion) * Math.min(sConf, tConf));
+                const score = (coherence * 0.7) + ((1.0 - dispersion) * 0.2) + (Math.min(sConf, tConf) * 0.1);
+                return { dispersion, coherence, score };
+            }
+
+            buildRenderEdges(visibleById) {
+                const maxEdges = 8;
+                const candidates = [];
+                const selected = [];
+                const degree = {};
+
+                this.edges.forEach(edge => {
+                    if (!edge || !edge.source || !edge.target) return;
+                    const sourceNode = this.nodesById[edge.source];
+                    const targetNode = this.nodesById[edge.target];
+                    if (!sourceNode || !targetNode) return;
+                    if (!visibleById[edge.source] || !visibleById[edge.target]) return;
+                    const metrics = this.computeEdgeMetrics(sourceNode, targetNode);
+                    if (metrics.dispersion > 0.55) return;
+                    candidates.push({
+                        edge,
+                        sourceNode,
+                        targetNode,
+                        dispersion: metrics.dispersion,
+                        coherence: metrics.coherence,
+                        score: metrics.score
+                    });
+                });
+
+                candidates.sort((a, b) => b.score - a.score);
+                candidates.forEach(item => {
+                    const sId = item.edge.source;
+                    const tId = item.edge.target;
+                    const sCount = degree[sId] || 0;
+                    const tCount = degree[tId] || 0;
+                    if (sCount >= maxEdges || tCount >= maxEdges) return;
+                    degree[sId] = sCount + 1;
+                    degree[tId] = tCount + 1;
+                    selected.push(Object.assign({}, item.edge, {
+                        dispersion: item.dispersion,
+                        coherence: item.coherence,
+                        edge_strength: item.coherence
+                    }));
+                });
+
+                const visibleNodes = this.nodes.filter(n => n && n.id && visibleById[n.id]);
+                visibleNodes.forEach(node => {
+                    if ((degree[node.id] || 0) > 0) return;
+                    let best = null;
+                    const nSpec = this.getSpectrumValue(node);
+                    visibleNodes.forEach(other => {
+                        if (!other || other.id === node.id) return;
+                        const disp = Math.abs(nSpec - this.getSpectrumValue(other));
+                        const dist = node && other ? node.x - other.x : 0;
+                        const dy = node && other ? node.y - other.y : 0;
+                        const dz = node && other ? node.z - other.z : 0;
+                        const d3 = Math.sqrt((dist * dist) + (dy * dy) + (dz * dz));
+                        if (!best || disp < best.dispersion || (disp === best.dispersion && d3 < best.distance)) {
+                            best = { other, dispersion: disp, distance: d3 };
+                        }
+                    });
+                    if (!best || !best.other) return;
+                    const other = best.other;
+                    const otherCount = degree[other.id] || 0;
+                    if (otherCount >= maxEdges) {
+                        // allow a minimal tether even when neighbor is saturated to avoid floating nodes
+                    }
+                    const metrics = this.computeEdgeMetrics(node, other);
+                    selected.push({
+                        id: `tether-${node.id}-${other.id}`,
+                        source: node.id,
+                        target: other.id,
+                        synthetic: true,
+                        dispersion: metrics.dispersion,
+                        coherence: metrics.coherence,
+                        edge_strength: Math.min(0.5, metrics.coherence)
+                    });
+                    degree[node.id] = (degree[node.id] || 0) + 1;
+                    degree[other.id] = (degree[other.id] || 0) + 1;
+                });
+
+                return { edges: selected, degree };
+            }
+
+            fitCameraToNodes() {
+                if (this.nodes.length === 0) return;
+
+                const box = new THREE.Box3();
+                this.nodeMeshes.forEach(proxy => {
+                    if (!proxy.visible) return;
+                    box.expandByPoint(proxy.position);
+                });
+                if (box.isEmpty()) return;
+
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+                // If graph fits to a single point, use a conservative default distance so nodes are visible
+                const distance = (maxDim && maxDim > 1.0) ? (maxDim * 1.5) : 220;
+
+                this.controls.target.copy(center);
+                this.camera.position.copy(center.clone().add(new THREE.Vector3(0, 0, distance)));
+                this.controls.update();
+            }
+
+            toggleAutoSpin() {
+                this.autoSpin = !this.autoSpin;
+                document.getElementById('spin-button').classList.toggle('active', this.autoSpin);
+            }
+
+            resetView() {
+                this.camera.position.set(0, 0, 300);
+                this.controls.target.set(0, 0, 0);
+                this.controls.update();
+                this.deselectNode();
+            }
+
+            applyFilters() {
+                // low-level UI filter trigger: mirror into activeSources if needed
+                this.applyLocalFilter();
+                const searchEl = document.getElementById('search-input');
+                const query = searchEl ? searchEl.value : this.searchQuery;
+                this.searchNodes(query || '');
+            }
+
+            searchNodes(query) {
+                const normalized = String(query || '').trim().toLowerCase();
+                this.searchQuery = normalized;
+                const terms = normalized.split(/\s+/).filter(Boolean);
+                this.nodeMeshes.forEach(mesh => {
+                    const data = mesh.userData || {};
+                    if (!terms.length) {
+                        data.searchHit = false;
+                        return;
+                    }
+                    const haystack = this.buildSearchText(data);
+                    data.searchHit = terms.every(term => haystack.includes(term));
+                });
+                this.updateSelectionHighlight();
+            }
+
+            applyLocalFilter() {
+                // Apply current activeSources set to node and edge visibility
+                const active = this.getActiveSourceSet();
+                const severity = this.getActiveSeverity();
+                const windowValue = this.getActiveTimeWindow();
+                const windowSeconds = this.getTimeWindowSeconds(windowValue);
+                const cutoff = windowSeconds ? (Date.now() / 1000) - windowSeconds : null;
+                const allowAllSeverity = !severity || severity === 'all';
+                this.nodeMeshes.forEach(proxy => {
+                    const n = proxy.userData || {};
+                    const s = this.getSourceKey(n);
+                    const sev = String(n.severity || '').toLowerCase();
+                    const severityOk = allowAllSeverity || (sev && sev === severity);
+                    const sourceOk = !active || active.has(s);
+                    let timeOk = true;
+                    if (cutoff !== null) {
+                        const ts = this.getNodeTimestamp(n);
+                        timeOk = ts !== null && ts >= cutoff;
+                    }
+                    proxy.visible = sourceOk && severityOk && timeOk;
+                    const scale = proxy.visible ? (proxy.baseScale || 1.0) : 0.0001;
+                    proxy.scale.setScalar(scale);
+                    this.syncInstance(proxy);
+                });
+                const visibleIds = new Set(this.nodeMeshes.filter(m => m.visible).map(m => m.userData && m.userData.id));
+                this.edgeLines.forEach(line => {
+                    if (line.userData && line.userData.sourceId && line.userData.targetId) {
+                        line.visible = visibleIds.has(line.userData.sourceId) && visibleIds.has(line.userData.targetId);
+                        return;
+                    }
+                    const pos = line.geometry.attributes.position.array;
+                    // attempt to find source/target by comparing positions (fallback)
+                    let a = pos.slice(0,3);
+                    let b = pos.slice(3,6);
+                    const approxFind = (coord) => {
+                        for (const m of this.nodeMeshes) {
+                            const p = m.position;
+                            if (Math.abs(p.x - coord[0]) < 0.5 && Math.abs(p.y - coord[1]) < 0.5 && Math.abs(p.z - coord[2]) < 0.5) return m.userData && m.userData.id;
+                        }
+                        return null;
+                    };
+                    const sId = approxFind(a);
+                    const tId = approxFind(b);
+                    line.visible = sId && tId && visibleIds.has(sId) && visibleIds.has(tId);
+                });
+                this.updateSelectionHighlight();
+            }
+
+            initPhysics() {
+                this.nodeState = new Map();
+                this.edgeState = [];
+                if (!this.nodeMeshes || this.nodeMeshes.length === 0) {
+                    return;
+                }
+
+                this.nodeMeshes.forEach(proxy => {
+                    if (!proxy.userData || !proxy.userData.id) return;
+                    const rest = proxy.position.clone();
+                    const spec = this.getSpectrumValue(proxy.userData);
+                    const conv = this.getConvergenceValue(proxy.userData);
+                    const rec = this.getRecencyValue(proxy.userData);
+                    const mass = 0.8 + (spec * 2.4) + (conv * 1.6);
+                    const seed = this.hashScalar(proxy.userData.id);
+                    this.nodeState.set(proxy.userData.id, {
+                        id: proxy.userData.id,
+                        proxy,
+                        position: proxy.position.clone(),
+                        rest,
+                        velocity: new THREE.Vector3(),
+                        mass,
+                        spectrum: spec,
+                        convergence: conv,
+                        recency: rec,
+                        seed,
+                    });
+                });
+
+                const ranked = Array.from(this.nodeState.values()).sort((a, b) => {
+                    const as = (a.spectrum * 0.7) + (a.convergence * 0.6);
+                    const bs = (b.spectrum * 0.7) + (b.convergence * 0.6);
+                    return bs - as;
+                });
+                this.energyWells = ranked.slice(0, Math.min(12, ranked.length)).map(state => ({
+                    id: state.id,
+                    strength: 0.35 + (state.spectrum * 0.9) + (state.convergence * 0.8)
+                }));
+
+                this.edgeLines.forEach(line => {
+                    if (!line.userData || !line.userData.sourceId || !line.userData.targetId) return;
+                    const srcState = this.nodeState.get(line.userData.sourceId);
+                    const tgtState = this.nodeState.get(line.userData.targetId);
+                    if (!srcState || !tgtState) return;
+                    const restLength = srcState.rest.distanceTo(tgtState.rest);
+                    const specDelta = Math.abs((srcState.spectrum || 0.35) - (tgtState.spectrum || 0.35));
+                    const convBoost = Math.max(srcState.convergence || 0.0, tgtState.convergence || 0.0);
+                    this.edgeState.push({
+                        line,
+                        sourceId: line.userData.sourceId,
+                        targetId: line.userData.targetId,
+                        restLength,
+                        specDelta,
+                        convBoost,
+                    });
+                });
+            }
+
+            applyPhysics(deltaTime) {
+                if (!this.physics.enabled || this.nodeState.size === 0) {
+                    return;
+                }
+                const dt = Math.min(0.033, Math.max(0.001, deltaTime));
+                const t = this.clock.getElapsedTime();
+                const forces = new Map();
+                const visibleIds = new Set(this.nodeMeshes.filter(m => m.visible).map(m => m.userData.id));
+                const center = new THREE.Vector3();
+                let centerWeight = 0;
+                this.nodeState.forEach((state, id) => {
+                    if (!visibleIds.has(id)) return;
+                    const weight = Math.pow(state.spectrum || 0.35, 1.6) + ((state.convergence || 0.0) * 0.8);
+                    center.add(state.position.clone().multiplyScalar(weight));
+                    centerWeight += weight;
+                });
+                if (centerWeight > 0) {
+                    center.multiplyScalar(1 / centerWeight);
+                }
+
+                this.nodeState.forEach((state, id) => {
+                    if (!visibleIds.has(id)) return;
+                    forces.set(id, new THREE.Vector3());
+                });
+
+                this.edgeState.forEach(edge => {
+                    if (!edge || !edge.sourceId || !edge.targetId) return;
+                    if (!visibleIds.has(edge.sourceId) || !visibleIds.has(edge.targetId)) return;
+                    const a = this.nodeState.get(edge.sourceId);
+                    const b = this.nodeState.get(edge.targetId);
+                    if (!a || !b) return;
+                    const delta = new THREE.Vector3().subVectors(b.position, a.position);
+                    const dist = Math.max(0.001, delta.length());
+                    const stretch = dist - edge.restLength;
+                    const similarity = Math.max(0.1, 1.0 - (edge.specDelta || 0));
+                    const convBoost = 0.8 + ((edge.convBoost || 0) * 0.6);
+                    const forceMag = stretch * this.physics.springK * (0.65 + (similarity * 0.7)) * convBoost;
+                    const dir = delta.multiplyScalar(1.0 / dist);
+                    const force = dir.multiplyScalar(forceMag);
+                    if (forces.has(a.id)) forces.get(a.id).add(force);
+                    if (forces.has(b.id)) forces.get(b.id).addScaledVector(force, -1);
+                });
+
+                this.nodeState.forEach((state, id) => {
+                    if (!visibleIds.has(id)) return;
+                    const force = forces.get(id) || new THREE.Vector3();
+                    const spec = state.spectrum || 0.35;
+                    const conv = state.convergence || 0.0;
+                    const rec = state.recency || 0.5;
+                    const tetherStrength = this.physics.tetherK * (0.55 + (spec * 0.9) + (conv * 0.5));
+                    const tether = new THREE.Vector3().subVectors(state.rest, state.position).multiplyScalar(tetherStrength);
+                    force.add(tether);
+                    const radial = new THREE.Vector3().subVectors(state.position, center);
+                    if (radial.lengthSq() < 1e-3) {
+                        radial.set(Math.cos(state.seed * 6.28), Math.sin(state.seed * 6.28), 0.1);
+                    }
+                    radial.normalize();
+                    const repulse = (1.0 - spec) * (0.6 + ((1.0 - rec) * 0.4));
+                    force.addScaledVector(radial, this.physics.repulseK * repulse);
+                    const pull = (spec * 0.4) + (conv * 0.5);
+                    force.addScaledVector(radial, -this.physics.repulseK * 0.18 * pull);
+
+                    if (this.energyWells && this.energyWells.length) {
+                        const wellRadius = 420;
+                        const wellK = 0.004;
+                        this.energyWells.forEach(well => {
+                            if (!well || well.id === id) return;
+                            const wstate = this.nodeState.get(well.id);
+                            if (!wstate) return;
+                            const delta = new THREE.Vector3().subVectors(wstate.position, state.position);
+                            const dist = delta.length();
+                            if (!dist || dist > wellRadius) return;
+                            const coherence = Math.max(0.1, 1.0 - Math.abs(spec - wstate.spectrum));
+                            const strength = well.strength * (0.25 + spec) * coherence * (1.0 - (dist / wellRadius));
+                            delta.multiplyScalar(1.0 / dist);
+                            force.addScaledVector(delta, wellK * strength);
+                        });
+                    }
+                    const noise = new THREE.Vector3(
+                        Math.sin((t * 0.6) + state.seed * 10.0),
+                        Math.cos((t * 0.7) + state.seed * 12.0),
+                        Math.sin((t * 0.45) + state.seed * 8.0)
+                    );
+                    force.addScaledVector(noise, this.physics.noiseK * (1.0 - spec) * (0.6 + ((1.0 - rec) * 0.4)));
+                    const invMass = 1.0 / state.mass;
+                    state.velocity.addScaledVector(force, dt * invMass);
+                    const damp = Math.pow(this.physics.damping, dt * 60.0 * (0.6 + (spec * 0.9)));
+                    state.velocity.multiplyScalar(damp);
+                    if (state.velocity.length() > this.physics.maxVelocity) {
+                        state.velocity.setLength(this.physics.maxVelocity);
+                    }
+                    state.position.addScaledVector(state.velocity, dt);
+                    state.proxy.position.copy(state.position);
+                    this.syncInstance(state.proxy);
+                    if (state.proxy.userData) {
+                        state.proxy.userData.x = state.position.x;
+                        state.proxy.userData.y = state.position.y;
+                        state.proxy.userData.z = state.position.z;
+                    }
+                });
+            }
+
+            updateEdgePositions() {
+                if (!this.edgeState || this.edgeState.length === 0) return;
+                this.edgeState.forEach(edge => {
+                    if (!edge || !edge.line || !edge.line.geometry) return;
+                    if (!edge.line.visible) return;
+                    const a = this.nodeState.get(edge.sourceId);
+                    const b = this.nodeState.get(edge.targetId);
+                    if (!a || !b) return;
+                    const pos = edge.line.geometry.attributes.position.array;
+                    const midX = (a.position.x + b.position.x) / 2;
+                    const midY = (a.position.y + b.position.y) / 2;
+                    const midZ = (a.position.z + b.position.z) / 2;
+                    let mx = midX;
+                    let my = midY;
+                    let mz = midZ;
+                    const offset = edge.line.userData && edge.line.userData.curveOffset ? edge.line.userData.curveOffset : 0;
+                    const dir = edge.line.userData && edge.line.userData.curveDir ? edge.line.userData.curveDir : null;
+                    if (offset && dir) {
+                        mx += dir.x * offset;
+                        my += dir.y * offset;
+                        mz += dir.z * offset;
+                    }
+                    pos[0] = a.position.x;
+                    pos[1] = a.position.y;
+                    pos[2] = a.position.z;
+                    pos[3] = mx;
+                    pos[4] = my;
+                    pos[5] = mz;
+                    pos[6] = b.position.x;
+                    pos[7] = b.position.y;
+                    pos[8] = b.position.z;
+                    edge.line.geometry.attributes.position.needsUpdate = true;
+                });
+            }
+
+            updateStatus(text) {
+                document.getElementById('status-text').textContent = text;
+            }
+
+            showUI() {
+                document.querySelector('.intel-panel').style.display = 'none';
+                document.querySelector('.intel-legend').style.display = 'block';
+                document.querySelector('.status-indicator').style.display = 'block';
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+
+                const deltaTime = this.clock.getDelta();
+                const time = this.clock.getElapsedTime();
+
+                this.applyPhysics(deltaTime);
+                this.updateEdgePositions();
+
+                // Auto rotation
+                if (this.autoSpin) {
+                    this.scene.rotation.y += CONFIG.animation.rotationSpeed;
+                    this.scene.rotation.x = 0;
+                    this.scene.rotation.z = 0;
+                }
+
+                // Update controls
+                this.controls.update();
+
+                // Render
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // Initialize the intelligence graph
+        new IntelligenceGraph3D();
+    </script>
+</body>
+</html>

@@ -20,7 +20,14 @@ try:
     from sources.source_colors import SOURCE_COLORS as SOURCE_COLOR_MAP
 except Exception:
     SOURCE_COLOR_MAP = {}
-from core.band import band_weight
+
+try:
+    from spectrum_core.core import band_weight_from_severity, clamp01, spectral_color, spectral_color_from_source
+except Exception:
+    band_weight_from_severity = None
+    clamp01 = None
+    spectral_color = None
+    spectral_color_from_source = None
 
 ROOT = Path(__file__).resolve().parents[2]
 GRAPH_PATH = ROOT / "data" / "graph_data.json"
@@ -40,36 +47,15 @@ RECENCY_HALFLIFE_H = 48.0 # matches 2D decay doctrine
 FORCE_ITERATIONS = 120        # more passes for extra settling
 EDGE_IDEAL = 100.0            # preferred edge length (pull if stretched, push if squashed)
 EDGE_ATTRACT_K = 0.006        # spring strength for real edges
-GROUP_ATTRACT_K = 0.0025      # pull harder to keep clusters tight
 REPULSE_RADIUS = 220.0        # broader repulsion to keep clusters apart
 REPULSE_K = 480.0             # stronger base repulsion
-"""
-Repulsion tuning:
-- CROSS_SOURCE_REPULSE keeps different source clusters apart unless connected.
-- SAME_SOURCE_REPULSE maintains cohesion within a cluster.
-"""
-CROSS_SOURCE_REPULSE = 2.4    # stronger repulsion between different sources
-SAME_SOURCE_REPULSE = 0.55    # soften repulsion within same source cluster
+WELL_ATTRACT_K = 0.004        # convergence wells (spectrum gravity)
+ANCHOR_K = 0.006              # keep high-energy truth anchors stable
+CENTER_PULL_K = 0.0025        # pull high-energy nodes toward spectrum center
+OUTWARD_DRIFT_K = 0.6         # push low-energy noise outward
 STEP_SIZE = 0.025             # integration step
 MAX_STEP_DELTA = 10.0         # clamp per-axis delta to avoid spikes
 XY_CLAMP = 1600.0             # keep layout bounded horizontally
-
-# Palette for synthetic source hubs (rotate if more than provided)
-HUB_COLOR_PALETTE = [
-    0x00d0ff,
-    0x00ffb3,
-    0xffae00,
-    0xff5f5f,
-    0x8a6bff,
-    0x00ffa3,
-    0xff6fd8,
-    0x6de5ff,
-    0xffe066,
-    0xff9cf5,
-]
-
-# relation hub tuning
-REL_HUB_REPULSE_FACTOR = 4.2  # increase repulsion between relation hubs so groups remain separated
 
 
 
@@ -92,6 +78,15 @@ def _safe_float(v, default: float = 0.0) -> float:
         return default
 
 
+def _hash_unit(text: str, salt: str) -> float:
+    seed = f"{salt}:{text}"
+    h = 0
+    for ch in seed:
+        h = ((h << 5) - h) + ord(ch)
+        h &= 0xFFFFFFFF
+    return (h % 100000) / 100000.0
+
+
 def _recency_weight(ts: float, now: float) -> float:
     if not ts:
         return 0.5
@@ -103,19 +98,27 @@ def _recency_weight(ts: float, now: float) -> float:
 def _z_from(node: Dict[str, Any], now: float) -> float:
     """
     z encodes momentum:
-    - mass (degree proxy), threat_score, confidence, and recency lift z upward
+    - spectrum_index (signal energy), convergence, confidence, and recency lift z upward
     - older/low-signal sinks toward 0
     """
     d = node["data"]
-    mass = _safe_float(d.get("mass", d.get("degree", 1.0)), 1.0)
-    threat = _safe_float(d.get("threat", 0.0), 0.0)
+    spec = _safe_float(d.get("spectrum_index", -1.0), -1.0)
+    if spec < 0.0:
+        if band_weight_from_severity is not None:
+            spec = band_weight_from_severity(d.get("severity"))
+        else:
+            spec = 0.35
+    spec = max(0.0, min(1.0, spec))
+    conv = _safe_float(d.get("convergence", 0.0), 0.0)
     conf = _safe_float(d.get("confidence", 0.5), 0.5)
-    conf *= band_weight(d.get("band"))
     ts = _safe_float(d.get("timestamp", 0.0), 0.0)
+    rec = _safe_float(d.get("recency", _recency_weight(ts, now)), 0.5)
+    rec = max(0.0, min(1.0, rec))
+    rec = max(0.0, min(1.0, rec))
 
-    r = _recency_weight(ts, now)
-    lift = (math.log1p(mass) * 0.65) + (threat * 0.85) + (conf * 0.35)
-    z = (lift * r) * Z_SCALE
+    energy = (spec * 1.1) + (conv * 0.55) + (conf * 0.2)
+    lift = energy * (0.6 + (0.6 * rec))
+    z = lift * Z_SCALE
     return max(-Z_CLAMP, min(Z_CLAMP, z))
 
 
@@ -141,9 +144,19 @@ def _force_layout(nodes: List[Dict[str, Any]], edges: List[Dict[str, Any]]) -> N
 
     positions = [[_safe_float(n.get("x", 0.0)), _safe_float(n.get("y", 0.0)), _safe_float(n.get("z", 0.0))] for n in nodes]
     confidence = [_safe_float(n.get("confidence", 0.5), 0.5) for n in nodes]
-    source = [n.get("source") or "" for n in nodes]
-    subsource = [n.get("subsource") or "" for n in nodes]
-    group_key = [subsource[i] or source[i] for i in range(ncount)]
+    convergence = [_safe_float(n.get("convergence", 0.0), 0.0) for n in nodes]
+    recency = [max(0.0, min(1.0, _safe_float(n.get("recency", 0.5), 0.5))) for n in nodes]
+
+    def _spec_for(node: Dict[str, Any]) -> float:
+        spec = _safe_float(node.get("spectrum_index", -1.0), -1.0)
+        if spec < 0.0:
+            if band_weight_from_severity is not None:
+                spec = band_weight_from_severity(node.get("severity"))
+            else:
+                spec = 0.35
+        return max(0.0, min(1.0, spec))
+
+    spectrum = [_spec_for(n) for n in nodes]
 
     # degrees for mass weighting
     degree = [0] * ncount
@@ -153,11 +166,34 @@ def _force_layout(nodes: List[Dict[str, Any]], edges: List[Dict[str, Any]]) -> N
         if s is None or t is None:
             continue
         w = _safe_float(e.get("weight", 1.0), 1.0)
-        edge_data.append((s, t, w))
+        coherence = _safe_float(e.get("edge_strength", -1.0), -1.0)
+        if coherence < 0.0:
+            coherence = max(0.05, 1.0 - abs(spectrum[s] - spectrum[t]))
+        edge_data.append((s, t, w, coherence))
         degree[s] += 1
         degree[t] += 1
 
-    mass = [1.0 + math.log1p(d or 1) + (confidence[i] * 0.6) for i, d in enumerate(degree)]
+    mass = [
+        0.8
+        + (spectrum[i] * 2.6)
+        + (convergence[i] * 1.8)
+        + (confidence[i] * 0.6)
+        for i in range(ncount)
+    ]
+
+    energy_weights = [
+        (spectrum[i] ** 1.6) + (convergence[i] * 0.9) + (confidence[i] * 0.3)
+        for i in range(ncount)
+    ]
+    anchors = [pos[:] for pos in positions]
+    seed_dirs = []
+    for n in nodes:
+        nid = str(n.get("id", ""))
+        angle = _hash_unit(nid, "dir") * (2 * math.pi)
+        z = (_hash_unit(nid, "dirz") - 0.5) * 0.6
+        seed_dirs.append((math.cos(angle), math.sin(angle), z))
+    energy_rank = sorted(range(ncount), key=lambda i: energy_weights[i], reverse=True)
+    well_indices = energy_rank[: min(12, ncount)]
 
     def _build_cells():
         grid = {}
@@ -172,20 +208,36 @@ def _force_layout(nodes: List[Dict[str, Any]], edges: List[Dict[str, Any]]) -> N
 
     for _ in range(FORCE_ITERATIONS):
         forces = [[0.0, 0.0, 0.0] for _ in range(ncount)]
+        cx = cy = cz = 0.0
+        wsum = 0.0
+        for idx, pos in enumerate(positions):
+            w = energy_weights[idx]
+            cx += pos[0] * w
+            cy += pos[1] * w
+            cz += pos[2] * w
+            wsum += w
+        if wsum > 0.0:
+            cx /= wsum
+            cy /= wsum
+            cz /= wsum
 
         # Attraction along real edges
-        for s, t, w in edge_data:
+        for s, t, w, coherence in edge_data:
             ax, ay, az = positions[s]
             bx, by, bz = positions[t]
             dx, dy, dz = bx - ax, by - ay, bz - az
             dist_sq = dx * dx + dy * dy + dz * dz + 1e-6
             dist = math.sqrt(dist_sq)
-            stretch = dist - EDGE_IDEAL
+            spec_delta = abs(spectrum[s] - spectrum[t])
+            min_spec = min(spectrum[s], spectrum[t])
+            coherence = max(0.05, min(1.0, coherence))
+            ideal = EDGE_IDEAL * (0.45 + (1.2 * (1.0 - coherence))) * (0.8 + (0.6 * (1.0 - min_spec)))
+            stretch = dist - ideal
             if stretch == 0.0:
                 continue
             avg_conf = (confidence[s] + confidence[t]) * 0.5
-            cross_source = 1.3 if source[s] and source[t] and source[s] != source[t] else 1.0
-            coeff = EDGE_ATTRACT_K * stretch * w * (0.5 + avg_conf) * cross_source
+            conv_boost = 0.8 + (0.6 * max(convergence[s], convergence[t]))
+            coeff = EDGE_ATTRACT_K * stretch * w * (0.4 + avg_conf) * (0.55 + (0.9 * coherence)) * (0.65 + (0.6 * min_spec)) * conv_boost
             nx, ny, nz = dx / dist, dy / dist, dz / dist
             fx, fy, fz = nx * coeff, ny * coeff, nz * coeff
             forces[s][0] += fx
@@ -195,37 +247,62 @@ def _force_layout(nodes: List[Dict[str, Any]], edges: List[Dict[str, Any]]) -> N
             forces[t][1] -= fy
             forces[t][2] -= fz
 
-        # Soft attraction toward source/subsource centroids
-        def _centroids(keys: List[str]):
-            acc = {}
-            for idx, key in enumerate(keys):
-                if not key:
-                    continue
-                px, py, pz = positions[idx]
-                sx, sy, sz, cnt = acc.get(key, (0.0, 0.0, 0.0, 0))
-                acc[key] = (sx + px, sy + py, sz + pz, cnt + 1)
-            return {k: (sx / c, sy / c, sz / c) for k, (sx, sy, sz, c) in acc.items() if c}
-
-        src_centroid = _centroids(source)
-        sub_centroid = _centroids(subsource)
-
+        # Anchor high-energy nodes and create convergence wells
         for idx, pos in enumerate(positions):
-            for key, centroids in ((source[idx], src_centroid), (subsource[idx], sub_centroid)):
-                if not key or key not in centroids:
+            spec = spectrum[idx]
+            conv = convergence[idx]
+            ax, ay, az = anchors[idx]
+            anchor_strength = ANCHOR_K * (0.25 + (spec ** 1.3) + (conv * 0.9))
+            forces[idx][0] += (ax - pos[0]) * anchor_strength
+            forces[idx][1] += (ay - pos[1]) * anchor_strength
+            forces[idx][2] += (az - pos[2]) * anchor_strength
+
+            dx = cx - pos[0]
+            dy = cy - pos[1]
+            dz = cz - pos[2]
+            dist_sq = dx * dx + dy * dy + dz * dz
+            if dist_sq < 1e-6:
+                rx, ry, rz = seed_dirs[idx]
+            else:
+                dist = math.sqrt(dist_sq)
+                rx, ry, rz = dx / dist, dy / dist, dz / dist
+
+            if spec >= 0.35:
+                pull = CENTER_PULL_K * ((spec ** 1.4) + (conv * 0.8))
+                forces[idx][0] += rx * pull
+                forces[idx][1] += ry * pull
+                forces[idx][2] += rz * pull * 0.5
+            else:
+                drift = OUTWARD_DRIFT_K * (1.0 - spec) * (0.6 + (1.0 - recency[idx]) * 0.6)
+                forces[idx][0] -= rx * drift
+                forces[idx][1] -= ry * drift
+                forces[idx][2] -= rz * drift * 0.4
+
+            for widx in well_indices:
+                if widx == idx:
                     continue
-                cx, cy, cz = centroids[key]
-                dx, dy, dz = cx - pos[0], cy - pos[1], cz - pos[2]
-                forces[idx][0] += dx * GROUP_ATTRACT_K * (0.6 + confidence[idx])
-                forces[idx][1] += dy * GROUP_ATTRACT_K * (0.6 + confidence[idx])
-                forces[idx][2] += dz * GROUP_ATTRACT_K * 0.35  # z stays mild
+                wx, wy, wz = positions[widx]
+                dxw = wx - pos[0]
+                dyw = wy - pos[1]
+                dzw = wz - pos[2]
+                d2 = dxw * dxw + dyw * dyw + dzw * dzw
+                if d2 > 520.0 * 520.0 or d2 < 1e-6:
+                    continue
+                d = math.sqrt(d2)
+                coherence = max(0.1, 1.0 - abs(spec - spectrum[widx]))
+                well_strength = (0.35 + (spectrum[widx] * 0.9) + (convergence[widx] * 0.8))
+                pull = WELL_ATTRACT_K * well_strength * (0.25 + spec) * coherence * (1.0 - (d / 520.0))
+                fx = (dxw / d) * pull
+                fy = (dyw / d) * pull
+                fz = (dzw / d) * pull
+                forces[idx][0] += fx
+                forces[idx][1] += fy
+                forces[idx][2] += fz
 
         # Repulsion via coarse spatial grid (local neighborhoods only)
         grid = _build_cells()
         neighbor_offsets = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 0), (0, 1), (1, -1), (1, 0), (1, 1)]
         r2 = REPULSE_RADIUS * REPULSE_RADIUS
-
-        # detect relation hubs for extra repulsion
-        is_rel_hub = [True if nodes[idx].get("kind") == "relation_hub" else False for idx in range(ncount)]
 
         for cell, idxs in grid.items():
             for dx_cell, dy_cell in neighbor_offsets:
@@ -247,13 +324,15 @@ def _force_layout(nodes: List[Dict[str, Any]], edges: List[Dict[str, Any]]) -> N
                         if dist_sq < 1e-6 or dist_sq > r2:
                             continue
                         dist = math.sqrt(dist_sq)
-                        coeff = REPULSE_K * (mass[i] + mass[j]) / (dist_sq + 1.0)
-                        # Encourage separation between different source clusters
-                        if group_key[i] and group_key[j]:
-                            coeff *= CROSS_SOURCE_REPULSE if group_key[i] != group_key[j] else SAME_SOURCE_REPULSE
-                        # if both are relation hubs, increase repulsion so groups remain separated
-                        if is_rel_hub[i] and is_rel_hub[j]:
-                            coeff *= REL_HUB_REPULSE_FACTOR
+                        spec_avg = (spectrum[i] + spectrum[j]) * 0.5
+                        spec_delta = abs(spectrum[i] - spectrum[j])
+                        conv_avg = (convergence[i] + convergence[j]) * 0.5
+                        rec_avg = (recency[i] + recency[j]) * 0.5
+                        repulse_scale = max(0.25, 1.25 - (spec_avg * 0.75))
+                        repulse_scale *= max(0.4, 1.0 - (conv_avg * 0.55))
+                        repulse_scale *= 0.85 + ((1.0 - rec_avg) * 0.35)
+                        repulse_scale *= 0.65 + (0.7 * spec_delta)
+                        coeff = REPULSE_K * repulse_scale * (mass[i] + mass[j]) / (dist_sq + 1.0)
                         nx, ny, nz = dx / dist, dy / dist, dz / dist
                         fx, fy, fz = nx * coeff, ny * coeff, nz * coeff
                         forces[i][0] += fx
@@ -265,9 +344,11 @@ def _force_layout(nodes: List[Dict[str, Any]], edges: List[Dict[str, Any]]) -> N
 
         # Integrate with clamped step and bounds
         for idx, (fx, fy, fz) in enumerate(forces):
-            dx = _clamp(fx * STEP_SIZE, -MAX_STEP_DELTA, MAX_STEP_DELTA)
-            dy = _clamp(fy * STEP_SIZE, -MAX_STEP_DELTA, MAX_STEP_DELTA)
-            dz = _clamp(fz * STEP_SIZE, -MAX_STEP_DELTA, MAX_STEP_DELTA)
+            drift = 0.25 + ((1.0 - spectrum[idx]) * 1.1) + ((1.0 - recency[idx]) * 0.5)
+            drift = max(0.2, min(2.0, drift))
+            dx = _clamp(fx * STEP_SIZE * drift, -MAX_STEP_DELTA, MAX_STEP_DELTA)
+            dy = _clamp(fy * STEP_SIZE * drift, -MAX_STEP_DELTA, MAX_STEP_DELTA)
+            dz = _clamp(fz * STEP_SIZE * drift, -MAX_STEP_DELTA, MAX_STEP_DELTA)
             px, py, pz = positions[idx]
             px = _clamp(px + dx, -XY_CLAMP, XY_CLAMP)
             py = _clamp(py + dy, -XY_CLAMP, XY_CLAMP)
@@ -318,14 +399,45 @@ def main() -> None:
         s = surv_store.get(nid, {})
 
         p = pos.get(nid) or n.get("position") or {}
+        has_pos = isinstance(p, dict) and ("x" in p and "y" in p)
         x = _safe_float(p.get("x", 0.0)) * XY_SCALE
         y = _safe_float(p.get("y", 0.0)) * XY_SCALE
         z = _z_from(n, now)
+        if not has_pos:
+            spec_seed = _safe_float(d.get("spectrum_index", -1.0), -1.0)
+            if spec_seed < 0.0:
+                if band_weight_from_severity is not None:
+                    spec_seed = band_weight_from_severity(d.get("severity"))
+                else:
+                    spec_seed = 0.35
+            spec_seed = max(0.0, min(1.0, spec_seed))
+            angle = _hash_unit(nid, "angle") * (2 * math.pi)
+            radius = 120.0 + ((1.0 - spec_seed) * 520.0) + (_hash_unit(nid, "radius") * 120.0)
+            x = math.cos(angle) * radius
+            y = math.sin(angle) * radius
+            z += (_hash_unit(nid, "zj") - 0.5) * 120.0
 
         src_key = str(d.get("subsource") or d.get("source") or "").strip().lower()
-        color = d.get("color", "")
-        if src_key and src_key in SOURCE_COLOR_MAP:
-            color = SOURCE_COLOR_MAP[src_key]
+        source_color = d.get("source_color") or (SOURCE_COLOR_MAP.get(src_key) if src_key else "")
+        spectral = d.get("spectral_color") or ""
+        if not spectral and spectral_color_from_source is not None:
+            spectral = spectral_color_from_source(
+                spec_val,
+                d.get("confidence", 0.5),
+                max(0.0, min(1.0, _safe_float(d.get("recency", 0.5), 0.5))),
+                source_color,
+            )
+        elif not spectral and spectral_color is not None:
+            spec_val = _safe_float(d.get("spectrum_index", -1.0), -1.0)
+            if spec_val < 0.0:
+                if band_weight_from_severity is not None:
+                    spec_val = band_weight_from_severity(d.get("severity"))
+                else:
+                    spec_val = 0.35
+            spectral = spectral_color(spec_val, d.get("confidence", 0.5), max(0.0, min(1.0, _safe_float(d.get("recency", 0.5), 0.5))))
+        if not spectral:
+            spectral = d.get("color") or ""
+        color = spectral or source_color or "#22d3ee"
 
         nodes_out.append(
             {
@@ -337,6 +449,12 @@ def main() -> None:
                 "source": d.get("source", ""),
                 "subsource": d.get("subsource", d.get("subSource", "")),
                 "color": color,
+                "spectral_color": spectral or color,
+                "source_color": source_color,
+                "spectrum_index": _safe_float(d.get("spectrum_index", 0.0), 0.0),
+                "convergence": _safe_float(d.get("convergence", 0.0), 0.0),
+                "recency": max(0.0, min(1.0, _safe_float(d.get("recency", 0.0), 0.0))),
+                "volume_count": _safe_float(d.get("volume_count", 1.0), 1.0),
                 "size": _safe_float(d.get("size", 10.0), 10.0),
                 "confidence": _safe_float(d.get("confidence", 0.5), 0.5),
                 "band": d.get("band", ""),
@@ -361,6 +479,7 @@ def main() -> None:
             continue
         if s not in id_set or t not in id_set:
             continue
+        opacity = _safe_float(d.get("edge_opacity", _edge_opacity(d.get("relation"))), 0.2)
         edges_out.append(
             {
                 "id": d.get("id", f"{s}→{t}"),
@@ -368,146 +487,15 @@ def main() -> None:
                 "target": t,
                 "relation": d.get("relation", ""),
                 "weight": _safe_float(d.get("weight", 1.0), 1.0),
-                "opacity": _edge_opacity(d.get("relation")),
+                "opacity": opacity,
+                "dispersion": _safe_float(d.get("dispersion", 0.0), 0.0),
+                "edge_strength": _safe_float(d.get("edge_strength", 0.5), 0.5),
+                "edge_thickness": _safe_float(d.get("edge_thickness", 1.0), 1.0),
+                "curve_offset": _safe_float(d.get("curve_offset", 0.0), 0.0),
                 "band": d.get("band", ""),
                 "object_type": d.get("object_type", "edge"),
             }
         )
-
-    # ---- add synthetic hubs per source/subsource to cluster content and connect ----
-    by_source: Dict[str, Dict[str, Any]] = {}
-    for n in nodes_out:
-        src = n.get("subsource") or n.get("source")
-        if not src:
-            continue
-        entry = by_source.setdefault(
-            src,
-            {"sum": [0.0, 0.0, 0.0], "count": 0, "ids": []},
-        )
-        entry["sum"][0] += n.get("x", 0.0)
-        entry["sum"][1] += n.get("y", 0.0)
-        entry["sum"][2] += n.get("z", 0.0)
-        entry["count"] += 1
-        entry["ids"].append(n["id"])
-
-    existing_node_ids = {n.get("id") for n in nodes_out}
-    existing_edge_ids = {e.get("id") for e in edges_out}
-    hub_nodes: List[Dict[str, Any]] = []
-    hub_edges: List[Dict[str, Any]] = []
-    for idx, (src, data) in enumerate(by_source.items()):
-        if data["count"] == 0:
-            continue
-        hub_id = f"hub::{src}"
-        if hub_id in existing_node_ids:
-            continue  # hub already present from upstream data
-
-        cx = data["sum"][0] / data["count"]
-        cy = data["sum"][1] / data["count"]
-        cz = data["sum"][2] / data["count"]
-        color = HUB_COLOR_PALETTE[idx % len(HUB_COLOR_PALETTE)]
-        if src:
-            color = int(SOURCE_COLOR_MAP.get(str(src).lower(), f"#{int(color):06x}").lstrip("#"), 16)
-        hub_nodes.append(
-            {
-                "id": hub_id,
-                "label": src,
-                "kind": "source_hub",
-                "severity": "",
-                "source": src,
-                "subsource": src,
-                "color": f"#{int(color):06x}",
-                "size": 26.0,
-                "confidence": 1.0,
-                "timestamp": 0.0,
-                "x": cx,
-                "y": cy,
-                "z": cz,
-            }
-        )
-        for nid in data["ids"]:
-            eid = f"{hub_id}→{nid}"
-            if eid in existing_edge_ids:
-                continue
-            hub_edges.append(
-                {
-                    "id": eid,
-                    "source": hub_id,
-                    "target": nid,
-                    "relation": "source_cluster",
-                    "weight": 1.5,
-                    "opacity": _edge_opacity("source_cluster"),
-                    "synthetic": True,
-                }
-            )
-
-    # ---- add synthetic hubs per relation type to keep relation clusters separate ----
-    by_relation: Dict[str, Dict[str, Any]] = {}
-    for e in edges_raw:
-        d = e.get("data", {})
-        rel = d.get("relation") or ""
-        if not rel:
-            continue
-        s, t = d.get("source"), d.get("target")
-        entry = by_relation.setdefault(rel, {"sum": [0.0, 0.0, 0.0], "count": 0, "ids": set()})
-        # only include nodes that exist in nodes_out by id
-        if s in id_set:
-            entry["ids"].add(s)
-            # sum positions
-            n = next((x for x in nodes_out if x["id"] == s), None)
-            if n:
-                entry["sum"][0] += n.get("x", 0.0)
-                entry["sum"][1] += n.get("y", 0.0)
-                entry["sum"][2] += n.get("z", 0.0)
-                entry["count"] += 1
-        if t in id_set:
-            entry["ids"].add(t)
-            n = next((x for x in nodes_out if x["id"] == t), None)
-            if n:
-                entry["sum"][0] += n.get("x", 0.0)
-                entry["sum"][1] += n.get("y", 0.0)
-                entry["sum"][2] += n.get("z", 0.0)
-                entry["count"] += 1
-
-    for rel, data in by_relation.items():
-        if data["count"] == 0:
-            continue
-        cx = data["sum"][0] / data["count"]
-        cy = data["sum"][1] / data["count"]
-        cz = data["sum"][2] / data["count"]
-        hub_id = f"relhub::{rel}"
-        # color selection: reuse source color rotation but offset
-        color = HUB_COLOR_PALETTE[hash(rel) % len(HUB_COLOR_PALETTE)]
-        hub_nodes.append(
-            {
-                "id": hub_id,
-                "label": rel,
-                "kind": "relation_hub",
-                "severity": "",
-                "source": "relation",
-                "subsource": rel,
-                "color": f"#{int(color):06x}",
-                "size": 26.0,
-                "confidence": 1.0,
-                "timestamp": 0.0,
-                "x": cx,
-                "y": cy,
-                "z": cz,
-            }
-        )
-        for nid in data["ids"]:
-            hub_edges.append(
-                {
-                    "id": f"{hub_id}→{nid}",
-                    "source": hub_id,
-                    "target": nid,
-                    "relation": "relation_cluster",
-                    "weight": 1.5,
-                    "opacity": _edge_opacity("relation_cluster"),
-                    "synthetic": True,
-                }
-            )
-    nodes_out.extend(hub_nodes)
-    edges_out.extend(hub_edges)
 
     # ---- compute degree and mark top-N preserved nodes to keep them live in 3D ----
     from collections import Counter
@@ -574,12 +562,36 @@ def main() -> None:
 
     _force_layout(nodes_out, edges_out)
 
+    source_defs = {}
+    for n in nodes_out:
+        raw = str(n.get("subsource") or n.get("source") or "").strip()
+        if not raw:
+            continue
+        key = raw.lower()
+        entry = source_defs.get(key)
+        if not entry:
+            entry = {"name": key, "color": None, "count": 0}
+            source_defs[key] = entry
+        entry["count"] += 1
+        if not entry.get("color"):
+            color = n.get("source_color") or n.get("sourceColor") or n.get("color")
+            if color:
+                entry["color"] = color
+    sources_list = sorted(source_defs.values(), key=lambda x: (-x["count"], x["name"]))
+
     payload = {
         "nodes": nodes_out,
         "edges": edges_out,
-        "meta": {"built_at": int(now), "nodes": len(nodes_out), "edges": len(edges_out)}
+        "meta": {
+            "built_at": int(now),
+            "nodes": len(nodes_out),
+            "edges": len(edges_out),
+            "sources": sources_list
+        }
     }
     OUT_PATH.write_text(json.dumps(payload, indent=2))
+    sources_path = ROOT / "data" / "sources.json"
+    sources_path.write_text(json.dumps({"sources": sources_list}, indent=2))
     print(f"[export_3d] wrote {OUT_PATH} nodes={len(nodes_out)} edges={len(edges_out)} built_at={int(now)}")
 
 

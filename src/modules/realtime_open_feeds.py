@@ -857,7 +857,7 @@ async def monitor_realtime_feeds(session, config: Dict[str, Any], sqlite_writer=
     if not filtered_iocs:
         return
 
-    # Log IOCs into ACE-T SPECTRUM/db/osint.db
+    # Log IOCs into ACE-T-SPECTRUM/db/osint.db
     with contextlib.suppress(Exception):
         write_iocs(filtered_iocs.values())
 

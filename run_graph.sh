@@ -16,6 +16,16 @@ if [[ -z "${CURRENT_ENV}" || "${CURRENT_ENV}" != "${EXPECTED_ENV}" ]]; then
   exit 2
 fi
 
+GUI_ROOT_MARKER="${ROOT}/data/.gui_root_id"
+GUI_ENTRY="${ACE_T_GUI_ENTRY:-three_view_3d_v2.html}"
+GUI_ROOT_TOKEN="$("${PYTHON_BIN}" - <<'PY'
+import time
+print(f"ace-t-{int(time.time())}")
+PY
+)"
+mkdir -p "$(dirname "${GUI_ROOT_MARKER}")"
+printf "%s" "${GUI_ROOT_TOKEN}" > "${GUI_ROOT_MARKER}"
+
 # Ensure project modules are importable (root for schema.py, src for modules).
 # legacyV2 is opt-in via USE_LEGACY=1 for back-compat when needed.
 if [ "${USE_LEGACY:-0}" = "1" ]; then
@@ -26,6 +36,8 @@ fi
 
 # Always start with a clean graph (retention will refill up to 30 days)
 rm -f "${ROOT}/data/graph_data.json" "${ROOT}/data/graph_positions.json" "${ROOT}/data/graph_3d.json" "${ROOT}/data/reddit_seen_posts.json"
+mkdir -p "${ROOT}/data"
+printf '%s' '{"nodes":[],"edges":[],"meta":{"built_at":0,"nodes":0,"edges":0}}' > "${ROOT}/data/graph_3d.json"
 
 echo "[*] Starting ACE-T graph pipeline"
 
@@ -77,9 +89,6 @@ run_pipeline_once() {
     --output-root "${ROOT}"
 }
 
-echo "[*] Running pipeline"
-run_pipeline_once
-
 cleanup() {
   echo ""
   echo "[*] Shutting down…"
@@ -93,9 +102,105 @@ cleanup() {
 
 trap cleanup INT TERM
 
-echo "[*] Launching 3D GUI"
-cd "${ROOT}/gui" && "${PYTHON_BIN}" -m http.server 8050 &
-GUI_PID=$!
+GUI_RUNNING=0
+GUI_PORT="${ACE_T_GUI_PORT:-8050}"
+GUI_URL="http://127.0.0.1:${GUI_PORT}"
+
+is_port_in_use() {
+  local port="$1"
+  "${PYTHON_BIN}" -c 'import socket, sys
+port = int(sys.argv[1])
+def probe(family, addr):
+    try:
+        s = socket.socket(family, socket.SOCK_STREAM)
+        s.settimeout(0.5)
+        s.connect((addr, port))
+        s.close()
+        return True
+    except Exception:
+        return False
+if probe(socket.AF_INET, "127.0.0.1") or probe(socket.AF_INET6, "::1"):
+    sys.exit(0)
+sys.exit(1)
+' "${port}" >/dev/null 2>&1
+}
+
+is_spectrum_gui() {
+  local port="$1"
+  local token="$2"
+  "${PYTHON_BIN}" -c 'import sys, urllib.request
+port = int(sys.argv[1])
+token = sys.argv[2]
+paths = [
+    f"http://127.0.0.1:{port}/gui/{sys.argv[3]}",
+    f"http://[::1]:{port}/gui/{sys.argv[3]}",
+]
+marker_paths = [
+    f"http://127.0.0.1:{port}/data/.gui_root_id",
+    f"http://[::1]:{port}/data/.gui_root_id",
+]
+marker_ok = False
+for url in marker_paths:
+    try:
+        with urllib.request.urlopen(url, timeout=1) as resp:
+            if resp.status != 200:
+                continue
+            body = resp.read(200000).decode("utf-8", "ignore")
+            if body.strip() == token:
+                marker_ok = True
+                break
+    except Exception:
+        pass
+if not marker_ok:
+    sys.exit(1)
+for url in paths:
+    try:
+        with urllib.request.urlopen(url, timeout=1) as resp:
+            if resp.status != 200:
+                continue
+            body = resp.read(200000).decode("utf-8", "ignore")
+            if "ACE-T" in body and "spectrum" in body.lower():
+                sys.exit(0)
+    except Exception:
+        pass
+sys.exit(1)
+' "${port}" "${token}" "${GUI_ENTRY}" >/dev/null 2>&1
+}
+
+pick_open_port() {
+  local start="$1"
+  local end="$2"
+  local p
+  for p in $(seq "${start}" "${end}"); do
+    if ! is_port_in_use "${p}"; then
+      echo "${p}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+if is_port_in_use "${GUI_PORT}"; then
+  if is_spectrum_gui "${GUI_PORT}" "${GUI_ROOT_TOKEN}"; then
+    GUI_RUNNING=1
+    echo "[*] GUI server already running on port ${GUI_PORT}; reusing"
+  else
+    NEXT_PORT="$(pick_open_port "$((GUI_PORT + 1))" "$((GUI_PORT + 20))")" || true
+    if [ -z "${NEXT_PORT:-}" ]; then
+      echo "[!] No available port found for GUI (tried ${GUI_PORT}-$((GUI_PORT + 20)))."
+      exit 2
+    fi
+    GUI_PORT="${NEXT_PORT}"
+    GUI_URL="http://127.0.0.1:${GUI_PORT}"
+    echo "[*] Port ${ACE_T_GUI_PORT:-8050} in use; starting GUI on ${GUI_PORT}"
+  fi
+fi
+
+if [ "${GUI_RUNNING}" -eq 0 ]; then
+  echo "[*] Launching 3D GUI"
+  cd "${ROOT}" && "${PYTHON_BIN}" -m http.server "${GUI_PORT}" &
+  GUI_PID=$!
+fi
 
 sleep 2
 
@@ -114,15 +219,32 @@ PY
 }
 
 if [ "${OPEN_BROWSER:-1}" = "1" ]; then
-  # Open 3D graph view
-  open_url "http://127.0.0.1:8050/three_view_3d.html"
-  BROWSER_PID=$!
+  echo "[*] Waiting for server to be ready..."
+  READY=0
+  for i in {1..60}; do
+    if is_port_in_use "${GUI_PORT}"; then
+      READY=1
+      break
+    fi
+    sleep 0.5
+  done
+  if [ "${READY}" -eq 1 ]; then
+    open_url "${GUI_URL}/gui/${GUI_ENTRY}?v=$(date +%s)" || true
+    echo "[*] Browser opened successfully"
+    echo "[*] Open URL: ${GUI_URL}/gui/${GUI_ENTRY}"
+  else
+    echo "[!] Server failed to start within 30 seconds"
+  fi
 fi
+
+echo "[*] Running pipeline"
+run_pipeline_once
 
 pipeline_loop() {
   while true; do
     sleep "${PIPELINE_INTERVAL}"
     run_pipeline_once
+    "${PYTHON_BIN}" "${ROOT}/ACE-T-SPECTRUM.py"
   done
 }
 pipeline_loop &
@@ -147,10 +269,10 @@ PY
   sleep 2
 done
 
-echo "[*] Building 3D export"
-"${PYTHON_BIN}" "${ROOT}/src/three/export_3d.py"
+echo "[*] Building 3D spectrum export"
+"${PYTHON_BIN}" "${ROOT}/ACE-T-SPECTRUM.py"
 
-echo "[*] GUI live at http://127.0.0.1:8050"
+echo "[*] GUI live at ${GUI_URL}"
 echo "[*] Pipeline loop running (interval ${PIPELINE_INTERVAL}s)"
 echo "[*] Press Ctrl-C to stop everything cleanly"
 

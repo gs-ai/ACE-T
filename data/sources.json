@@ -1,0 +1,64 @@
+{
+  "sources": [
+    {
+      "name": "sysadmin",
+      "color": "#dd2ccf",
+      "count": 1249
+    },
+    {
+      "name": "cybersecurity",
+      "color": "#dd2c7e",
+      "count": 487
+    },
+    {
+      "name": "blueteamsec",
+      "color": "#2c63dd",
+      "count": 102
+    },
+    {
+      "name": "phishing",
+      "color": "#2cb4dd",
+      "count": 95
+    },
+    {
+      "name": "pwnhub",
+      "color": "#dd7e2c",
+      "count": 73
+    },
+    {
+      "name": "infosecnews",
+      "color": "#dd2c2c",
+      "count": 35
+    },
+    {
+      "name": "computerforensics",
+      "color": "#2cddb4",
+      "count": 33
+    },
+    {
+      "name": "reverseengineering",
+      "color": "#2cdd63",
+      "count": 30
+    },
+    {
+      "name": "redteamsec",
+      "color": "#992cdd",
+      "count": 25
+    },
+    {
+      "name": "netsec",
+      "color": "#482cdd",
+      "count": 16
+    },
+    {
+      "name": "threatintel",
+      "color": "#99dd2c",
+      "count": 16
+    },
+    {
+      "name": "osint",
+      "color": "#ddcf2c",
+      "count": 2
+    }
+  ]
+}
