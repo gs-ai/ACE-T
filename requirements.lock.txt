@@ -56,7 +56,7 @@ fastapi==0.126.0
 fastapi-cli @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_fastapi-cli_1758405759/work
 fastjsonschema==2.21.2
 filelock==3.20.3
-Flask==3.1.2
+Flask==3.1.3
 flask-cors==6.0.2
 fonttools @ file:///Users/runner/miniforge3/conda-bld/fonttools_1759187188865/work
 frozenlist==1.8.0
@@ -109,7 +109,7 @@ nbclient==0.10.3
 nbconvert==7.17.0
 nbformat==5.10.4
 nest-asyncio==1.6.0
-nltk==3.9.2
+nltk==3.9.3
 numpy==2.4.0
 opentelemetry-api==1.39.1
 opentelemetry-distro==0.60b1
@@ -251,7 +251,7 @@ weasel==0.4.2
 webencodings==0.5.1
 websocket-client==1.9.0
 websockets @ file:///Users/runner/miniforge3/conda-bld/bld/rattler-build_websockets_1756476451/work/dist
-Werkzeug==3.1.5
+Werkzeug==3.1.6
 wrapt==1.17.3
 wsproto==1.3.2
 yarg==0.1.9
