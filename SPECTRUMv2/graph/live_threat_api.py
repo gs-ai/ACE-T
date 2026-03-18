@@ -91,8 +91,9 @@ def add_threat():
             "threat_id": f"api_{int(datetime.now().timestamp())}"
         }), 201
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        app.logger.error("Unhandled exception while adding threat", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 @app.route('/threats', methods=['GET'])
 def get_threats():
@@ -111,8 +112,9 @@ def get_threats():
         # Return last 100 threats
         return jsonify({"threats": threats[-100:]})
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        app.logger.error("Unhandled exception while retrieving threats", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

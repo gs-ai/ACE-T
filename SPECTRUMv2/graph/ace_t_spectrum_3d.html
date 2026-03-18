@@ -3015,6 +3015,13 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
 
             getSpinDirection(node) {
                 if (!this.spinSplit) return 1;
+                const z = (node && typeof node.z === 'number') ? node.z : null;
+                if (z !== null) {
+                    const triAxis = CONFIG.triAxis || {};
+                    const ringSpacing = Math.max(40, triAxis.laneSpacing || (CONFIG.sourceBands ? CONFIG.sourceBands.spacing : 220));
+                    const ringIndex = Math.round(z / ringSpacing);
+                    return (Math.abs(ringIndex) % 2 === 0) ? 1 : -1;
+                }
                 const key = this.getSourceKey(node);
                 if (key && this.sourceSpinDirection && this.sourceSpinDirection[key] !== undefined) {
                     return this.sourceSpinDirection[key];
