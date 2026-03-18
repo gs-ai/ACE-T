@@ -10,6 +10,7 @@ import subprocess
 import signal
 import sys
 import functools
+import shutil
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -38,6 +39,19 @@ def _resolve_static_path(url_path: str) -> Path:
     if candidate.exists():
         return candidate
     return FALLBACK_WEB_DIR / url_path
+
+
+def _sync_viewer_html() -> None:
+    """Keep the fallback/gui viewer identical to the graph viewer script."""
+    source_html = BASE_DIR / 'ace_t_spectrum_3d.html'
+    target_html = FALLBACK_WEB_DIR / 'ace_t_spectrum_3d.html'
+    try:
+        if not source_html.exists():
+            return
+        FALLBACK_WEB_DIR.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_html, target_html)
+    except Exception as exc:
+        print(f"Viewer sync warning: {exc}")
 
 class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
@@ -72,6 +86,8 @@ def start_streaming_build():
         return None
 
 def main():
+    _sync_viewer_html()
+
     # Build full graph once before streaming updates unless explicitly skipped
     skip_build = os.getenv('ACE_T_SKIP_BUILD', '').strip().lower() in {'1', 'true', 'yes'}
     if skip_build:

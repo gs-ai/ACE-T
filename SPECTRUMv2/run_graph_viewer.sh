@@ -10,6 +10,12 @@ fi
 cd "$ROOT_DIR"
 export PYTHONPATH="$ROOT_DIR:$ROOT_DIR/src:${PYTHONPATH:-}"
 
+# Keep live and historical viewers on the exact same script.
+if [[ -f graph/ace_t_spectrum_3d.html ]]; then
+  mkdir -p gui
+  cp graph/ace_t_spectrum_3d.html gui/ace_t_spectrum_3d.html || true
+fi
+
 # Stop any existing servers on port 8000
 if command -v lsof >/dev/null 2>&1; then
   lsof -ti :8000 | xargs -r kill -9 || true

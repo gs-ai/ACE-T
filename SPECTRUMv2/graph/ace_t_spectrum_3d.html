@@ -967,8 +967,9 @@
                 const opacity = this.clampValue(0.84 + (conf * 0.08), 0.8, 0.94);
                 const transmission = this.clampValue(0.2 + (spec * 0.12), 0.18, 0.36);
                 const roughness = this.clampValue(0.16 - (spec * 0.08), 0.05, 0.22);
-                const emissiveIntensity = this.clampValue(0.2 + (spec * 0.16), 0.16, 0.42);
-                const emissiveColor = stats.color ? stats.color.clone().multiplyScalar(0.52) : new THREE.Color(0x101418);
+                // Keep emissive neutral so per-node instance colors stay faithful to source/category.
+                const emissiveIntensity = this.clampValue(0.05 + (conf * 0.06), 0.04, 0.14);
+                const emissiveColor = new THREE.Color(0x0a1118);
                 const flakeStrength = this.clampValue(0.24 + (spec * 0.24) + (conf * 0.08), 0.2, 0.52);
                 const flakeScale = 24 + (spec * 14);
 
@@ -2924,14 +2925,21 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                 const baseHex = this.resolveNodeColor(node) || CONFIG.nodeColor;
                 const accentHex = this.getAccentColor(node) || baseHex;
                 const sourceKey = this.getSourceKey(node);
-                const sourceHex = sourceKey ? (this.getSourceColor(sourceKey) || baseHex) : baseHex;
-                const base = new THREE.Color(sourceHex);
+                const sourceNorm = String(sourceKey || '').toLowerCase();
+                const hasSourceDef = !!(sourceNorm && this.sourceDefs && (this.sourceDefs[sourceKey] || this.sourceDefs[sourceNorm]));
+                const canonicalSource = sourceNorm.includes('threatfox') || sourceNorm.includes('urlhaus') || sourceNorm.includes('ransomware.live');
+                // Priority: known source color -> threat/category color -> fallback.
+                const useSourceColor = sourceNorm && (hasSourceDef || canonicalSource);
+                const selectedHex = useSourceColor ? (this.getSourceColor(sourceKey) || baseHex) : baseHex;
+                const base = new THREE.Color(selectedHex);
                 const accent = new THREE.Color(accentHex);
                 const spec = this.getSpectrumValue(node);
                 const specShift = (spec - 0.5);
-                // Keep source identity dominant while adding subtle spectrum variation.
-                base.offsetHSL(specShift * 0.06, 0.08, specShift * 0.08);
-                base.lerp(accent, 0.05);
+                // Only a very subtle spectral variation to preserve visual identity.
+                base.offsetHSL(specShift * 0.02, 0.02, specShift * 0.02);
+                if (!useSourceColor) {
+                    base.lerp(accent, 0.04);
+                }
                 return `#${base.getHexString()}`;
             }
 
