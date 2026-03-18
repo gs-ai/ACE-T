@@ -11,6 +11,9 @@ import signal
 import sys
 import functools
 import shutil
+import json
+import time
+import tempfile
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -19,6 +22,9 @@ BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
 WEB_DIR = BASE_DIR
 FALLBACK_WEB_DIR = PROJECT_ROOT / 'gui'
+BROWSER_OPEN_MARKER = Path(
+    os.environ.get("ACE_T_BROWSER_OPEN_MARKER", os.path.join(tempfile.gettempdir(), "ace_t_browser_open.json"))
+)
 
 
 def _python_executable() -> str:
@@ -52,6 +58,31 @@ def _sync_viewer_html() -> None:
         shutil.copy2(source_html, target_html)
     except Exception as exc:
         print(f"Viewer sync warning: {exc}")
+
+
+def _should_auto_open(url: str) -> bool:
+    if str(os.getenv("ACE_T_AUTO_OPEN", "1")).strip().lower() not in {"1", "true", "yes"}:
+        return False
+    if str(os.getenv("ACE_T_AUTO_OPEN_ONCE", "1")).strip().lower() not in {"1", "true", "yes"}:
+        return True
+    cooldown_sec = int(os.getenv("ACE_T_AUTO_OPEN_COOLDOWN_SEC", "600"))
+    try:
+        if BROWSER_OPEN_MARKER.exists():
+            payload = json.loads(BROWSER_OPEN_MARKER.read_text(encoding="utf-8"))
+            ts = float(payload.get("ts", 0))
+            if (time.time() - ts) < cooldown_sec:
+                return False
+    except Exception:
+        pass
+    return True
+
+
+def _mark_auto_open(url: str) -> None:
+    try:
+        payload = {"url": url, "ts": time.time(), "pid": os.getpid()}
+        BROWSER_OPEN_MARKER.write_text(json.dumps(payload), encoding="utf-8")
+    except Exception:
+        pass
 
 class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
@@ -162,7 +193,12 @@ def main():
         # Open browser automatically
         try:
             suffix = "?poll=1" if streaming_enabled else ""
-            webbrowser.open(f"http://localhost:{PORT}/ace_t_spectrum_3d.html{suffix}")
+            target_url = f"http://localhost:{PORT}/ace_t_spectrum_3d.html{suffix}"
+            if _should_auto_open(target_url):
+                webbrowser.open(target_url)
+                _mark_auto_open(target_url)
+            else:
+                print("Browser auto-open skipped (recent instance already opened).")
         except:
             pass  # Browser might not be available
 
