@@ -3046,9 +3046,16 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
             getEdgeColor(sourceNode, targetNode) {
                 const aKey = this.getSourceKey(sourceNode);
                 const bKey = this.getSourceKey(targetNode);
-                const aColor = new THREE.Color(this.getIntegratedNodeColor(sourceNode));
+                const sourceColorHex = (node, key) => {
+                    if (node && node.source_color) return node.source_color;
+                    if (node && node.sourceColor) return node.sourceColor;
+                    const fromSource = this.getSourceColor(key);
+                    if (fromSource) return fromSource;
+                    return this.getIntegratedNodeColor(node);
+                };
+                const aColor = new THREE.Color(sourceColorHex(sourceNode, aKey));
                 if (!bKey || aKey === bKey) return aColor;
-                const bColor = new THREE.Color(this.getIntegratedNodeColor(targetNode));
+                const bColor = new THREE.Color(sourceColorHex(targetNode, bKey));
                 return aColor.lerp(bColor, 0.5);
             }
 

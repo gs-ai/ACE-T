@@ -1,6 +1,7 @@
 ransomware_live:
   enabled: true
   api_base: "https://api-pro.ransomware.live/victims/search"
+  public_api_base: "https://api.ransomware.live/v2/recentvictims"
   query: "law"
   query_terms:
     - law

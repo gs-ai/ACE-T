@@ -907,6 +907,18 @@ def _build_ransomware_live_query_plan(cfg: dict) -> list[tuple[str, str | None]]
 
 def load_ransomware_live_victims():
     """Load ransomware.live victims with strict call limits and local caching."""
+    cfg = _load_ingest_sources_config()
+    ransomware_cfg = cfg.get('ransomware_live', {}) if isinstance(cfg, dict) else {}
+    public_api_base = (
+        os.environ.get('RANSOMWARE_LIVE_PUBLIC_API_BASE')
+        or (ransomware_cfg.get('public_api_base') if isinstance(ransomware_cfg, dict) else None)
+        or 'https://api.ransomware.live/v2/recentvictims'
+    )
+    public_fallback_enabled = str(
+        os.environ.get('RANSOMWARE_LIVE_PUBLIC_FALLBACK', '1')
+    ).strip().lower() in {'1', 'true', 'yes'}
+    public_timeout = int(os.environ.get('RANSOMWARE_LIVE_PUBLIC_TIMEOUT', '90'))
+
     api_key = os.environ.get('RANSOMWARE_LIVE_API_KEY')
     if not api_key:
         key_file = PROJECT_ROOT / 'outside_data' / 'ransomware_live_api_key.txt'
@@ -915,12 +927,6 @@ def load_ransomware_live_victims():
                 api_key = key_file.read_text().strip()
             except Exception:
                 api_key = None
-
-    if not api_key:
-        return []
-
-    cfg = _load_ingest_sources_config()
-    ransomware_cfg = cfg.get('ransomware_live', {}) if isinstance(cfg, dict) else {}
     query_plan = _build_ransomware_live_query_plan(ransomware_cfg)
     if not query_plan:
         fallback = os.environ.get('RANSOMWARE_LIVE_QUERY', 'law')
@@ -944,7 +950,57 @@ def load_ransomware_live_victims():
     query_cache = cache.get('query_cache', {}) if isinstance(cache.get('query_cache', {}), dict) else {}
     all_victims = []
 
+    if not api_key and public_fallback_enabled:
+        public_key = '__public_recent__'
+        public_cache = query_cache.get(public_key, {})
+        last_fetch_raw = public_cache.get('last_fetch_utc')
+        last_fetch = None
+        if last_fetch_raw:
+            try:
+                last_fetch = datetime.fromisoformat(last_fetch_raw.replace('Z', '+00:00'))
+            except Exception:
+                last_fetch = None
+
+        use_cache = False
+        if last_fetch:
+            elapsed = datetime.now(timezone.utc) - last_fetch.replace(tzinfo=timezone.utc)
+            if elapsed < timedelta(minutes=min_interval_minutes):
+                use_cache = True
+
+        victims = []
+        if use_cache:
+            victims = _extract_ransomware_live_victims(public_cache.get('data', {}))
+        else:
+            req = urllib.request.Request(
+                public_api_base,
+                headers={'accept': 'application/json', 'user-agent': 'ACE-T-SPECTRUM/1.0'}
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=public_timeout) as resp:
+                    body = resp.read().decode('utf-8')
+                    payload = json.loads(body)
+                    victims = _extract_ransomware_live_victims(payload)
+                    query_cache[public_key] = {
+                        'last_fetch_utc': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                        'data': payload
+                    }
+                    daily_count += 1
+            except Exception:
+                victims = _extract_ransomware_live_victims(public_cache.get('data', {}))
+
+        if victims:
+            all_victims.extend(victims)
+        cache_payload = {
+            'daily_date': today,
+            'daily_count': daily_count,
+            'query_cache': query_cache,
+            'queries': [term for term, _ in query_plan]
+        }
+        _save_ransomware_live_cache(cache_path, cache_payload)
+
     for term, category in query_plan:
+        if not api_key:
+            break
         if daily_count >= max_daily_calls:
             break
         term_key = str(term).strip().lower()
@@ -989,6 +1045,48 @@ def load_ransomware_live_victims():
         daily_count += 1
         fresh = _extract_ransomware_live_victims(payload)
         all_victims.extend(_apply_victim_category(fresh, category))
+
+    # If pro API is unavailable or returns nothing, fallback to public victims feed.
+    if not all_victims and public_fallback_enabled:
+        public_key = '__public_recent__'
+        public_cache = query_cache.get(public_key, {})
+        last_fetch_raw = public_cache.get('last_fetch_utc')
+        last_fetch = None
+        if last_fetch_raw:
+            try:
+                last_fetch = datetime.fromisoformat(last_fetch_raw.replace('Z', '+00:00'))
+            except Exception:
+                last_fetch = None
+
+        use_cache = False
+        if last_fetch:
+            elapsed = datetime.now(timezone.utc) - last_fetch.replace(tzinfo=timezone.utc)
+            if elapsed < timedelta(minutes=min_interval_minutes):
+                use_cache = True
+
+        public_victims = []
+        if use_cache:
+            public_victims = _extract_ransomware_live_victims(public_cache.get('data', {}))
+        else:
+            req = urllib.request.Request(
+                public_api_base,
+                headers={'accept': 'application/json', 'user-agent': 'ACE-T-SPECTRUM/1.0'}
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=public_timeout) as resp:
+                    body = resp.read().decode('utf-8')
+                    payload = json.loads(body)
+                    public_victims = _extract_ransomware_live_victims(payload)
+                    query_cache[public_key] = {
+                        'last_fetch_utc': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                        'data': payload
+                    }
+                    daily_count += 1
+            except Exception:
+                public_victims = _extract_ransomware_live_victims(public_cache.get('data', {}))
+
+        if public_victims:
+            all_victims.extend(public_victims)
 
     if daily_count >= max_daily_calls and not all_victims:
         for term, category in query_plan:
@@ -1915,7 +2013,7 @@ def load_all_raw_records():
         )
         discovered = victim.get('discovered') or victim.get('date') or victim.get('discovered_at') or victim.get('published')
         country = victim.get('country') or victim.get('country_code') or 'Unknown'
-        sector = victim.get('sector') or victim.get('industry') or 'Unknown'
+        sector = victim.get('sector') or victim.get('activity') or victim.get('industry') or 'Unknown'
         group = victim.get('group') or victim.get('gang') or victim.get('group_name') or 'Unknown'
         website = victim.get('website') or victim.get('url') or victim.get('link') or victim.get('post_url')
         website = _normalize_url(website)
@@ -2412,6 +2510,62 @@ def create_spectrum_edges(nodes: list) -> list:
             if _add_edge(orphan['id'], other['id'], 'SAME_GROUP', 1):
                 break
 
+    # SOURCE COVERAGE FAILSAFE
+    # Ensure each source has visible connector representation in the graph.
+    source_members = {}
+    for node in ordered_nodes:
+        source_key = _normalize_source_name(node.get('source') or node.get('source_key'))
+        if not source_key:
+            continue
+        source_members.setdefault(source_key, []).append(node)
+
+    def _source_of(node_id: str) -> str:
+        node = nodes_by_id.get(node_id) or {}
+        return _normalize_source_name(node.get('source') or node.get('source_key'))
+
+    def _has_intra_source_edge(source_key: str) -> bool:
+        for edge in edges:
+            a = _source_of(edge['source'])
+            b = _source_of(edge['target'])
+            if a == source_key and b == source_key:
+                return True
+        return False
+
+    def _has_any_source_edge(source_key: str) -> bool:
+        for edge in edges:
+            a = _source_of(edge['source'])
+            b = _source_of(edge['target'])
+            if a == source_key or b == source_key:
+                return True
+        return False
+
+    # Prefer an intra-source edge when source has at least 2 nodes.
+    for source_key, members in sorted(source_members.items(), key=lambda kv: kv[0]):
+        if len(members) < 2 or _has_intra_source_edge(source_key):
+            continue
+        ordered = sorted(members, key=lambda n: str(n.get('id')))
+        anchor = ordered[0]
+        for candidate in ordered[1: min(len(ordered), 12)]:
+            if _add_edge(anchor['id'], candidate['id'], 'SAME_GROUP', 1):
+                break
+
+    # If a source has exactly one node and no edges, connect it to nearest node by time.
+    for source_key, members in sorted(source_members.items(), key=lambda kv: kv[0]):
+        if len(members) != 1 or _has_any_source_edge(source_key):
+            continue
+        lone = members[0]
+        candidates = []
+        for other in ordered_nodes:
+            if other['id'] == lone['id']:
+                continue
+            delta = _time_delta_seconds(lone, other)
+            delta_key = delta if delta is not None else float('inf')
+            candidates.append((delta_key, str(other['id']), other))
+        candidates.sort(key=lambda x: (x[0], x[1]))
+        for _, __, other in candidates[:16]:
+            if _add_edge(lone['id'], other['id'], 'TIME_CLUSTER', 1):
+                break
+
     return edges
 
 def build_graph():
@@ -2463,28 +2617,8 @@ def build_graph():
             continue
         if not is_tier1_source(source):
             continue
-        # For Tier 1 sources, check if they're ransomware-related when applicable
-        threat_dict = {
-            'category': r.get('category', ''),
-            'indicators': {'group': r.get('group', ''), 'malware': r.get('group', '')},
-            'metadata': r
-        }
-        source_key = _normalize_source_name(source)
-        if (
-            source_key in {
-                'ransomware.live',
-                'abuse.ch threatfox',
-                'abuse.ch urlhaus',
-                'abuse.ch feodotracker',
-                'abuse.ch ja3',
-                'c2intelfeeds',
-                'montysecurity c2 tracker',
-                'carbon black c2',
-                'shadowpad c2',
-            }
-            or is_ransomware_threat(threat_dict)
-        ):
-            threat_records.append(r)
+        # All enabled Tier-1 feeds are first-class threat graph sources.
+        threat_records.append(r)
 
     total_threats = len(threat_records)
 
@@ -2801,27 +2935,8 @@ def build_graph_streaming(batch_size=1, delay_between_batches=0.5, poll_interval
                 continue
             if not is_tier1_source(source):
                 continue
-            threat_dict = {
-                'category': r.get('category', ''),
-                'indicators': {'group': r.get('group', ''), 'malware': r.get('group', '')},
-                'metadata': r
-            }
-            source_key = _normalize_source_name(source)
-            if (
-                source_key in {
-                    'ransomware.live',
-                    'abuse.ch threatfox',
-                    'abuse.ch urlhaus',
-                    'abuse.ch feodotracker',
-                    'abuse.ch ja3',
-                    'c2intelfeeds',
-                    'montysecurity c2 tracker',
-                    'carbon black c2',
-                    'shadowpad c2',
-                }
-                or is_ransomware_threat(threat_dict)
-            ):
-                threat_records.append(r)
+            # All enabled Tier-1 feeds are first-class threat graph sources.
+            threat_records.append(r)
 
         # Create nodes for threat incidents according to SPECTRUM node contract
         nodes = []

@@ -39,6 +39,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "ransomware_live": {
         "enabled": True,
         "api_base": "https://api-pro.ransomware.live/victims/search",
+        "public_api_base": "https://api.ransomware.live/v2/recentvictims",
         "query": "law",
         "order": "discovered",
         "min_interval_minutes": 60,
@@ -365,7 +366,7 @@ def _normalize_ransomware_live(victim: Dict[str, Any]) -> Dict[str, Any]:
         "victim_name": victim_name,
         "victim_domain": victim_domain,
         "group": group,
-        "sector": str(victim.get("sector") or "Unknown").strip() or "Unknown",
+        "sector": str(victim.get("sector") or victim.get("activity") or "Unknown").strip() or "Unknown",
         "country": country,
         "first_observed": published,
         "last_observed": published,
@@ -408,9 +409,15 @@ def _load_ransomware_live(api_cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
         key_file = ROOT_DIR / "outside_data" / "ransomware_live_api_key.txt"
         if key_file.exists():
             api_key = key_file.read_text(encoding="utf-8").strip()
-    if not api_key:
-        logger.error("ransomware_live_missing_api_key")
-        return []
+    public_api_base = str(
+        os.environ.get("RANSOMWARE_LIVE_PUBLIC_API_BASE")
+        or api_cfg.get("public_api_base")
+        or "https://api.ransomware.live/v2/recentvictims"
+    )
+    public_fallback_enabled = str(
+        os.environ.get("RANSOMWARE_LIVE_PUBLIC_FALLBACK", "1")
+    ).strip().lower() in {"1", "true", "yes"}
+    public_timeout = int(os.environ.get("RANSOMWARE_LIVE_PUBLIC_TIMEOUT", "90"))
 
     cache_path = ROOT_DIR / "outside_data" / "ransomware_live_cache.json"
     cache = _load_ransomware_live_cache(cache_path)
@@ -440,18 +447,37 @@ def _load_ransomware_live(api_cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     if daily_count >= daily_limit:
         return _extract_ransomware_live_victims(cache)
 
-    params = urllib.parse.urlencode({"q": query, "order": order})
-    url = f"{api_cfg.get('api_base')}?{params}"
-    headers = {"X-API-KEY": api_key}
+    if api_key:
+        params = urllib.parse.urlencode({"q": query, "order": order})
+        url = f"{api_cfg.get('api_base')}?{params}"
+        headers = {"X-API-KEY": api_key}
+    elif public_fallback_enabled:
+        url = public_api_base
+        headers = {"accept": "application/json"}
+    else:
+        logger.error("ransomware_live_missing_api_key")
+        return _extract_ransomware_live_victims(cache)
 
     body, _ = _fetch_url(url, "ransomware_live", headers=headers, timeout=30)
+    if body is None and api_key and public_fallback_enabled:
+        body, _ = _fetch_url(public_api_base, "ransomware_live_public", headers={"accept": "application/json"}, timeout=public_timeout)
     if body is None:
         return _extract_ransomware_live_victims(cache)
     try:
         payload = json.loads(body.decode("utf-8"))
     except Exception:
         logger.error("ransomware_live_invalid_json")
-        return _extract_ransomware_live_victims(cache)
+        if api_key and public_fallback_enabled:
+            public_body, _ = _fetch_url(public_api_base, "ransomware_live_public", headers={"accept": "application/json"}, timeout=public_timeout)
+            if public_body is not None:
+                try:
+                    payload = json.loads(public_body.decode("utf-8"))
+                except Exception:
+                    return _extract_ransomware_live_victims(cache)
+            else:
+                return _extract_ransomware_live_victims(cache)
+        else:
+            return _extract_ransomware_live_victims(cache)
 
     cache_payload = {
         "daily_date": daily_date,
