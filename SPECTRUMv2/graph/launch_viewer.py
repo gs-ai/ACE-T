@@ -87,11 +87,26 @@ def start_streaming_build():
 
 def main():
     _sync_viewer_html()
+    graph_path = BASE_DIR / 'graph_3d.json'
+    render_path = BASE_DIR / 'graph_3d_render.json'
+    streaming_enabled = os.getenv('ACE_T_ENABLE_STREAMING', '').strip().lower() in {'1', 'true', 'yes'}
+    has_cached_graph = graph_path.exists() and render_path.exists()
+    async_initial_build = os.getenv('ACE_T_ASYNC_INITIAL_BUILD', '0').strip().lower() in {'1', 'true', 'yes'}
 
-    # Build full graph once before streaming updates unless explicitly skipped
+    # Build full graph once before server start unless explicitly skipped.
+    # In streaming mode, we can optionally fast-start from cached artifacts.
     skip_build = os.getenv('ACE_T_SKIP_BUILD', '').strip().lower() in {'1', 'true', 'yes'}
+    if (not skip_build) and streaming_enabled and async_initial_build and has_cached_graph:
+        skip_build = True
+        print("Fast streaming start enabled: using cached graph artifacts while background stream refreshes data.")
+
     if skip_build:
-        print("Skipping graph build (ACE_T_SKIP_BUILD=1). Using existing artifacts.")
+        if has_cached_graph:
+            print("Skipping graph build (ACE_T_SKIP_BUILD=1). Using existing artifacts.")
+        else:
+            print("ACE_T_SKIP_BUILD=1 set but no cached graph artifacts found; running full build now.")
+            skip_build = False
+
     else:
         try:
             py = _python_executable()
@@ -108,7 +123,6 @@ def main():
 
     # Print summary from latest render graph
     try:
-        render_path = BASE_DIR / 'graph_3d_render.json'
         if render_path.exists():
             import json
             payload = json.loads(render_path.read_text())
@@ -119,7 +133,6 @@ def main():
         pass
 
     # Start streaming graph build only if explicitly enabled
-    streaming_enabled = os.getenv('ACE_T_ENABLE_STREAMING', '').strip().lower() in {'1', 'true', 'yes'}
     build_process = None
     if streaming_enabled:
         build_process = start_streaming_build()
