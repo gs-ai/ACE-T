@@ -580,7 +580,10 @@
                 laneCount: 3,
                 laneSpacing: 220,
                 laneJitter: 18,
-                laneSpin: [1, -1, 1]
+                laneSpin: [1, -1, 1],
+                ringRadius: 210,
+                ringVariance: 44,
+                ringNoise: 10
             },
             layoutSafety: {
                 enabled: true,
@@ -1502,6 +1505,7 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                 // Assign Z-planes based on data attributes, but preserve exported z if present
                 this.nodes.forEach(node => {
                     const preserveLayout = !!(node.locked || node.parent_cluster || node.is_cluster);
+                    node._preserveLayoutFlag = preserveLayout;
                     // If exporter provided a z coordinate, keep it
                     if (node.z !== undefined && node.z !== null) {
                         // preserve existing node.z
@@ -1548,18 +1552,38 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                         const bandOffset = bandMap[sourceKey] !== undefined ? bandMap[sourceKey] : ((laneIndex - centerLane) * bandSpacing);
                         let bandNoise = bandJitter * (this.hashScalar(`${node.id}-band`) - 0.5);
                         node.z = node.z + bandOffset + bandNoise;
-
-                        if (this.nodes.length > 10) {
-                            const jitterSeed = this.hashScalar(`${node.id}-jitter`);
-                            const jitterX = (jitterSeed - 0.5) * 52;
-                            const jitterY = (this.hashScalar(`${node.id}-jitter-y`) - 0.5) * 52;
-                            node.x += jitterX;
-                            node.y += jitterY;
-                        }
                     }
+                });
+                // Arrange non-locked nodes into concentric rings centered on one axis.
+                const ringBuckets = Array.from({ length: laneCount }, () => []);
+                this.nodes.forEach(node => {
+                    if (!node || node._preserveLayoutFlag) return;
+                    const sourceKey = this.getSourceKey(node);
+                    const laneIndex = sourceLaneMap[sourceKey] !== undefined ? sourceLaneMap[sourceKey] : centerLane;
+                    ringBuckets[laneIndex].push(node);
+                });
+                const ringRadius = (triAxis.ringRadius !== undefined && triAxis.ringRadius !== null) ? triAxis.ringRadius : 210;
+                const ringVariance = (triAxis.ringVariance !== undefined && triAxis.ringVariance !== null) ? triAxis.ringVariance : 44;
+                const ringNoise = (triAxis.ringNoise !== undefined && triAxis.ringNoise !== null) ? triAxis.ringNoise : 10;
+                ringBuckets.forEach((bucket, laneIndex) => {
+                    if (!bucket.length) return;
+                    bucket.sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
+                    const phase = ((laneIndex - centerLane) * Math.PI) / 7;
+                    const total = bucket.length;
+                    bucket.forEach((node, idx) => {
+                        const angle = ((idx / Math.max(1, total)) * Math.PI * 2) + phase;
+                        const spectrum = this.getSpectrumValue(node);
+                        const radialBand = (spectrum - 0.5) * (2 * ringVariance);
+                        const radialNoise = ringNoise * (this.hashScalar(`${node.id}-ring-r`) - 0.5);
+                        const tangentNoise = ringNoise * (this.hashScalar(`${node.id}-ring-t`) - 0.5);
+                        const radius = Math.max(48, ringRadius + radialBand + radialNoise);
+                        node.x = (Math.cos(angle) * radius) - (Math.sin(angle) * tangentNoise);
+                        node.y = (Math.sin(angle) * radius) + (Math.cos(angle) * tangentNoise);
+                    });
                 });
                 const laneCenters = Array.from({ length: laneCount }, () => ({ x: 0, y: 0, count: 0 }));
                 this.nodes.forEach(node => {
+                    if (!node || node._preserveLayoutFlag) return;
                     const sourceKey = this.getSourceKey(node);
                     const laneIndex = sourceLaneMap[sourceKey] !== undefined ? sourceLaneMap[sourceKey] : centerLane;
                     const lane = laneCenters[laneIndex];
@@ -1567,6 +1591,16 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                     lane.y += node.y;
                     lane.count += 1;
                 });
+                if (laneCenters.every(lane => lane.count === 0)) {
+                    this.nodes.forEach(node => {
+                        const sourceKey = this.getSourceKey(node);
+                        const laneIndex = sourceLaneMap[sourceKey] !== undefined ? sourceLaneMap[sourceKey] : centerLane;
+                        const lane = laneCenters[laneIndex];
+                        lane.x += node.x;
+                        lane.y += node.y;
+                        lane.count += 1;
+                    });
+                }
                 laneCenters.forEach(lane => {
                     if (!lane.count) return;
                     lane.x /= lane.count;
@@ -2855,6 +2889,24 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                 return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
             }
 
+            getSpectrumGradientColor(specValue) {
+                const t = this.clampValue(typeof specValue === 'number' ? specValue : 0.35, 0, 1);
+                const stops = [
+                    new THREE.Color('#2E4DFF'),
+                    new THREE.Color('#00B8FF'),
+                    new THREE.Color('#00ECA8'),
+                    new THREE.Color('#A8FF2A'),
+                    new THREE.Color('#FFB41F'),
+                    new THREE.Color('#FF3B2F')
+                ];
+                const scaled = t * (stops.length - 1);
+                const idx = Math.floor(scaled);
+                const frac = scaled - idx;
+                const a = stops[Math.max(0, Math.min(stops.length - 1, idx))].clone();
+                const b = stops[Math.max(0, Math.min(stops.length - 1, idx + 1))].clone();
+                return a.lerp(b, frac);
+            }
+
             getLaneIndexForNode(node) {
                 const triAxis = CONFIG.triAxis || {};
                 const laneCount = Math.max(3, triAxis.laneCount || 3);
@@ -2871,13 +2923,16 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                 const baseHex = this.resolveNodeColor(node) || CONFIG.nodeColor;
                 const accentHex = this.getAccentColor(node) || baseHex;
                 const base = new THREE.Color(baseHex);
-                base.lerp(new THREE.Color(accentHex), 0.22);
+                const accent = new THREE.Color(accentHex);
+                const spectrumColor = this.getSpectrumGradientColor(this.getSpectrumValue(node));
+                spectrumColor.lerp(base, 0.28);
+                spectrumColor.lerp(accent, 0.2);
                 const laneIdx = this.getLaneIndexForNode(node);
                 const laneHex = this.laneColorMap && this.laneColorMap[laneIdx];
                 if (laneHex) {
-                    base.lerp(new THREE.Color(laneHex), 0.28);
+                    spectrumColor.lerp(new THREE.Color(laneHex), 0.14);
                 }
-                return `#${base.getHexString()}`;
+                return `#${spectrumColor.getHexString()}`;
             }
 
             isRansomwareKey(sourceKey) {
