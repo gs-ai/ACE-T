@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="af4a3946-938f-4a9b-94e6-096c3bb949ed.png" alt="ACE-T Header" style="width:100%; max-width:1200px; border-radius:8px; box-shadow:0 4px 8px rgba(0,0,0,0.1);">
+  <img src="af4a3946-938f-4a9b-94e6-096c3bb949ed.png" alt="SPECTRUM ACE-T Header" style="width:100%; max-width:1200px; border-radius:8px; box-shadow:0 4px 8px rgba(0,0,0,0.1);">
 </p>
 
-# ACE-T-SPECTRUM: Advanced Cyber-Enabled Threat Intelligence Platform
+# SPECTRUM ACE-T: Advanced Cyber-Enabled Threat Intelligence Platform
 
 <p align="left">
   <img src="https://img.shields.io/badge/Python-3.11-blue.svg" alt="Python 3.11">
@@ -23,7 +23,7 @@
 
 ## Overview
 
-ACE-T-SPECTRUM is a modular Open-Source Intelligence (OSINT) platform for cyber threat intelligence. It provides real-time monitoring of Reddit subreddits and open threat intelligence feeds, with automated data ingestion, normalization, and graph-based visualization. The system processes alerts and indicators of compromise (IOCs), stores them in a SQLite database, and renders interactive 3D graphs for analysis.
+SPECTRUM ACE-T is a modular Open-Source Intelligence (OSINT) platform for cyber threat intelligence. It provides real-time monitoring of Reddit subreddits and open threat intelligence feeds, with automated data ingestion, normalization, and graph-based visualization. The system processes alerts and indicators of compromise (IOCs), stores them in a SQLite database, and renders interactive 3D graphs for analysis.
 
 Key capabilities include:
 - Automated ingestion from Reddit and threat feeds
@@ -102,7 +102,7 @@ This launches:
 
 ### 3D Graph Visualization
 
-ACE-T-SPECTRUM provides interactive 3D graph visualizations for exploring cyber threat intelligence data. The 3D interface allows for immersive navigation through threat networks, with nodes representing alerts and IOCs, and edges showing relationships.
+SPECTRUM ACE-T provides interactive 3D graph visualizations for exploring cyber threat intelligence data. The 3D interface allows for immersive navigation through threat networks, with nodes representing alerts and IOCs, and edges showing relationships.
 
 **Features:**
 - Real-time graph updates from live data ingestion
