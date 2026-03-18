@@ -91,7 +91,7 @@ def main():
     render_path = BASE_DIR / 'graph_3d_render.json'
     streaming_enabled = os.getenv('ACE_T_ENABLE_STREAMING', '').strip().lower() in {'1', 'true', 'yes'}
     has_cached_graph = graph_path.exists() and render_path.exists()
-    async_initial_build = os.getenv('ACE_T_ASYNC_INITIAL_BUILD', '0').strip().lower() in {'1', 'true', 'yes'}
+    async_initial_build = os.getenv('ACE_T_ASYNC_INITIAL_BUILD', '1').strip().lower() in {'1', 'true', 'yes'}
 
     # Build full graph once before server start unless explicitly skipped.
     # In streaming mode, we can optionally fast-start from cached artifacts.
@@ -100,6 +100,7 @@ def main():
         skip_build = True
         print("Fast streaming start enabled: using cached graph artifacts while background stream refreshes data.")
 
+    initial_build_process = None
     if skip_build:
         if has_cached_graph:
             print("Skipping graph build (ACE_T_SKIP_BUILD=1). Using existing artifacts.")
@@ -107,15 +108,22 @@ def main():
             print("ACE_T_SKIP_BUILD=1 set but no cached graph artifacts found; running full build now.")
             skip_build = False
 
-    else:
+    if not skip_build:
         try:
             py = _python_executable()
-            subprocess.run(
-                [py, 'build_graph.py'],
-                cwd=str(BASE_DIR),  # Run from the graph bundle regardless of launch path
-                check=True
-            )
-            print("Initial full graph build complete.")
+            if async_initial_build:
+                initial_build_process = subprocess.Popen(
+                    [py, 'build_graph.py'],
+                    cwd=str(BASE_DIR),
+                )
+                print("Initial graph build started in background.")
+            else:
+                subprocess.run(
+                    [py, 'build_graph.py'],
+                    cwd=str(BASE_DIR),  # Run from the graph bundle regardless of launch path
+                    check=True
+                )
+                print("Initial full graph build complete.")
         except Exception as e:
             print(f"Initial graph build failed: {e}")
             # Avoid serving stale data if the build failed
@@ -169,6 +177,13 @@ def main():
                     build_process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
                     build_process.kill()
+            if initial_build_process and initial_build_process.poll() is None:
+                print("Stopping initial build process...")
+                initial_build_process.terminate()
+                try:
+                    initial_build_process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    initial_build_process.kill()
             httpd.shutdown()
 
 if __name__ == "__main__":

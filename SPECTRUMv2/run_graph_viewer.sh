@@ -35,6 +35,8 @@ fi
 # In streaming mode, prefer fast startup from cached artifacts unless caller disables it.
 if [[ "$is_streaming" -eq 1 ]]; then
   export ACE_T_ASYNC_INITIAL_BUILD="${ACE_T_ASYNC_INITIAL_BUILD:-1}"
+else
+  export ACE_T_ASYNC_INITIAL_BUILD="${ACE_T_ASYNC_INITIAL_BUILD:-1}"
 fi
 
 # Default to rebuild unless explicitly skipped by caller
@@ -55,7 +57,7 @@ if [[ "$is_streaming" -eq 1 && "${ACE_T_ASYNC_INITIAL_BUILD:-0}" == "1" && "${AC
 fi
 
 # Reset generated artifacts unless explicitly told to reuse cached data
-if [[ "${ACE_T_SKIP_BUILD:-0}" != "1" ]]; then
+if [[ "${ACE_T_SKIP_BUILD:-0}" != "1" && "${ACE_T_ASYNC_INITIAL_BUILD:-0}" != "1" ]]; then
   echo "Building graph artifacts before launch. This can take 1-3 minutes depending on feed sizes..."
   rm -f graph/graph_3d.json graph/graph_3d_render.json || true
 fi
