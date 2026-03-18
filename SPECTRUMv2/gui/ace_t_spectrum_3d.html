@@ -582,6 +582,7 @@
                 laneJitter: 18,
                 laneSpin: [1, -1, 1],
                 ringRadius: 210,
+                ringStep: 86,
                 ringVariance: 18,
                 ringNoise: 3
             },
@@ -1555,65 +1556,38 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                         node.z = node.z + bandOffset + bandNoise;
                     }
                 });
-                // Arrange non-locked nodes into concentric rings centered on one axis.
-                const ringBuckets = Array.from({ length: laneCount }, () => []);
+                // Arrange non-locked nodes into strict concentric rings around one shared axis.
+                const triAxisForRings = CONFIG.triAxis || {};
+                const spinSpacingForRings = Math.max(40, triAxisForRings.laneSpacing || (CONFIG.sourceBands ? CONFIG.sourceBands.spacing : 220));
+                const layerBucketsForRings = new Map();
                 this.nodes.forEach(node => {
                     if (!node || node._preserveLayoutFlag) return;
-                    const sourceKey = this.getSourceKey(node);
-                    const laneIndex = sourceLaneMap[sourceKey] !== undefined ? sourceLaneMap[sourceKey] : centerLane;
-                    ringBuckets[laneIndex].push(node);
+                    const layerKey = Math.round((node.z || 0) / spinSpacingForRings);
+                    if (!layerBucketsForRings.has(layerKey)) layerBucketsForRings.set(layerKey, []);
+                    layerBucketsForRings.get(layerKey).push(node);
                 });
-                const ringRadius = (triAxis.ringRadius !== undefined && triAxis.ringRadius !== null) ? triAxis.ringRadius : 210;
-                const ringVariance = (triAxis.ringVariance !== undefined && triAxis.ringVariance !== null) ? triAxis.ringVariance : 44;
-                const ringNoise = (triAxis.ringNoise !== undefined && triAxis.ringNoise !== null) ? triAxis.ringNoise : 10;
-                ringBuckets.forEach((bucket, laneIndex) => {
+                const orderedRingLayers = Array.from(layerBucketsForRings.keys()).sort((a, b) => a - b);
+                const ringRadius = (triAxisForRings.ringRadius !== undefined && triAxisForRings.ringRadius !== null) ? triAxisForRings.ringRadius : 210;
+                const ringStep = (triAxisForRings.ringStep !== undefined && triAxisForRings.ringStep !== null) ? triAxisForRings.ringStep : 86;
+                const ringNoise = (triAxisForRings.ringNoise !== undefined && triAxisForRings.ringNoise !== null) ? triAxisForRings.ringNoise : 3;
+                const ringVariance = (triAxisForRings.ringVariance !== undefined && triAxisForRings.ringVariance !== null) ? triAxisForRings.ringVariance : 18;
+                orderedRingLayers.forEach((layerKey, layerIdx) => {
+                    const bucket = layerBucketsForRings.get(layerKey) || [];
                     if (!bucket.length) return;
                     bucket.sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
-                    const phase = 0;
                     const total = bucket.length;
+                    const layerRadius = Math.max(42, ringRadius + (layerIdx * ringStep));
                     bucket.forEach((node, idx) => {
-                        const angle = ((idx / Math.max(1, total)) * Math.PI * 2) + phase;
-                        const spectrum = this.getSpectrumValue(node);
-                        const radialBand = (spectrum - 0.5) * (2 * ringVariance);
-                        const radialNoise = ringNoise * (this.hashScalar(`${node.id}-ring-r`) - 0.5);
-                        const tangentNoise = ringNoise * (this.hashScalar(`${node.id}-ring-t`) - 0.5);
-                        const radius = Math.max(48, ringRadius + radialBand + radialNoise);
-                        node.x = (Math.cos(angle) * radius) - (Math.sin(angle) * tangentNoise);
-                        node.y = (Math.sin(angle) * radius) + (Math.cos(angle) * tangentNoise);
+                        const angle = (idx / Math.max(1, total)) * Math.PI * 2;
+                        const spec = this.getSpectrumValue(node);
+                        const radialBand = (spec - 0.5) * Math.min(8, ringVariance * 0.35);
+                        const radialNoise = ringNoise * 0.6 * (this.hashScalar(`${node.id}-ring-r`) - 0.5);
+                        const radius = Math.max(42, layerRadius + radialBand + radialNoise);
+                        node.x = Math.cos(angle) * radius;
+                        node.y = Math.sin(angle) * radius;
+                        node._axisLayer = layerIdx;
+                        node._spinLayer = layerIdx;
                     });
-                });
-                const laneCenters = Array.from({ length: laneCount }, () => ({ x: 0, y: 0, count: 0 }));
-                this.nodes.forEach(node => {
-                    if (!node || node._preserveLayoutFlag) return;
-                    const sourceKey = this.getSourceKey(node);
-                    const laneIndex = sourceLaneMap[sourceKey] !== undefined ? sourceLaneMap[sourceKey] : centerLane;
-                    const lane = laneCenters[laneIndex];
-                    lane.x += node.x;
-                    lane.y += node.y;
-                    lane.count += 1;
-                });
-                if (laneCenters.every(lane => lane.count === 0)) {
-                    this.nodes.forEach(node => {
-                        const sourceKey = this.getSourceKey(node);
-                        const laneIndex = sourceLaneMap[sourceKey] !== undefined ? sourceLaneMap[sourceKey] : centerLane;
-                        const lane = laneCenters[laneIndex];
-                        lane.x += node.x;
-                        lane.y += node.y;
-                        lane.count += 1;
-                    });
-                }
-                laneCenters.forEach(lane => {
-                    if (!lane.count) return;
-                    lane.x /= lane.count;
-                    lane.y /= lane.count;
-                });
-                this.nodes.forEach(node => {
-                    const sourceKey = this.getSourceKey(node);
-                    const laneIndex = sourceLaneMap[sourceKey] !== undefined ? sourceLaneMap[sourceKey] : centerLane;
-                    const lane = laneCenters[laneIndex];
-                    node.x -= lane.x;
-                    node.y -= lane.y;
-                    node._axisLayer = laneIndex;
                 });
 
                 // Recentre nodes so auto-spin stays on a tight central axis
@@ -2961,17 +2935,19 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
             getIntegratedNodeColor(node) {
                 const baseHex = this.resolveNodeColor(node) || CONFIG.nodeColor;
                 const accentHex = this.getAccentColor(node) || baseHex;
-                const base = new THREE.Color(baseHex);
+                const sourceKey = this.getSourceKey(node);
+                const sourceHex = sourceKey ? (this.getSourceColor(sourceKey) || baseHex) : baseHex;
+                const base = new THREE.Color(sourceHex);
                 const accent = new THREE.Color(accentHex);
                 const spectrumColor = this.getSpectrumGradientColor(this.getSpectrumValue(node));
-                spectrumColor.lerp(base, 0.28);
-                spectrumColor.lerp(accent, 0.2);
+                base.lerp(spectrumColor, 0.12);
+                base.lerp(accent, 0.08);
                 const laneIdx = this.getLaneIndexForNode(node);
                 const laneHex = this.laneColorMap && this.laneColorMap[laneIdx];
                 if (laneHex) {
-                    spectrumColor.lerp(new THREE.Color(laneHex), 0.14);
+                    base.lerp(new THREE.Color(laneHex), 0.06);
                 }
-                return `#${spectrumColor.getHexString()}`;
+                return `#${base.getHexString()}`;
             }
 
             isRansomwareKey(sourceKey) {
