@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import csv
 import hashlib
 import json
 import logging
@@ -64,10 +65,33 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         },
     },
     "c2_intel": {
-        "c2intelfeeds_verified": {"enabled": False},
-        "c2intelfeeds_30d": {"enabled": False},
-        "montysecurity_c2": {"enabled": False},
-        "carbon_black_shadowpad": {"enabled": False},
+        "c2intelfeeds_verified": {
+            "enabled": True,
+            "url": "https://raw.githubusercontent.com/drb-ra/C2IntelFeeds/master/feeds/IPC2s.csv",
+            "type": "csv",
+            "indicator_type": "ip",
+            "indicator_column": "ip",
+        },
+        "c2intelfeeds_30d": {
+            "enabled": True,
+            "url": "https://raw.githubusercontent.com/drb-ra/C2IntelFeeds/master/feeds/IPC2s-30day.csv",
+            "type": "csv",
+            "indicator_type": "ip",
+            "indicator_column": "ip",
+        },
+        "montysecurity_c2": {
+            "enabled": True,
+            "url": "https://raw.githubusercontent.com/montysecurity/C2-Tracker/main/data/all.txt",
+            "type": "txt",
+            "indicator_type": "ip",
+        },
+        "carbon_black_shadowpad": {
+            "enabled": True,
+            "url": "https://raw.githubusercontent.com/carbonblack/active_c2_ioc_public/main/shadowpad/shadowpad_202210.tsv",
+            "type": "tsv",
+            "indicator_type": "ip",
+            "indicator_column": "c2_ip",
+        },
     },
     "reputation": {
         "blocklist_de": {
@@ -217,6 +241,23 @@ def _fetch_url(url: str, cache_name: str, headers: Optional[Dict[str, str]] = No
     return None, cache
 
 
+def _fetch_uncached(url: str, headers: Optional[Dict[str, str]] = None, timeout: int = 30) -> Optional[bytes]:
+    request_headers = {
+        "User-Agent": "ACE-T-SPECTRUM/ingest",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+    }
+    if headers:
+        request_headers.update(headers)
+    req = urllib.request.Request(url, headers=request_headers)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.read()
+    except Exception as exc:
+        logger.error("tiered_ingest_uncached_fetch_failed", extra={"url": url, "error": str(exc)})
+        return None
+
+
 def _write_jsonl(path: Path, records: Iterable[Dict[str, Any]], key: str = "id") -> None:
     items = _dedupe_records(records, key)
     items.sort(key=lambda r: str(r.get(key) or ""))
@@ -225,6 +266,35 @@ def _write_jsonl(path: Path, records: Iterable[Dict[str, Any]], key: str = "id")
         for item in items:
             handle.write(json.dumps(item, sort_keys=True, ensure_ascii=False) + "\n")
     tmp.replace(path)
+
+
+def _load_existing_jsonl(path: Path) -> List[Dict[str, Any]]:
+    if not path.exists():
+        return []
+    items: List[Dict[str, Any]] = []
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                text = line.strip()
+                if not text:
+                    continue
+                try:
+                    row = json.loads(text)
+                except Exception:
+                    continue
+                if isinstance(row, dict):
+                    items.append(row)
+    except Exception:
+        return []
+    return items
+
+
+def _load_existing_source_records(path: Path, source: str) -> List[Dict[str, Any]]:
+    wanted = str(source or "").strip().lower()
+    if not wanted:
+        return []
+    rows = _load_existing_jsonl(path)
+    return [r for r in rows if str(r.get("source") or "").strip().lower() == wanted]
 
 
 def _dedupe_records(records: Iterable[Dict[str, Any]], key: str = "id") -> List[Dict[str, Any]]:
@@ -415,6 +485,8 @@ def _ingest_abuse_ch(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
         if body:
             iocs = _run_async(ThreatFeedParser.parse_threatfox(body.decode("utf-8")))
             output.extend(_normalize_ioc(ioc, "threatfox", "infrastructure_intel") for ioc in iocs)
+        else:
+            output.extend(_load_existing_source_records(INFRA_DIR / "infrastructure_intel.jsonl", "threatfox"))
 
     urlhaus_cfg = abuse_cfg.get("urlhaus", {})
     if urlhaus_cfg.get("enabled") and urlhaus_cfg.get("url"):
@@ -422,6 +494,8 @@ def _ingest_abuse_ch(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
         if body:
             iocs = _run_async(ThreatFeedParser.parse_urlhaus(body.decode("utf-8")))
             output.extend(_normalize_ioc(ioc, "urlhaus", "infrastructure_intel") for ioc in iocs)
+        else:
+            output.extend(_load_existing_source_records(INFRA_DIR / "infrastructure_intel.jsonl", "urlhaus"))
 
     feodo_cfg = abuse_cfg.get("feodotracker", {})
     if feodo_cfg.get("enabled") and feodo_cfg.get("url"):
@@ -429,6 +503,8 @@ def _ingest_abuse_ch(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
         if body:
             iocs = _run_async(ThreatFeedParser.parse_feodotracker(body.decode("utf-8")))
             output.extend(_normalize_ioc(ioc, "feodotracker", "infrastructure_intel") for ioc in iocs)
+        else:
+            output.extend(_load_existing_source_records(INFRA_DIR / "infrastructure_intel.jsonl", "feodotracker"))
 
     ja3_cfg = abuse_cfg.get("ja3", {})
     if ja3_cfg.get("enabled") and ja3_cfg.get("url"):
@@ -436,6 +512,8 @@ def _ingest_abuse_ch(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
         if body:
             iocs = _parse_ja3_feed(body.decode("utf-8"), "abuse_ch_ja3")
             output.extend(_normalize_ioc(ioc, "abuse_ch_ja3", "infrastructure_intel") for ioc in iocs)
+        else:
+            output.extend(_load_existing_source_records(INFRA_DIR / "infrastructure_intel.jsonl", "abuse_ch_ja3"))
 
     return output
 
@@ -490,6 +568,60 @@ def _parse_simple_list(data: str, source: str, indicator_type: str) -> List[Dict
     return output
 
 
+def _parse_delimited_feed(
+    data: str,
+    source: str,
+    indicator_type: str,
+    delimiter: str,
+    indicator_column: str = "",
+) -> List[Dict[str, Any]]:
+    lines = [ln for ln in data.splitlines() if ln.strip()]
+    if not lines:
+        return []
+
+    reader = csv.reader(lines, delimiter=delimiter)
+    rows = list(reader)
+    if not rows:
+        return []
+
+    first = [str(c).strip() for c in rows[0]]
+    lower_first = [c.lstrip("#").strip().lower() for c in first]
+    wants_col = str(indicator_column or "").strip().lower()
+    header_like = any(any(ch.isalpha() for ch in c) for c in lower_first)
+    has_header = header_like
+    idx_map = {name: i for i, name in enumerate(lower_first)} if has_header else {}
+    if wants_col and wants_col in idx_map:
+        idx = idx_map[wants_col]
+    else:
+        idx = 0
+
+    now = datetime.now(timezone.utc).isoformat()
+    out: List[Dict[str, Any]] = []
+    for row in rows[1:] if has_header else rows:
+        if not row:
+            continue
+        if idx >= len(row):
+            continue
+        indicator = str(row[idx] or "").strip().strip('"').strip("'")
+        if not indicator or indicator.startswith("#"):
+            continue
+        out.append(
+            {
+                "ioc_hash": _stable_hash([source, indicator_type, indicator]),
+                "indicator": indicator,
+                "ioc_type": indicator_type,
+                "source_feed": source,
+                "first_seen": now,
+                "last_seen": now,
+                "confidence": 60,
+                "severity": "medium",
+                "metadata": {"feed_type": "delimited", "delimiter": delimiter},
+                "tags": [source, indicator_type],
+            }
+        )
+    return out
+
+
 def _ingest_c2_intel(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     output: List[Dict[str, Any]] = []
     c2_cfg = cfg.get("c2_intel", {})
@@ -502,10 +634,34 @@ def _ingest_c2_intel(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
         if not entry.get("enabled") or not url:
             continue
         indicator_type = str(entry.get("indicator_type") or "ip")
+        feed_type = str(entry.get("type") or "txt").strip().lower()
+        indicator_column = str(entry.get("indicator_column") or "").strip()
         body, _ = _fetch_url(str(url), f"c2_{name}")
-        if body:
-            iocs = _parse_simple_list(body.decode("utf-8"), name, indicator_type)
-            output.extend(_normalize_ioc(ioc, name, "infrastructure_intel") for ioc in iocs)
+        if not body:
+            body = _fetch_uncached(str(url), timeout=30)
+        if not body:
+            output.extend(_load_existing_source_records(INFRA_DIR / "infrastructure_intel.jsonl", name))
+            continue
+        text = body.decode("utf-8", errors="replace")
+        if feed_type == "csv":
+            iocs = _parse_delimited_feed(
+                text,
+                name,
+                indicator_type,
+                delimiter=",",
+                indicator_column=indicator_column,
+            )
+        elif feed_type == "tsv":
+            iocs = _parse_delimited_feed(
+                text,
+                name,
+                indicator_type,
+                delimiter="\t",
+                indicator_column=indicator_column,
+            )
+        else:
+            iocs = _parse_simple_list(text, name, indicator_type)
+        output.extend(_normalize_ioc(ioc, name, "infrastructure_intel") for ioc in iocs)
     return output
 
 

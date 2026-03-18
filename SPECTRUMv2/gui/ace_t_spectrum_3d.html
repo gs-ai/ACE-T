@@ -1432,7 +1432,29 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                     if (!key) return;
                     sourceCounts[key] = (sourceCounts[key] || 0) + 1;
                 });
+                const laneOrderForSource = (sourceKey) => {
+                    const key = String(sourceKey || '').toLowerCase();
+                    if (key.includes('ransomware.live')) return 0;
+                    if (key.includes('threatfox')) return 1;
+                    if (key.includes('urlhaus')) return 2;
+                    if (key.includes('feodotracker')) return 3;
+                    if (key.includes('ja3')) return 4;
+                    if (key.includes('c2intelfeeds')) return 5;
+                    if (key.includes('montysecurity')) return 6;
+                    if (key.includes('carbon black') || key.includes('carbon_black')) return 7;
+                    if (key.includes('shadowpad')) return 8;
+                    if (key.includes('blocklist')) return 9;
+                    if (key.includes('ipsum')) return 10;
+                    if (key.includes('alienvault')) return 11;
+                    if (key.includes('proofpoint')) return 12;
+                    if (key.includes('cisa') || key.includes('kev')) return 13;
+                    if (key.includes('cve') || key.includes('nvd')) return 14;
+                    return 50;
+                };
                 const sourceKeys = Object.keys(sourceCounts).sort((a, b) => {
+                    const oa = laneOrderForSource(a);
+                    const ob = laneOrderForSource(b);
+                    if (oa !== ob) return oa - ob;
                     const ca = sourceCounts[a] || 0;
                     const cb = sourceCounts[b] || 0;
                     if (cb !== ca) return cb - ca;
@@ -2837,9 +2859,39 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
             getSourceColor(source) {
                 const key = (source || '').toLowerCase();
                 // Canonical source overrides keep live colors stable and readable.
-                if (key.includes('threatfox')) return CATEGORY_COLORS.ThreatFox || '#39ff14';
-                if (key.includes('urlhaus')) return CATEGORY_COLORS.URLhaus || '#00c8ff';
-                if (key.includes('ransomware.live')) return '#ff3333';
+                const canonical = {
+                    'ransomware.live': '#ff3b30',
+                    'abuse.ch threatfox': CATEGORY_COLORS.ThreatFox || '#39ff14',
+                    'abuse.ch urlhaus': CATEGORY_COLORS.URLhaus || '#00c8ff',
+                    'abuse.ch feodotracker': '#b7ff2d',
+                    'abuse.ch ja3': '#5eead4',
+                    'c2intelfeeds': '#a78bfa',
+                    'montysecurity c2 tracker': '#f59e0b',
+                    'carbon black c2': '#fb7185',
+                    'shadowpad c2': '#f97316',
+                    'blocklist.de': '#22d3ee',
+                    'ipsum': '#60a5fa',
+                    'alienvault': '#8b5cf6',
+                    'proofpoint': '#ef4444',
+                    'cisa kev': '#facc15',
+                    'nvd cve': '#818cf8'
+                };
+                if (canonical[key]) return canonical[key];
+                if (key.includes('threatfox')) return canonical['abuse.ch threatfox'];
+                if (key.includes('urlhaus')) return canonical['abuse.ch urlhaus'];
+                if (key.includes('feodotracker')) return canonical['abuse.ch feodotracker'];
+                if (key.includes('ja3')) return canonical['abuse.ch ja3'];
+                if (key.includes('ransomware.live')) return canonical['ransomware.live'];
+                if (key.includes('c2intelfeeds')) return canonical['c2intelfeeds'];
+                if (key.includes('montysecurity')) return canonical['montysecurity c2 tracker'];
+                if (key.includes('carbon black') || key.includes('carbon_black')) return canonical['carbon black c2'];
+                if (key.includes('shadowpad')) return canonical['shadowpad c2'];
+                if (key.includes('blocklist')) return canonical['blocklist.de'];
+                if (key.includes('ipsum')) return canonical['ipsum'];
+                if (key.includes('alienvault')) return canonical['alienvault'];
+                if (key.includes('proofpoint')) return canonical['proofpoint'];
+                if (key.includes('cisa') || key.includes('kev')) return canonical['cisa kev'];
+                if (key.includes('nvd') || key.includes('cve')) return canonical['nvd cve'];
                 // Prefer server-provided sourceDefs when available
                 if (this.sourceDefs) {
                     if (this.sourceDefs[source]) return this.sourceDefs[source];
@@ -2994,28 +3046,9 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
             getEdgeColor(sourceNode, targetNode) {
                 const aKey = this.getSourceKey(sourceNode);
                 const bKey = this.getSourceKey(targetNode);
-                const aNodeHex = this.resolveNodeColor(sourceNode);
-                const bNodeHex = this.resolveNodeColor(targetNode);
-                const aSourceHex = this.getSourceColor(aKey) || aNodeHex;
-                const bSourceHex = this.getSourceColor(bKey) || bNodeHex;
-                const aIsRansom = this.isRansomwareKey(aKey);
-                const bIsRansom = this.isRansomwareKey(bKey);
-                if (aIsRansom && bIsRansom) {
-                    const aColor = new THREE.Color(aNodeHex);
-                    const bColor = new THREE.Color(bNodeHex);
-                    return aKey === bKey ? aColor.lerp(bColor, 0.5) : aColor.lerp(bColor, 0.4);
-                }
-                if (aIsRansom && !bIsRansom) {
-                    return new THREE.Color(aSourceHex);
-                }
-                if (bIsRansom && !aIsRansom) {
-                    return new THREE.Color(bSourceHex);
-                }
-                const aColor = new THREE.Color(aSourceHex);
-                if (!bKey || aKey === bKey) {
-                    return aColor;
-                }
-                const bColor = new THREE.Color(bSourceHex);
+                const aColor = new THREE.Color(this.getIntegratedNodeColor(sourceNode));
+                if (!bKey || aKey === bKey) return aColor;
+                const bColor = new THREE.Color(this.getIntegratedNodeColor(targetNode));
                 return aColor.lerp(bColor, 0.5);
             }
 
