@@ -675,6 +675,7 @@
                 };
                 this.layoutSafetyState = { lastEdgeCheck: 0 };
                 this.layoutSafetyActiveUntil = 0;
+                this.spinHub = new THREE.Vector3(0, 0, 0);
                 this._glowTemp = new THREE.Object3D();
                 this.materialize = null;
                 this.materializePositions = null;
@@ -1612,17 +1613,37 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                     const lane = laneCenters[laneIndex];
                     node.x -= lane.x;
                     node.y -= lane.y;
+                    node._axisLayer = laneIndex;
                 });
 
                 // Recentre nodes so auto-spin stays on a tight central axis
                 if (this.nodes.length > 0) {
                     let sx = 0, sy = 0, sz = 0;
-                    this.nodes.forEach(n => { sx += n.x; sy += n.y; sz += n.z; });
-                    const cx = sx / this.nodes.length;
-                    const cy = sy / this.nodes.length;
-                    const cz = sz / this.nodes.length;
+                    const centerPool = this.nodes.filter(n => !n._preserveLayoutFlag);
+                    const pool = centerPool.length ? centerPool : this.nodes;
+                    pool.forEach(n => { sx += n.x; sy += n.y; sz += n.z; });
+                    const cx = sx / pool.length;
+                    const cy = sy / pool.length;
+                    const cz = sz / pool.length;
                     this.nodes.forEach(n => { n.x -= cx; n.y -= cy; n.z -= cz; });
                 }
+                this.spinHub.set(0, 0, 0);
+                // Build ordered layer indices so each higher layer alternates direction.
+                const triAxisForSpin = CONFIG.triAxis || {};
+                const spinSpacing = Math.max(40, triAxisForSpin.laneSpacing || (CONFIG.sourceBands ? CONFIG.sourceBands.spacing : 220));
+                const layerBuckets = new Map();
+                this.nodes.forEach(node => {
+                    const key = Math.round((node.z || 0) / spinSpacing);
+                    if (!layerBuckets.has(key)) layerBuckets.set(key, []);
+                    layerBuckets.get(key).push(node);
+                });
+                const orderedLayerKeys = Array.from(layerBuckets.keys()).sort((a, b) => a - b);
+                orderedLayerKeys.forEach((layerKey, idx) => {
+                    const bucket = layerBuckets.get(layerKey) || [];
+                    bucket.forEach(node => {
+                        node._spinLayer = idx;
+                    });
+                });
             }
 
             createVisualization() {
@@ -3088,12 +3109,15 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
 
             getSpinDirection(node) {
                 if (!this.spinSplit) return 1;
+                if (node && typeof node._spinLayer === 'number' && Number.isFinite(node._spinLayer)) {
+                    return (node._spinLayer % 2 === 0) ? 1 : -1;
+                }
                 const z = (node && typeof node.z === 'number') ? node.z : null;
                 if (z !== null) {
                     const triAxis = CONFIG.triAxis || {};
                     const ringSpacing = Math.max(40, triAxis.laneSpacing || (CONFIG.sourceBands ? CONFIG.sourceBands.spacing : 220));
                     const ringIndex = Math.round(z / ringSpacing);
-                    return (Math.abs(ringIndex) % 2 === 0) ? 1 : -1;
+                    return (ringIndex % 2 === 0) ? 1 : -1;
                 }
                 const key = this.getSourceKey(node);
                 if (key && this.sourceSpinDirection && this.sourceSpinDirection[key] !== undefined) {
@@ -3112,6 +3136,7 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
             applyWheelSpin(time) {
                 if (!this.autoSpin) return;
                 const angle = this.spinAngle || 0;
+                const hub = this.spinHub || new THREE.Vector3(0, 0, 0);
                 this.nodeState.forEach(state => {
                     const proxy = state.proxy;
                     if (!proxy) return;
@@ -3120,10 +3145,12 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                     const cos = Math.cos(ang);
                     const sin = Math.sin(ang);
                     const base = state.position;
+                    const relX = base.x - hub.x;
+                    const relY = base.y - hub.y;
                     if (!state.displayPosition) state.displayPosition = new THREE.Vector3();
                     state.displayPosition.set(
-                        base.x * cos - base.y * sin,
-                        base.x * sin + base.y * cos,
+                        hub.x + (relX * cos - relY * sin),
+                        hub.y + (relX * sin + relY * cos),
                         base.z
                     );
                     proxy.position.copy(state.displayPosition);
