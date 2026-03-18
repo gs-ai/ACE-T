@@ -1453,16 +1453,9 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                     return (idx % 2 === 0) ? 1 : -1;
                 });
                 const sourceLaneMap = {};
-                const laneOrder = [];
-                laneOrder.push(centerLane);
-                for (let step = 1; laneOrder.length < laneCount; step++) {
-                    const right = centerLane + step;
-                    const left = centerLane - step;
-                    if (right < laneCount) laneOrder.push(right);
-                    if (left >= 0 && laneOrder.length < laneCount) laneOrder.push(left);
-                }
                 sourceKeys.forEach((key, idx) => {
-                    sourceLaneMap[key] = laneOrder[idx % laneOrder.length];
+                    // Fill layers from inner (0) to outer (N-1) so rotation always starts CW.
+                    sourceLaneMap[key] = idx % laneCount;
                 });
 
                 const bandMap = {};
