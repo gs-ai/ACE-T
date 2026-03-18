@@ -1927,7 +1927,7 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                     line.userData.sourceId = clusterId;
                     line.userData.targetId = externalId;
                     line.userData.weight = edge.weight;
-                    line.userData.baseOpacity = 0.55;
+                    line.userData.baseOpacity = 0.09;
                     if (line.material) {
                         line.material.opacity = line.userData.baseOpacity;
                     }
@@ -2256,15 +2256,15 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
 
                 const edgeColor = this.getEdgeColor(sourceNode, targetNode);
                 const typeStyle = {
-                    SAME_GROUP: { opacity: 0.42, width: 1.6 },
-                    TIME_CLUSTER: { opacity: 0.52, width: 1.9 },
-                    DOMAIN_PATTERN_MATCH: { opacity: 0.7, width: 2.6 },
-                    GROUP_SECTOR_OVERLAP: { opacity: 0.48, width: 1.8 },
-                    GROUP_COUNTRY_OVERLAP: { opacity: 0.4, width: 1.6 },
-                    CROSS_GROUP_SECTOR: { opacity: 0.32, width: 1.4 }
+                    SAME_GROUP: { opacity: 0.08, width: 1.5 },
+                    TIME_CLUSTER: { opacity: 0.11, width: 1.8 },
+                    DOMAIN_PATTERN_MATCH: { opacity: 0.16, width: 2.4 },
+                    GROUP_SECTOR_OVERLAP: { opacity: 0.1, width: 1.7 },
+                    GROUP_COUNTRY_OVERLAP: { opacity: 0.09, width: 1.5 },
+                    CROSS_GROUP_SECTOR: { opacity: 0.07, width: 1.3 }
                 };
-                const style = typeStyle[edge.type] || { opacity: 0.3, width: 1.3 };
-                const edgeOpacity = this.clampValue(style.opacity, 0.16, 0.85);
+                const style = typeStyle[edge.type] || { opacity: 0.08, width: 1.2 };
+                const edgeOpacity = this.clampValue(style.opacity, 0.04, 0.22);
                 const width = this.clampValue(style.width, 1.0, 3.0);
                 const geometry = new LineGeometry();
                 geometry.setPositions(positions);
@@ -2479,8 +2479,26 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                 const selectedId = this.selectedNode && this.selectedNode.id;
                 const neighborIds = new Set();
                 if (selectedId) {
-                    const edges = this.edgeLines.concat(this.proxyEdges || []);
-                    edges.forEach(line => {
+                    const activeTypes = this.getActiveEdgeTypes();
+                    const visibleIds = new Set();
+                    this.nodeMeshes.forEach(proxy => {
+                        if (!proxy || !proxy.userData || !proxy.userData.id) return;
+                        if (!proxy.visible) return;
+                        visibleIds.add(proxy.userData.id);
+                    });
+                    // Use full active graph connectivity so all connected neighbors pulse,
+                    // even when render-edge caps hide some connectors.
+                    (this.edges || []).forEach(edge => {
+                        if (!edge || !edge.source || !edge.target) return;
+                        if (activeTypes && edge.type && !activeTypes.has(edge.type)) return;
+                        if (edge.source === selectedId && (!visibleIds.size || visibleIds.has(edge.target))) {
+                            neighborIds.add(edge.target);
+                        } else if (edge.target === selectedId && (!visibleIds.size || visibleIds.has(edge.source))) {
+                            neighborIds.add(edge.source);
+                        }
+                    });
+                    const renderEdges = this.edgeLines.concat(this.proxyEdges || []);
+                    renderEdges.forEach(line => {
                         if (!line || !line.userData) return;
                         const sId = line.userData.sourceId;
                         const tId = line.userData.targetId;
@@ -3852,13 +3870,19 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                 });
 
                 const edges = this.edgeLines.concat(this.proxyEdges || []);
+                const selectionActive = !!(this.selectedNode && this.selectedNode.id);
                 edges.forEach(line => {
                     if (!line || !line.userData || !line.material) return;
                     const baseOpacity = line.userData.baseOpacity || line.material.opacity || 0.2;
                     if (line.userData.highlighted) {
                         const seed = this.hashScalar(`${line.userData.sourceId}-${line.userData.targetId}`);
                         const pulse = 0.5 + (Math.sin(pulseTime + seed * 6.28) * 0.5);
-                        line.material.opacity = Math.min(0.95, baseOpacity + (0.6 * pulse));
+                        line.material.opacity = Math.min(0.82, baseOpacity + (0.38 * pulse));
+                    } else if (selectionActive) {
+                        const dimOpacity = Math.max(0.02, baseOpacity * 0.38);
+                        if (line.material.opacity !== dimOpacity) {
+                            line.material.opacity = dimOpacity;
+                        }
                     } else if (line.material.opacity !== baseOpacity) {
                         line.material.opacity = baseOpacity;
                     }
