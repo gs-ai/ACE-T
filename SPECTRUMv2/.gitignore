@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Generated graph artifacts
+graph/graph_3d.json
+graph/graph_3d_render.json
+graph/threat_state.json
+graph/last_live_count.txt
+
+# Generated runtime state
+db/osint.db
+outside_data/ransomware_live_cache.json
+
+# Generated ingest outputs (keep directory scaffolding only)
+data/background_knowledge/*
+!data/background_knowledge/.gitkeep
+data/reputation_context/*
+!data/reputation_context/.gitkeep
+data/infrastructure_intel/*
+!data/infrastructure_intel/.gitkeep
+data/ingest_cache/*
+!data/ingest_cache/.gitkeep
+data/primary_incidents/*
+!data/primary_incidents/.gitkeep
+data/quarantine/*
+!data/quarantine/.gitkeep
+data/intel_drops/*
+!data/intel_drops/.gitkeep

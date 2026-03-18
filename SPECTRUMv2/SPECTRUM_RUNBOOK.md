@@ -1,10 +1,13 @@
 # SPECTRUM Viewer Runbook (Replicable Launch)
 
-This runbook captures the exact steps + environment settings required to rebuild and launch the ACE-T SPECTRUM 3D viewer in a repeatable way.
+This runbook captures the exact steps + environment settings required to rebuild and launch the SPECTRUM ACE-T 3D viewer in a repeatable way.
 
 ## One-Command Launch
 
 ```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 bash run_graph_viewer.sh
 ```
 
@@ -16,8 +19,8 @@ Run this from the root of the contained bundle (e.g., `SPECTRUMv2`).
 
 ## Required Environment
 
-- Python environment: `ace-t-env`
-- API key file: `outside_data/ransomware_live_api_key.txt`
+- Python environment with packages from `requirements.txt`
+- API key file: `outside_data/ransomware_live_api_key.txt` (replace placeholder value)
 
 Optional env vars (only if needed):
 - `RANSOMWARE_LIVE_API_KEY` (overrides file)

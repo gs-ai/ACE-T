@@ -11,6 +11,7 @@ from datetime import datetime
 import os
 import subprocess
 import threading
+import sys
 
 app = Flask(__name__)
 
@@ -18,9 +19,10 @@ def process_new_threat():
     """Automatically process new threats: score and rebuild graph"""
     try:
         print("🔄 Processing new threat: scoring...")
+        py_bin = os.environ.get("PYTHON_BIN", "").strip() or sys.executable
         # Run scoring
         result = subprocess.run(
-            ['conda', 'run', '-n', 'nadwOSINTenv', 'python', 'score_live_threats.py'],
+            [py_bin, 'score_live_threats.py'],
             capture_output=True, text=True, cwd=os.getcwd()
         )
         if result.returncode == 0:
@@ -28,11 +30,11 @@ def process_new_threat():
         else:
             print(f"❌ Scoring failed: {result.stderr}")
 
-        if os.environ.get('NADW_STREAMING_GRAPH', '1') != '1':
+        if os.environ.get('ACE_T_STREAMING_GRAPH', '1') != '1':
             print("🔄 Rebuilding graph...")
             # Run graph building
             result = subprocess.run(
-                ['conda', 'run', '-n', 'nadwOSINTenv', 'python', 'viewer/build_graph.py'],
+                [py_bin, 'build_graph.py'],
                 capture_output=True, text=True, cwd=os.getcwd()
             )
             if result.returncode == 0:
@@ -47,7 +49,7 @@ def process_new_threat():
 
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({"status": "healthy", "service": "nadw-live-threat-api"})
+    return jsonify({"status": "healthy", "service": "spectrum-ace-t-live-threat-api"})
 
 @app.route('/threats', methods=['POST'])
 def add_threat():
@@ -114,7 +116,7 @@ def get_threats():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    print(f"🚀 NADW Live Threat API Server starting on port {port}")
+    print(f"🚀 SPECTRUM ACE-T Live Threat API Server starting on port {port}")
     print("Endpoints:")
     print("  GET  /health - Health check")
     print("  POST /threats - Add new threat (JSON)")

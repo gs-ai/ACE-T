@@ -1,15 +1,24 @@
 import json
 import pandas as pd
 import joblib
+import os
 from pathlib import Path
 
 # Load the trained model
-model_path = Path('nadw-osint-scoring/outputs/model/model.joblib')
+model_path = Path(os.getenv("ACE_T_SCORE_MODEL_PATH", "models/model.joblib"))
+if not model_path.exists():
+    print(f"Model file not found: {model_path}")
+    raise SystemExit(0)
 model = joblib.load(model_path)
 
 # Load live threats
 threats = []
-with open('live_threats.jsonl', 'r') as f:
+live_threats_path = Path("live_threats.jsonl")
+if not live_threats_path.exists():
+    print(f"No live threats file found at {live_threats_path}")
+    raise SystemExit(0)
+
+with live_threats_path.open('r', encoding='utf-8') as f:
     for line in f:
         if line.strip():
             threats.append(json.loads(line.strip()))
@@ -25,10 +34,10 @@ for threat in threats:
 
 print(f'Scoring {len(unique_threats)} unique live threats...')
 
-# Map live threats to expected NADW format
+# Map live threats to expected model input format
 mapped_threats = []
 for i, threat in enumerate(unique_threats):
-    # Map to NADW column format
+    # Map to current model column format
     mapped = {
         'No.': i + 1,
         'Time': 1000 + i,  # Dummy timestamp
@@ -59,7 +68,7 @@ try:
         })
 
     # Save live scores
-    live_scores_file = Path('nadw-osint-scoring/outputs/scored/live_scores.jsonl')
+    live_scores_file = Path(os.getenv("ACE_T_SCORE_OUTPUT_PATH", "data/scored/live_scores.jsonl"))
     live_scores_file.parent.mkdir(parents=True, exist_ok=True)
 
     with open(live_scores_file, 'w') as f:

@@ -41,7 +41,7 @@ Successfully integrated Abuse.ch ThreatFox as the first non-ransomware IOC feed 
 ## Usage Commands
 ```bash
 # Build graph once
-cd SPECTRUMv2/GRAPH_COPY && conda activate ace-t-env && python3 build_graph.py
+cd SPECTRUMv2/graph && python3 build_graph.py
 
 # Live polling mode (5-minute intervals)
 ACE_T_LIVE_POLL_INTERVAL=300 python3 build_graph.py --live
@@ -62,5 +62,4 @@ python3 launch_viewer.py
 Ready for integration of additional feeds (following the same pattern: create fetcher, add to load_all_raw_records(), update filtering if needed, test in live mode).
 
 Date: January 30, 2026
-Status: ✅ Complete - ThreatFox fully integrated and operational</content>
-<parameter name="filePath">/Users/mbaosint/Desktop/Projects/ACE-T/ACE-T-SPECTRUM/SPECTRUMv2/THREATFOX_INTEGRATION_SUMMARY.md
+Status: ✅ Complete - ThreatFox fully integrated and operational

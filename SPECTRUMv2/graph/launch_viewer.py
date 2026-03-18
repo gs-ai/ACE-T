@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple HTTP server to serve the NADW Threat Graph viewer with streaming graph updates.
+Simple HTTP server to serve the SPECTRUM ACE-T graph viewer with streaming graph updates.
 """
 import http.server
 import socketserver
@@ -18,6 +18,13 @@ BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
 WEB_DIR = BASE_DIR
 FALLBACK_WEB_DIR = PROJECT_ROOT / 'gui'
+
+
+def _python_executable() -> str:
+    configured = os.getenv("PYTHON_BIN", "").strip()
+    if configured:
+        return configured
+    return sys.executable
 
 def _resolve_static_path(url_path: str) -> Path:
     url_path = urlsplit(url_path).path
@@ -53,11 +60,9 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 def start_streaming_build():
     """Start the streaming graph build process in the background."""
     try:
-        # Start the streaming build process from the current directory
-        # Use conda python explicitly
-        conda_python = '/opt/anaconda3/envs/ace-t-env/bin/python'
+        py = _python_executable()
         process = subprocess.Popen([
-            conda_python, 'build_graph.py', '--streaming'
+            py, 'build_graph.py', '--streaming'
         ], cwd=str(BASE_DIR))  # Run from the graph bundle regardless of launch path
 
         print("Started streaming graph build process...")
@@ -73,9 +78,9 @@ def main():
         print("Skipping graph build (ACE_T_SKIP_BUILD=1). Using existing artifacts.")
     else:
         try:
-            conda_python = '/opt/anaconda3/envs/ace-t-env/bin/python'
+            py = _python_executable()
             subprocess.run(
-                [conda_python, 'build_graph.py'],
+                [py, 'build_graph.py'],
                 cwd=str(BASE_DIR),  # Run from the graph bundle regardless of launch path
                 check=True
             )
@@ -108,7 +113,7 @@ def main():
     class ReusableTCPServer(socketserver.TCPServer):
         allow_reuse_address = True
     with ReusableTCPServer(("", PORT), handler) as httpd:
-        print("🚀 NADW Threat Graph Viewer")
+        print("SPECTRUM ACE-T Graph Viewer")
         print(f"📊 Server running at http://localhost:{PORT}")
         if streaming_enabled:
             print("🔄 Graph building in streaming mode - watch nodes appear in real-time!")

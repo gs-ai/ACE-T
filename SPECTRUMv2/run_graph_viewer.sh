@@ -8,6 +8,7 @@ if ! command -v "$PY_BIN" >/dev/null 2>&1; then
 fi
 
 cd "$ROOT_DIR"
+export PYTHONPATH="$ROOT_DIR:$ROOT_DIR/src:${PYTHONPATH:-}"
 
 # Stop any existing servers on port 8000
 if command -v lsof >/dev/null 2>&1; then

@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-# From repo root:
+# From SPECTRUMv2 root:
 #   bash scripts/run_agents.sh
 #
 # Notes:
@@ -20,4 +20,5 @@ if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
   exit 1
 fi
 
-PYTHONPATH="$ROOT" "$PYTHON_BIN" -m agents.run agents/config.yaml
+export PYTHONPATH="$ROOT:$ROOT/src:${PYTHONPATH:-}"
+"$PYTHON_BIN" -m agents.run agents/config.yaml

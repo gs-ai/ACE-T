@@ -281,6 +281,7 @@ FEED_TIERS = {
 }
 
 EXCLUDE_REDDIT = str(os.environ.get('ACE_T_EXCLUDE_REDDIT', '1')).strip().lower() in {'1', 'true', 'yes'}
+WRITE_FULL_GRAPH = str(os.environ.get('ACE_T_WRITE_FULL_GRAPH', '0')).strip().lower() in {'1', 'true', 'yes'}
 
 try:
     import yaml  # type: ignore
@@ -2417,19 +2418,23 @@ def build_graph():
     edge_nodes = [n for n in nodes if not n.get('is_cluster')]
     edges = create_spectrum_edges(edge_nodes)
 
+    render_edges = _build_render_edges(edges, max_edges_per_node=6)
+    graph_edges = edges if WRITE_FULL_GRAPH else render_edges
     graph_data = {
         'nodes': nodes,
-        'edges': edges,
+        'edges': graph_edges,
         'metadata': {
             'total_threats': len(nodes),
             'processed_records': total_records,
             'threat_incidents': total_threats,
             'generated_at': datetime.now().isoformat() + 'Z',
             'batch_info': f"SPECTRUM graph: {len(nodes)} nodes, {len(edges)} edges from ACE-T, Original SPECTRUM, and Twitter data",
+            'full_edge_count': len(edges),
+            'render_edge_count': len(render_edges),
+            'full_graph_written': WRITE_FULL_GRAPH,
             'clusters': layout_meta.get('clusters', []) if isinstance(layout_meta, dict) else []
         }
     }
-    render_edges = _build_render_edges(edges, max_edges_per_node=6)
     render_graph = {
         'nodes': nodes,
         'edges': render_edges,
@@ -2643,18 +2648,22 @@ def build_graph_streaming(batch_size=1, delay_between_batches=0.5, poll_interval
         # Create deterministic edges according to SPECTRUM directive
         edges = create_spectrum_edges(nodes)
 
+        render_edges = _build_render_edges(edges, max_edges_per_node=6)
+        graph_edges = edges if WRITE_FULL_GRAPH else render_edges
         graph_data = {
             'nodes': nodes,
-            'edges': edges,
+            'edges': graph_edges,
             'metadata': {
                 'total_threats': len(nodes),
                 'processed_records': total_records,
                 'threat_incidents': len(threat_records),
                 'generated_at': datetime.now().isoformat() + 'Z',
-                'batch_info': f"SPECTRUM streaming graph: {len(nodes)} nodes, {len(edges)} edges from ACE-T, Original SPECTRUM, and Twitter data"
+                'batch_info': f"SPECTRUM streaming graph: {len(nodes)} nodes, {len(edges)} edges from ACE-T, Original SPECTRUM, and Twitter data",
+                'full_edge_count': len(edges),
+                'render_edge_count': len(render_edges),
+                'full_graph_written': WRITE_FULL_GRAPH,
             }
         }
-        render_edges = _build_render_edges(edges, max_edges_per_node=6)
         render_graph = {
             'nodes': nodes,
             'edges': render_edges,
