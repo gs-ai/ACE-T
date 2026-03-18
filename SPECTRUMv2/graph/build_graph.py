@@ -1469,6 +1469,12 @@ def _source_color_for(source: str) -> str:
     key = (source or '').lower()
     if not key:
         return '#00E5FF'
+    if 'threatfox' in key:
+        return '#39ff14'
+    if 'urlhaus' in key:
+        return '#00c8ff'
+    if 'ransomware.live' in key:
+        return '#ff3333'
     h = 0
     for ch in key:
         h = ((h << 5) - h) + ord(ch)
@@ -2650,6 +2656,32 @@ def build_graph_streaming(batch_size=1, delay_between_batches=0.5, poll_interval
                     continue
             filtered_nodes.append(node)
         nodes = filtered_nodes
+
+        # Apply canonical source/category colors in streaming mode so the live palette
+        # stays consistent with legend swatches.
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            source_key = _normalize_source_name(node.get('source') or node.get('source_key'))
+            if _is_threatfox_source(source_key):
+                node['source_color'] = '#39ff14'
+                node['node_color'] = node.get('node_color') or '#39ff14'
+                node['glow_color'] = node.get('glow_color') or '#39ff14'
+            elif source_key == 'abuse.ch urlhaus':
+                node['source_color'] = '#00c8ff'
+                node['node_color'] = node.get('node_color') or '#00c8ff'
+                node['glow_color'] = node.get('glow_color') or '#00c8ff'
+            elif source_key == 'ransomware.live':
+                node['source_color'] = node.get('source_color') or '#ff3333'
+            elif not node.get('source_color'):
+                node['source_color'] = _source_color_for(source_key)
+
+            sector_val = node.get('sector') or node.get('victim_category') or node.get('category')
+            category_color = _category_color_for(sector_val)
+            if category_color:
+                node['spectrum_color'] = category_color
+                if not node.get('source_color'):
+                    node['source_color'] = category_color
 
         # Create deterministic edges according to SPECTRUM directive
         edges = create_spectrum_edges(nodes)

@@ -2844,8 +2844,12 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
             }
 
             getSourceColor(source) {
-                // Prefer server-provided sourceDefs when available
                 const key = (source || '').toLowerCase();
+                // Canonical source overrides keep live colors stable and readable.
+                if (key.includes('threatfox')) return CATEGORY_COLORS.ThreatFox || '#39ff14';
+                if (key.includes('urlhaus')) return CATEGORY_COLORS.URLhaus || '#00c8ff';
+                if (key.includes('ransomware.live')) return '#ff3333';
+                // Prefer server-provided sourceDefs when available
                 if (this.sourceDefs) {
                     if (this.sourceDefs[source]) return this.sourceDefs[source];
                     if (this.sourceDefs[key]) return this.sourceDefs[key];
