@@ -470,8 +470,8 @@
                     <div class="time-toggle" id="time-toggle">
                         <button class="intel-button small" data-window="all">All</button>
                         <button class="intel-button small" data-window="30d">30 Days</button>
-                        <button class="intel-button small active" data-window="7d">7 Days</button>
-                        <button class="intel-button small" data-window="24h">24 Hours</button>
+                        <button class="intel-button small" data-window="7d">7 Days</button>
+                        <button class="intel-button small active" data-window="24h">24 Hours</button>
                     </div>
                 </div>
                 <div class="control-group">
@@ -582,8 +582,8 @@
                 laneJitter: 18,
                 laneSpin: [1, -1, 1],
                 ringRadius: 210,
-                ringVariance: 44,
-                ringNoise: 10
+                ringVariance: 18,
+                ringNoise: 3
             },
             layoutSafety: {
                 enabled: true,
@@ -643,7 +643,7 @@
                 this.suppressClick = false;
                 this.autoSpinBeforeDrag = null;
                 this.searchQuery = '';
-                this.timeWindow = '7d';
+                this.timeWindow = '24h';
                 this.sourceDefs = null;
                 this.activeSources = null;
                 this.activeCategories = null;
@@ -1550,7 +1550,7 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                         const sourceKey = this.getSourceKey(node);
                         const laneIndex = sourceLaneMap[sourceKey] !== undefined ? sourceLaneMap[sourceKey] : centerLane;
                         const bandOffset = bandMap[sourceKey] !== undefined ? bandMap[sourceKey] : ((laneIndex - centerLane) * bandSpacing);
-                        let bandNoise = bandJitter * (this.hashScalar(`${node.id}-band`) - 0.5);
+                        let bandNoise = (bandJitter * 0.18) * (this.hashScalar(`${node.id}-band`) - 0.5);
                         node.z = node.z + bandOffset + bandNoise;
                     }
                 });
@@ -1568,7 +1568,7 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                 ringBuckets.forEach((bucket, laneIndex) => {
                     if (!bucket.length) return;
                     bucket.sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
-                    const phase = ((laneIndex - centerLane) * Math.PI) / 7;
+                    const phase = 0;
                     const total = bucket.length;
                     bucket.forEach((node, idx) => {
                         const angle = ((idx / Math.max(1, total)) * Math.PI * 2) + phase;
@@ -3324,6 +3324,10 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                     }
                     const text = String(value).trim();
                     if (!text) return null;
+                    if (/^\d+(\.\d+)?$/.test(text)) {
+                        const n = Number(text);
+                        if (Number.isFinite(n)) return n > 1e12 ? n : n * 1000;
+                    }
                     const parsed = Date.parse(text);
                     return Number.isNaN(parsed) ? null : parsed;
                 };
@@ -3389,6 +3393,7 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                         line.visible = visibleIds.has(sId) && visibleIds.has(tId);
                     });
                 }
+                this.updateStatus(`Window ${windowKey.toUpperCase()}: ${visibleIds.size} visible nodes`);
                 this.updateSelectionHighlight();
             }
 
