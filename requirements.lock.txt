@@ -56,7 +56,7 @@ fastapi==0.126.0
 fastapi-cli @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_fastapi-cli_1758405759/work
 fastjsonschema==2.21.2
 filelock==3.20.3
-Flask==3.1.2
+Flask==3.1.3
 flask-cors==6.0.2
 fonttools @ file:///Users/runner/miniforge3/conda-bld/fonttools_1759187188865/work
 frozenlist==1.8.0
@@ -109,7 +109,7 @@ nbclient==0.10.3
 nbconvert==7.17.0
 nbformat==5.10.4
 nest-asyncio==1.6.0
-nltk==3.9.2
+nltk==3.9.3
 numpy==2.4.0
 opentelemetry-api==1.39.1
 opentelemetry-distro==0.60b1
@@ -122,7 +122,7 @@ opentelemetry-proto==1.39.1
 opentelemetry-sdk==1.39.1
 opentelemetry-semantic-conventions==0.60b1
 opentelemetry-util-http==0.60b1
-orjson==3.11.5
+orjson==3.11.6
 outcome==1.3.0.post0
 packaging==25.0
 pandas==2.3.3
@@ -149,7 +149,7 @@ psutil==7.1.3
 ptyprocess==0.7.0
 pure_eval==0.2.3
 py-spy==0.4.1
-pyasn1==0.6.2
+pyasn1==0.6.3
 pyasn1_modules==0.4.2
 pycparser==2.23
 pydantic==2.12.5
@@ -165,7 +165,7 @@ pyobjc-framework-Quartz==12.0
 pyobjc-framework-Security==12.0
 pyobjc-framework-UniformTypeIdentifiers==12.0
 pyobjc-framework-WebKit==12.0
-pyOpenSSL==25.3.0
+pyOpenSSL==26.0.0
 pyparsing @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pyparsing_1758436411/work
 pyperclip==1.11.0
 PySocks==1.7.1
@@ -251,7 +251,7 @@ weasel==0.4.2
 webencodings==0.5.1
 websocket-client==1.9.0
 websockets @ file:///Users/runner/miniforge3/conda-bld/bld/rattler-build_websockets_1756476451/work/dist
-Werkzeug==3.1.5
+Werkzeug==3.1.6
 wrapt==1.17.3
 wsproto==1.3.2
 yarg==0.1.9
