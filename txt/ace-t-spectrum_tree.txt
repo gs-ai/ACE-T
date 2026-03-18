@@ -1,0 +1,298 @@
+(ace-t-env) mbaosint@MacBook-Air ~/Desktop/Projects/ACE-T/ACE-T-SPECTRUM % tree
+.
+├── __pycache__
+│   ├── ACE-T-SPECTRUM.cpython-314.pyc
+│   ├── cyto_gui.cpython-311.pyc
+│   ├── cyto_gui.cpython-312.pyc
+│   ├── cyto_gui.cpython-314.pyc
+│   └── schema.cpython-311.pyc
+├── ace-t-spectrum_tree.txt
+├── ACE-T-SPECTRUM.py
+├── adapters
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-311.pyc
+│   │   ├── __init__.cpython-314.pyc
+│   │   ├── legacy_adapter.cpython-311.pyc
+│   │   └── legacy_adapter.cpython-314.pyc
+│   └── legacy_adapter.py
+├── agents
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-311.pyc
+│   │   ├── artifacts.cpython-311.pyc
+│   │   ├── base.cpython-311.pyc
+│   │   ├── bus.cpython-311.pyc
+│   │   ├── fetch.cpython-311.pyc
+│   │   ├── llm.cpython-311.pyc
+│   │   ├── run.cpython-311.pyc
+│   │   ├── schemas.cpython-311.pyc
+│   │   └── store.cpython-311.pyc
+│   ├── agents
+│   │   ├── __pycache__
+│   │   │   ├── file_watch.cpython-311.pyc
+│   │   │   ├── graph_writer.cpython-311.pyc
+│   │   │   ├── ioc_extract.cpython-311.pyc
+│   │   │   ├── llm_enrich.cpython-311.pyc
+│   │   │   ├── normalize.cpython-311.pyc
+│   │   │   ├── rss_ingest.cpython-311.pyc
+│   │   │   └── timeline_writer.cpython-311.pyc
+│   │   ├── file_watch.py
+│   │   ├── graph_writer.py
+│   │   ├── ioc_extract.py
+│   │   ├── llm_enrich.py
+│   │   ├── normalize.py
+│   │   ├── rss_ingest.py
+│   │   └── timeline_writer.py
+│   ├── artifacts.py
+│   ├── base.py
+│   ├── bus.py
+│   ├── config.yaml
+│   ├── fetch.py
+│   ├── llm.py
+│   ├── run.py
+│   ├── schemas.py
+│   ├── store.py
+│   └── utils
+│       ├── __pycache__
+│       │   └── text.cpython-311.pyc
+│       └── text.py
+├── agents_framework.txt
+├── assets
+│   └── clientside.js
+├── clean_project
+│   └── data
+│       └── graph_3d.json
+├── core
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-311.pyc
+│   │   ├── __init__.cpython-314.pyc
+│   │   ├── band.cpython-311.pyc
+│   │   ├── models.cpython-311.pyc
+│   │   ├── schema_registry.cpython-311.pyc
+│   │   ├── schema_registry.cpython-314.pyc
+│   │   └── scoring.cpython-311.pyc
+│   ├── band.py
+│   ├── models.py
+│   ├── schema_registry.py
+│   └── scoring.py
+├── data
+│   ├── archive_org_targets.json
+│   ├── artifacts.json
+│   ├── column_widths.json
+│   ├── feeds_seen.json
+│   ├── graph_3d.json
+│   ├── graph_3d.json.bak
+│   ├── graph_data.json
+│   ├── graph_data.json.bak
+│   ├── graph_positions.json
+│   ├── graph_positions.json.bak
+│   ├── group_state.json
+│   ├── ingest_status.json
+│   ├── intel_bundle.json
+│   ├── intel_drops
+│   ├── pipeline_seed.json
+│   ├── pipeline_state.json
+│   ├── quarantine
+│   ├── realtime_feed_seen
+│   │   └── ioc_hashes_seen.json
+│   ├── reddit_seen_posts.json
+│   ├── rentry_seen.json
+│   ├── sources.json
+│   ├── surveillance.json
+│   ├── timeline.json
+│   └── triggers.json
+├── db
+│   ├── __pycache__
+│   │   ├── alert_writer.cpython-311.pyc
+│   │   ├── db_utils.cpython-311.pyc
+│   │   ├── db_utils.cpython-312.pyc
+│   │   └── ioc_writer.cpython-311.pyc
+│   ├── alert_writer.py
+│   ├── db_utils.py
+│   ├── ioc_writer.py
+│   ├── osint.db
+│   └── schema.sql
+├── docs
+│   ├── ace-t-screenshot.png
+│   ├── ACE-T-SPECTRUM-Wiki-Home.md
+│   ├── af4a3946-938f-4a9b-94e6-096c3bb949ed.png
+│   ├── README.md
+│   └── STATUS.md
+├── export
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-311.pyc
+│   │   ├── bundle.cpython-311.pyc
+│   │   ├── graph.cpython-311.pyc
+│   │   └── timeline.cpython-311.pyc
+│   ├── bundle.py
+│   ├── graph.py
+│   └── timeline.py
+├── graph
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-311.pyc
+│   │   └── builder.cpython-311.pyc
+│   └── builder.py
+├── GRAPH_COPY
+│   ├── __pycache__
+│   │   ├── build_graph.cpython-311.pyc
+│   │   └── threat_positioner.cpython-311.pyc
+│   ├── ace_t_spectrum_3d.html
+│   ├── build_graph.py
+│   ├── data
+│   │   └── sources.json
+│   ├── graph_3d_render.json
+│   ├── graph_3d.json
+│   ├── graph.json
+│   ├── index.html
+│   ├── launch_viewer.py
+│   ├── live_threat_api.py
+│   ├── score_live_threats.py
+│   ├── threat_positioner.py
+│   └── three
+│       └── vendor
+│           ├── controls
+│           │   └── OrbitControls.js
+│           ├── three.min.js
+│           └── three.module.js
+├── gui
+│   ├── __pycache__
+│   │   ├── state.cpython-311.pyc
+│   │   └── state.cpython-312.pyc
+│   ├── ace_t_spectrum_3d.html
+│   ├── three
+│   │   └── vendor
+│   │       ├── controls
+│   │       │   └── OrbitControls.js
+│   │       ├── three.min.js
+│   │       └── three.module.js
+│   ├── three_view_3d_v2.html
+│   └── tonez - 12:11:25, 10.38 PM.aif
+├── live-twitter-threat.txt
+├── output
+├── outside_data
+│   ├── ransomware_live_api_key.txt
+│   └── ransomware_live_cache.json
+├── pipeline
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-311.pyc
+│   │   ├── handlers.cpython-311.pyc
+│   │   ├── runner.cpython-311.pyc
+│   │   ├── state.cpython-311.pyc
+│   │   └── validation.cpython-311.pyc
+│   ├── acet_osint_spectrum.pipeline.json
+│   ├── handlers.py
+│   ├── runner.py
+│   ├── state.py
+│   └── validation.py
+├── requirements.lock.txt
+├── requirements.txt
+├── run_graph.out
+├── run_graph.sh
+├── schema.py
+├── schemas
+│   └── acet_intel.schema.json
+├── scripts
+│   └── run_agents.sh
+├── security
+│   └── protobuf_guard.py
+├── snort-ips.txt
+├── spectrum_core
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-311.pyc
+│   │   ├── __init__.cpython-314.pyc
+│   │   ├── core.cpython-311.pyc
+│   │   ├── core.cpython-314.pyc
+│   │   ├── spectrum_math.cpython-311.pyc
+│   │   └── spectrum_math.cpython-314.pyc
+│   ├── core.py
+│   └── spectrum_math.py
+├── spectrum_export
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-311.pyc
+│   │   ├── __init__.cpython-314.pyc
+│   │   ├── build_graph_3d.cpython-311.pyc
+│   │   ├── build_graph_3d.cpython-314.pyc
+│   │   └── validate_spectrum_3d.cpython-314.pyc
+│   ├── build_graph_3d.py
+│   └── validate_spectrum_3d.py
+├── spectrum_graph
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-311.pyc
+│   │   ├── __init__.cpython-314.pyc
+│   │   ├── spectrum_color.cpython-311.pyc
+│   │   ├── spectrum_color.cpython-314.pyc
+│   │   ├── spectrum_physics.cpython-311.pyc
+│   │   ├── spectrum_physics.cpython-314.pyc
+│   │   ├── spectrum_weights.cpython-311.pyc
+│   │   └── spectrum_weights.cpython-314.pyc
+│   ├── spectrum_color.py
+│   ├── spectrum_physics.py
+│   └── spectrum_weights.py
+├── spectrum_utils
+│   └── __init__.py
+├── src
+│   ├── __pycache__
+│   │   ├── data_processing.cpython-311.pyc
+│   │   ├── data_processing.cpython-312.pyc
+│   │   ├── tor_enforcer.cpython-311.pyc
+│   │   ├── visualization.cpython-311.pyc
+│   │   └── visualization.cpython-312.pyc
+│   ├── adapters
+│   │   ├── __init__.py
+│   │   ├── __pycache__
+│   │   │   ├── __init__.cpython-311.pyc
+│   │   │   ├── emit_graph.cpython-311.pyc
+│   │   │   ├── emit_graph.cpython-314.pyc
+│   │   │   ├── feed_adapter.cpython-311.pyc
+│   │   │   └── reddit_adapter.cpython-311.pyc
+│   │   ├── emit_graph.py
+│   │   └── reddit_adapter.py
+│   ├── environment.yml
+│   ├── modules
+│   │   ├── __pycache__
+│   │   │   ├── feed_ingestor.cpython-311.pyc
+│   │   │   ├── ghostbin_module.cpython-311.pyc
+│   │   │   ├── pastebin_module.cpython-311.pyc
+│   │   │   ├── realtime_open_feeds.cpython-311.pyc
+│   │   │   ├── rentry_module.cpython-311.pyc
+│   │   │   └── telegram_module.cpython-311.pyc
+│   │   ├── ghostbin_module.py
+│   │   ├── pastebin_module.py
+│   │   ├── realtime_open_feeds.py
+│   │   ├── rentry_module.py
+│   │   └── telegram_module.py
+│   ├── runners
+│   │   ├── __init__.py
+│   │   ├── __pycache__
+│   │   │   ├── __init__.cpython-311.pyc
+│   │   │   ├── reddit_live_ingest.cpython-311.pyc
+│   │   │   └── subreddit_targets.cpython-311.pyc
+│   │   ├── ingest_scheduler.py
+│   │   ├── reddit_live_ingest.py
+│   │   ├── replay_db_graph.py
+│   │   └── subreddit_targets.py
+│   ├── sources
+│   │   ├── __init__.py
+│   │   ├── __pycache__
+│   │   │   ├── __init__.cpython-311.pyc
+│   │   │   └── source_colors.cpython-311.pyc
+│   │   └── source_colors.py
+│   ├── three
+│   │   ├── __pycache__
+│   │   │   ├── export_3d.cpython-311.pyc
+│   │   │   └── export_3d.cpython-314.pyc
+│   │   └── export_3d.py
+│   └── tor_enforcer.py
+├── stealth
+│   └── __init__.py
+└── test_run.out
+
+64 directories, 231 files

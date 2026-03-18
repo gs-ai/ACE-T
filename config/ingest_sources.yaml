@@ -1,0 +1,61 @@
+ransomware_live:
+  enabled: true
+  api_base: "https://api-pro.ransomware.live/victims/search"
+  query: "law"
+  order: "discovered"
+  min_interval_minutes: 60
+  daily_limit: 200
+
+abuse_ch:
+  threatfox:
+    enabled: true
+    url: "https://threatfox.abuse.ch/export/json/recent/"
+    type: "json"
+  urlhaus:
+    enabled: true
+    url: "https://urlhaus.abuse.ch/downloads/csv_recent/"
+    type: "csv"
+  feodotracker:
+    enabled: true
+    url: "https://feodotracker.abuse.ch/downloads/ipblocklist.csv"
+    type: "csv"
+  ja3:
+    enabled: false
+
+c2_intel:
+  c2intelfeeds_verified:
+    enabled: false
+  c2intelfeeds_30d:
+    enabled: false
+  montysecurity_c2:
+    enabled: false
+  carbon_black_shadowpad:
+    enabled: false
+
+reputation:
+  blocklist_de:
+    enabled: true
+    url: "https://lists.blocklist.de/lists/all.txt"
+    type: "txt"
+    indicator_type: "ip"
+  ipsum:
+    enabled: true
+    base_url: "https://raw.githubusercontent.com/stamparm/ipsum/master/levels"
+    levels: [3, 4, 5, 6, 7, 8]
+    type: "txt"
+    indicator_type: "ip"
+  alienvault:
+    enabled: false
+  proofpoint_compromised:
+    enabled: false
+
+background:
+  cisa_kev:
+    enabled: true
+    url: "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+  nvd_cve:
+    enabled: false
+    url: "https://services.nvd.nist.gov/rest/json/cves/2.0"
+  ecrimelabs_cve:
+    enabled: false
+  tool_fingerprints_dir: "data/tool_fingerprints"

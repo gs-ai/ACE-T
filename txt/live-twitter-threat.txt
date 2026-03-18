@@ -1,0 +1,70 @@
+ API
+TweetFeed.live API (limited to 10k results per search)
+Introduction
+Free API to get IOCs shared by the community at Twitter.
+
+
+Endpoint
+GET https://api.tweetfeed.live/v1/{time}/{filter1}/{filter2} 
+Example 1: IOCs posted today
+https://api.tweetfeed.live/v1/today 
+Example 2: URLs posted today with phishing tag
+https://api.tweetfeed.live/v1/today/phishing/url 
+Example 3: IPs posted in the last 7 days with CobaltStrike tag
+https://api.tweetfeed.live/v1/week/cobaltstrike/ip 
+Example 4: SHA256 hashes posted by  @malwrhunterteam  in the last month
+https://api.tweetfeed.live/v1/month/@malwrhunterteam/sha256 
+
+Details
+Key	Required?	Possible values
+time	Required	Select 1 of these timeframes.
+
+today (Today starting 00:00 UTC)
+week (Last 7 days)
+month (Last 30 days)
+year (Last 365 days)
+filter1	Optional	Can be an specific user, type or tag.
+
+Type (url / domain / ip / sha256 / md5)
+Tag (phishing / ransomware / CobaltStrike ...)
+User (@malwrhunterteam / @1ZRR4H / @MBThreatIntel ...)
+filter2	Optional	Can be an specific user, type or tag.
+
+Type (url / domain / ip / sha256 / md5)
+Tag (phishing / ransomware / CobaltStrike ...)
+User (@malwrhunterteam / @1ZRR4H / @MBThreatIntel ...)
+
+Output example
+[
+	{
+        "date": "2022-05-11 19:39:06",
+        "user": "Unit42_Intel",
+        "type": "ip",
+        "value": "138.124.183.147",
+        "tags": [
+            "#CobaltStrike",
+            "#IcedID"
+        ],
+        "tweet": "https://twitter.com/Unit42_Intel/status/1524474195471745028"
+    },
+    {
+        "date": "2022-05-11 19:43:48",
+        "user": "GootLoaderSites",
+        "type": "url",
+        "value": "https://www.kipperfamily.co.uk/forum.php",
+        "tags": [
+            "#GootLoader"
+        ],
+        "tweet": "https://twitter.com/GootLoaderSites/status/1524475379997675522"
+    },
+    {
+        "date": "2022-05-11 20:00:44",
+        "user": "ecarlesi",
+        "type": "url",
+        "value": "https://tinpan.top/bancocuscatlan/",
+        "tags": [
+            "#phishing"
+        ],
+        "tweet": "https://twitter.com/ecarlesi/status/1524479640584466432"
+    },
+    ...

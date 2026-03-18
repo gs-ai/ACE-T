@@ -1,0 +1,12 @@
+{
+  "sources": [
+    {
+      "name": "abuse.ch threatfox",
+      "color": "#2eda34"
+    },
+    {
+      "name": "ransomware.live",
+      "color": "#ff1a1a"
+    }
+  ]
+}

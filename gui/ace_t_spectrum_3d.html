@@ -111,6 +111,24 @@
             background: #00E5FF;
             color: #000000;
         }
+        .edge-toggles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 10px;
+            max-width: 360px;
+        }
+        .edge-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            color: #00E5FF;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .edge-toggle input {
+            accent-color: #00E5FF;
+        }
 
         /* Panel for node details */
         .intel-panel {
@@ -128,6 +146,39 @@
             backdrop-filter: blur(5px);
             max-height: 400px;
             overflow-y: auto;
+            scrollbar-color: #0a0a0a #000000;
+        }
+
+        .intel-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .intel-panel::-webkit-scrollbar-track {
+            background: #000000;
+        }
+
+        .intel-panel::-webkit-scrollbar-thumb {
+            background: #0a0a0a;
+            border-radius: 6px;
+            border: 1px solid #000000;
+        }
+
+        .legend-list {
+            scrollbar-color: #0a0a0a #000000;
+        }
+
+        .legend-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .legend-list::-webkit-scrollbar-track {
+            background: #000000;
+        }
+
+        .legend-list::-webkit-scrollbar-thumb {
+            background: #0a0a0a;
+            border-radius: 6px;
+            border: 1px solid #000000;
         }
 
         .panel-title {
@@ -345,27 +396,19 @@
             <div class="intel-title">ACE-T Intelligence Graph</div>
             <div class="intel-controls">
                 <div class="control-group">
-                    <label class="control-label">Severity</label>
-                    <select id="severity-filter" class="control-input" title="Filter nodes by severity level">
-                        <option value="all">All</option>
-                        <option value="critical">Critical</option>
-                        <option value="high">High</option>
-                        <option value="medium">Medium</option>
-                        <option value="low">Low</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label class="control-label">Time Window</label>
-                    <select id="time-filter" class="control-input" title="Filter nodes by time window">
-                        <option value="all">All Data</option>
-                        <option value="1d">Last 24h</option>
-                        <option value="7d">Last 7d</option>
-                        <option value="30d">Last 30d</option>
-                    </select>
-                </div>
-                <div class="control-group">
                     <label class="control-label">Search</label>
                     <input type="text" id="search-input" class="control-input" placeholder="Search nodes...">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Edges</label>
+                    <div class="edge-toggles">
+                        <label class="edge-toggle"><input type="checkbox" data-edge="SAME_GROUP" checked>Group</label>
+                        <label class="edge-toggle"><input type="checkbox" data-edge="TIME_CLUSTER">Time</label>
+                        <label class="edge-toggle"><input type="checkbox" data-edge="DOMAIN_PATTERN_MATCH">Domain</label>
+                        <label class="edge-toggle"><input type="checkbox" data-edge="GROUP_SECTOR_OVERLAP">Group+Sector</label>
+                        <label class="edge-toggle"><input type="checkbox" data-edge="GROUP_COUNTRY_OVERLAP">Group+Country</label>
+                        <label class="edge-toggle"><input type="checkbox" data-edge="CROSS_GROUP_SECTOR">Cross-Sector</label>
+                    </div>
                 </div>
                 <button id="fit-button" class="intel-button">Fit View</button>
                 <button id="spin-button" class="intel-button active">Auto Spin</button>
@@ -385,7 +428,7 @@
         </div>
 
         <!-- Legend -->
-        <details class="intel-legend" id="legend">
+        <details class="intel-legend" id="legend" open>
             <summary>
                 Sources
                 <span class="legend-caret">▾</span>
@@ -406,8 +449,8 @@
     </div>
 
     <script type="module">
-        import * as THREE from 'three/vendor/three.module.js';
-        import { OrbitControls } from 'three/vendor/controls/OrbitControls.js';
+        import * as THREE from '/three/vendor/three.module.js';
+        import { OrbitControls } from '/three/vendor/controls/OrbitControls.js';
 
         // Intelligence Graph Configuration
         const CONFIG = {
@@ -442,6 +485,14 @@
                 pulseSpeed: 2.0,
                 rotationSpeed: 0.0028,
                 surveillancePulseMultiplier: 1.5
+            },
+            performance: {
+                maxPixelRatio: 1.5,
+                maxEdgesPerNode: 6
+            },
+            sourceBands: {
+                spacing: 220,
+                jitter: 60
             }
         };
 
@@ -473,6 +524,7 @@
                 this.metaSources = null;
                 this.graphEndpoint = null;
                 this.loadRetryHandle = null;
+                this.activeEdgeTypes = null;
                 this.physics = {
                     enabled: true,
                     springK: 0.0022,
@@ -521,7 +573,7 @@
 
             getGraphEndpointList() {
                 if (this.graphEndpoint) return [this.graphEndpoint];
-                return ['/data/graph_3d.json', '/graph_3d.json'];
+                return ['/graph_3d_render.json', '/graph_3d.json', '/graph.json', '/data/graph_3d.json'];
             }
 
             async fetchGraphPayload() {
@@ -588,6 +640,16 @@
                 return null;
             }
 
+            getActiveEdgeTypes() {
+                if (this.activeEdgeTypes && this.activeEdgeTypes.size > 0) return this.activeEdgeTypes;
+                const toggles = Array.from(document.querySelectorAll('[data-edge]'));
+                const enabled = toggles.filter(t => t.checked).map(t => t.getAttribute('data-edge'));
+                if (!enabled.length) {
+                    return new Set(['SAME_GROUP']);
+                }
+                return new Set(enabled);
+            }
+
             scheduleLoadRetry() {
                 if (this.loadRetryHandle) return;
                 this.loadRetryHandle = setTimeout(() => {
@@ -598,69 +660,12 @@
 
             getSourceKey(node) {
                 if (!node) return '';
+                const sourceKey = (node.source_key || '').trim();
+                if (sourceKey) return sourceKey.toLowerCase();
                 const sub = (node.subsource || '').trim();
-                return (sub || (node.source || '')).trim().toLowerCase();
-            }
-
-            getActiveSeverity() {
-                const el = document.getElementById('severity-filter');
-                const value = (el && el.value ? el.value : 'all');
-                return String(value || 'all').toLowerCase();
-            }
-
-            getActiveTimeWindow() {
-                const el = document.getElementById('time-filter');
-                const value = (el && el.value ? el.value : 'all');
-                return String(value || 'all').toLowerCase();
-            }
-
-            getTimeWindowSeconds(value) {
-                const map = {
-                    '1d': 24 * 60 * 60,
-                    '7d': 7 * 24 * 60 * 60,
-                    '30d': 30 * 24 * 60 * 60
-                };
-                return map[value] || null;
-            }
-
-            coerceTimestamp(value) {
-                if (value === null || value === undefined || value === '') return null;
-                if (typeof value === 'number' && isFinite(value)) {
-                    if (value > 1e12) return value / 1000;
-                    return value;
-                }
-                if (typeof value === 'string') {
-                    const trimmed = value.trim();
-                    if (!trimmed) return null;
-                    const numeric = Number(trimmed);
-                    if (!isNaN(numeric) && /^-?\d+(\.\d+)?$/.test(trimmed)) return this.coerceTimestamp(numeric);
-                    const parsedDate = new Date(trimmed);
-                    if (!isNaN(parsedDate.getTime())) return parsedDate.getTime() / 1000;
-                }
-                return null;
-            }
-
-            getNodeTimestamp(node) {
-                const keys = [
-                    'timestamp', 'detected_at', 'detectedAt', 'created_utc', 'created',
-                    'posted_at', 'post_date', 'published_at', 'published', 'ingested_at',
-                    'last_activity', 'last_seen', 'last_updated', 'updated_at'
-                ];
-                for (const k of keys) {
-                    if (node && node[k] !== undefined && node[k] !== null && node[k] !== '') {
-                        const ts = this.coerceTimestamp(node[k]);
-                        if (ts !== null) return ts;
-                    }
-                }
-                if (node && node.payload && typeof node.payload === 'object') {
-                    for (const k of keys) {
-                        if (node.payload[k] !== undefined && node.payload[k] !== null && node.payload[k] !== '') {
-                            const ts = this.coerceTimestamp(node.payload[k]);
-                            if (ts !== null) return ts;
-                        }
-                    }
-                }
-                return null;
+                if (sub) return sub.toLowerCase();
+                const source = (node.source || '').trim();
+                return source.toLowerCase();
             }
 
             buildSearchText(node) {
@@ -670,12 +675,35 @@
                     node && node.name,
                     node && node.title,
                     node && node.kind,
+                    node && node.severity,
                     node && node.source,
                     node && node.subsource,
+                    node && node.victim_name,
+                    node && node.victim_domain,
+                    node && node.group,
+                    node && node.sector,
+                    node && node.country,
+                    node && node.description,
+                    node && node.source_url,
                     node && node.url,
                     node && node.post_url,
-                    node && node.author_url
+                    node && node.author_url,
+                    node && node.indicator,
+                    node && node.ioc_type
                 ];
+                if (node && Array.isArray(node.tags)) {
+                    parts.push(...node.tags);
+                }
+                if (node && node.payload && typeof node.payload === 'object') {
+                    const payload = node.payload;
+                    const payloadKeys = [
+                        'title', 'name', 'description', 'summary', 'content', 'context',
+                        'victim', 'victim_name', 'group', 'sector', 'country', 'source', 'url', 'post_url'
+                    ];
+                    payloadKeys.forEach((k) => {
+                        if (payload[k]) parts.push(payload[k]);
+                    });
+                }
                 return parts.filter(Boolean).join(' ').toLowerCase();
             }
 
@@ -778,10 +806,10 @@
             createGlassMaterial(stats) {
                 const spec = stats.spectrum;
                 const conf = stats.confidence;
-                const opacity = this.clampValue(0.25 + (conf * 0.6), 0.25, 0.85);
-                const transmission = this.clampValue(0.4 + (spec * 0.5), 0.4, 0.9);
+                const opacity = this.clampValue(0.35 + (conf * 0.55), 0.35, 0.9);
+                const transmission = this.clampValue(0.45 + (spec * 0.5), 0.45, 0.92);
                 const roughness = this.clampValue(1.0 - spec, 0.15, 0.85);
-                const emissiveIntensity = this.clampValue(spec * 0.6, 0.0, 0.8);
+                const emissiveIntensity = this.clampValue(0.35 + (spec * 0.85), 0.35, 1.0);
 
                 const material = new THREE.MeshPhysicalMaterial({
                     color: 0xffffff,
@@ -830,6 +858,27 @@
                 return (Math.abs(hash) % 1000) / 1000;
             }
 
+            sampleNodes(pool, count, excludeId, seed) {
+                if (!Array.isArray(pool) || pool.length <= count) return pool || [];
+                const picked = [];
+                const used = new Set();
+                const total = pool.length;
+                const stride = 97;
+                let cursor = Math.abs(this.hashScalar(seed) * total);
+                while (picked.length < count && used.size < total) {
+                    const idx = Math.floor(cursor % total);
+                    if (!used.has(idx)) {
+                        used.add(idx);
+                        const node = pool[idx];
+                        if (node && node.id !== excludeId) {
+                            picked.push(node);
+                        }
+                    }
+                    cursor += stride;
+                }
+                return picked;
+            }
+
             init() {
                 // Scene setup
                 this.scene = new THREE.Scene();
@@ -851,7 +900,10 @@
                     alpha: false
                 });
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
-                this.renderer.setPixelRatio(window.devicePixelRatio);
+                const pixelRatioCap = CONFIG.performance && CONFIG.performance.maxPixelRatio
+                    ? CONFIG.performance.maxPixelRatio
+                    : window.devicePixelRatio;
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelRatioCap));
                 this.renderer.shadowMap.enabled = true;
                 this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -939,17 +991,14 @@
                     this.resetView();
                 });
 
-                // Filters
-                document.getElementById('severity-filter').addEventListener('change', () => {
-                    this.applyFilters();
-                });
-
-                document.getElementById('time-filter').addEventListener('change', () => {
-                    this.applyFilters();
-                });
-
                 document.getElementById('search-input').addEventListener('input', (e) => {
                     this.searchNodes(e.target.value);
+                });
+                document.querySelectorAll('[data-edge]').forEach(toggle => {
+                    toggle.addEventListener('change', () => {
+                        this.activeEdgeTypes = null;
+                        this.createVisualization();
+                    });
                 });
 
                 // Legend resize handle
@@ -989,6 +1038,11 @@
             }
 
             async loadData() {
+                const overlay = document.getElementById('loading-overlay');
+                const failSafe = setTimeout(() => {
+                    if (overlay) overlay.style.display = 'none';
+                    this.updateStatus('Loading delayed — retrying in background...');
+                }, 20000);
                 try {
                     this.updateStatus('Fetching intelligence data...');
                     const { data, response } = await this.fetchGraphPayload();
@@ -1037,7 +1091,7 @@
                     }
 
                     // Hide loading overlay
-                    document.getElementById('loading-overlay').style.display = 'none';
+                    if (overlay) overlay.style.display = 'none';
 
                     // Start polling for updates if not already
                     if (!this.pollHandle) {
@@ -1051,6 +1105,9 @@
                     console.error('[3D] Failed to load graph data:', error);
                     this.updateStatus('Waiting for intelligence data...');
                     this.scheduleLoadRetry();
+                    if (overlay) overlay.style.display = 'none';
+                } finally {
+                    clearTimeout(failSafe);
                 }
             }
 
@@ -1098,6 +1155,16 @@
 
 
             processData() {
+                const sourceKeys = Array.from(new Set(this.nodes.map(n => this.getSourceKey(n)).filter(Boolean))).sort();
+                const bandSpacing = CONFIG.sourceBands ? CONFIG.sourceBands.spacing : 200;
+                const bandJitter = CONFIG.sourceBands ? CONFIG.sourceBands.jitter : 40;
+                const bandMap = {};
+                sourceKeys.forEach((key, idx) => {
+                    const offset = (idx - (sourceKeys.length - 1) / 2) * bandSpacing;
+                    bandMap[key] = offset;
+                });
+                this.sourceBandMap = bandMap;
+
                 // Assign Z-planes based on data attributes, but preserve exported z if present
                 this.nodes.forEach(node => {
                     // If exporter provided a z coordinate, keep it
@@ -1134,6 +1201,10 @@
                     }
                     const jitter = (Math.abs(hash) % 1000) / 1000;
                     node.z = (node.z * CONFIG.depthBoost) + (CONFIG.depthJitter * (jitter - 0.5));
+                    const sourceKey = this.getSourceKey(node);
+                    const bandOffset = bandMap[sourceKey] || 0;
+                    const bandNoise = bandJitter * (this.hashScalar(`${node.id}-band`) - 0.5);
+                    node.z = node.z + bandOffset + bandNoise;
                 });
 
                 // Recentre nodes so auto-spin stays on a tight central axis
@@ -1243,8 +1314,10 @@
                     const line = this.createEdgeLine(edge);
                     if (line) {
                         // edge visible only if both endpoints' sources are active
-                        const s = this.getSourceKey(this.nodes.find(n => n.id === edge.source));
-                        const t = this.getSourceKey(this.nodes.find(n => n.id === edge.target));
+                        const sNode = this.nodesById[edge.source];
+                        const tNode = this.nodesById[edge.target];
+                        const s = this.getSourceKey(sNode);
+                        const t = this.getSourceKey(tNode);
                         const svis = !active || active.has(s);
                         const tvis = !active || active.has(t);
                         line.visible = svis && tvis;
@@ -1395,22 +1468,19 @@
             }
 
             createEdgeLine(edge) {
-                const sourceNode = this.nodes.find(n => n.id === edge.source);
-                const targetNode = this.nodes.find(n => n.id === edge.target);
+                const sourceNode = this.nodesById[edge.source];
+                const targetNode = this.nodesById[edge.target];
 
                 if (!sourceNode || !targetNode) return null;
 
                 const geometry = new THREE.BufferGeometry();
-                let dispersion = typeof edge.dispersion === 'number' ? edge.dispersion : null;
-                if (dispersion === null) {
-                    dispersion = Math.abs(this.getSpectrumValue(sourceNode) - this.getSpectrumValue(targetNode));
-                }
-                if (dispersion > 0.55 && !edge.synthetic) return null;
+                const rawWeight = typeof edge.weight === 'number' ? edge.weight : 1;
+                const clampedWeight = Math.max(1, Math.min(5, Math.round(rawWeight)));
 
                 let curveOffset = typeof edge.curve_offset === 'number' ? edge.curve_offset : 0;
                 if (!curveOffset) {
                     const seed = (this.hashScalar(edge.id || `${edge.source}-${edge.target}`) - 0.5);
-                    curveOffset = seed * (16 + (dispersion * 24));
+                    curveOffset = seed * 16;
                 }
                 const jitter = curveOffset;
                 const mid = new THREE.Vector3(
@@ -1431,22 +1501,17 @@
                 geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
                 const edgeColor = this.getEdgeColor(sourceNode, targetNode);
-                const coherence = typeof edge.coherence === 'number' ? edge.coherence : this.computeEdgeMetrics(sourceNode, targetNode).coherence;
-                let edgeOpacity = 0.12 + (coherence * 0.12);
-                if (dispersion > 0.35) {
-                    edgeOpacity = 0.08 + (coherence * 0.06);
-                } else if (dispersion <= 0.2) {
-                    edgeOpacity = 0.18 + (coherence * 0.17);
-                }
-                edgeOpacity = this.clampValue(edgeOpacity, 0.08, 0.35);
-                if (edge.synthetic) {
-                    edgeOpacity = Math.min(edgeOpacity, 0.12);
-                }
-
-                let thickness = 0.6 + (coherence * 0.6);
-                if (dispersion > 0.35) thickness *= 0.8;
-                thickness = this.clampValue(thickness, 0.5, 1.2);
-                if (edge.synthetic) thickness = 0.5;
+                const typeStyle = {
+                    SAME_GROUP: { opacity: 0.14, thickness: 0.9 },
+                    TIME_CLUSTER: { opacity: 0.28, thickness: 1.15 },
+                    DOMAIN_PATTERN_MATCH: { opacity: 0.5, thickness: 1.6 },
+                    GROUP_SECTOR_OVERLAP: { opacity: 0.22, thickness: 1.05 },
+                    GROUP_COUNTRY_OVERLAP: { opacity: 0.18, thickness: 0.95 },
+                    CROSS_GROUP_SECTOR: { opacity: 0.12, thickness: 0.75 }
+                };
+                const style = typeStyle[edge.type] || { opacity: 0.2, thickness: 0.9 };
+                const edgeOpacity = this.clampValue(style.opacity, 0.08, 0.6);
+                const thickness = this.clampValue(style.thickness, 0.7, 1.9);
                 const material = new THREE.LineBasicMaterial({
                     color: edgeColor,
                     transparent: true,
@@ -1460,6 +1525,7 @@
                 line.userData = {
                     sourceId: edge.source,
                     targetId: edge.target,
+                    weight: clampedWeight,
                     curveOffset: jitter,
                     curveDir: jitter ? this.hashDirection(edge.id || `${edge.source}-${edge.target}`) : null
                 };
@@ -1603,9 +1669,7 @@
                 this.selectedNode = node;
                 this.updateNodePanel(node);
 
-                // Stop auto-spin when selecting
-                this.autoSpin = false;
-                document.getElementById('spin-button').classList.remove('active');
+                // Keep auto-spin state unchanged on selection
                 this.updateSelectionHighlight();
             }
 
@@ -1647,7 +1711,7 @@
                             <div class="field-value">Click a node to view intelligence details</div>
                         </div>
                     `;
-                    panel.style.display = 'none';
+                    panel.style.display = 'block';
                     return;
                 }
 
@@ -1751,6 +1815,22 @@
                         <div class="field-value label">${(node.label || 'Unknown')}</div>
                     </div>
                     <div class="panel-field">
+                        <div class="field-label">Victim</div>
+                        <div class="field-value">${node.victim_name || 'N/A'}</div>
+                    </div>
+                    <div class="panel-field">
+                        <div class="field-label">Group</div>
+                        <div class="field-value">${node.group || 'N/A'}</div>
+                    </div>
+                    <div class="panel-field">
+                        <div class="field-label">Sector</div>
+                        <div class="field-value">${node.sector || 'N/A'}</div>
+                    </div>
+                    <div class="panel-field">
+                        <div class="field-label">Country</div>
+                        <div class="field-value">${node.country || 'N/A'}</div>
+                    </div>
+                    <div class="panel-field">
                         <div class="field-label">Kind</div>
                         <div class="field-value">${node.kind || 'n/a'}</div>
                     </div>
@@ -1760,7 +1840,15 @@
                     </div>
                     <div class="panel-field">
                         <div class="field-label">Source</div>
-                        <div class="field-value">${node.subsource || node.source || 'Unknown'}</div>
+                        <div class="field-value">${node.source || 'Unknown'}</div>
+                    </div>
+                    <div class="panel-field">
+                        <div class="field-label">Subsource</div>
+                        <div class="field-value">${node.subsource || 'N/A'}</div>
+                    </div>
+                    <div class="panel-field">
+                        <div class="field-label">Description</div>
+                        <div class="field-value">${node.description || 'N/A'}</div>
                     </div>
                     <div class="panel-field">
                         <div class="field-label">Source URL</div>
@@ -1795,14 +1883,48 @@
                 const legendContent = document.getElementById('legend-content');
                 // Use canonical source defs so we include all known sources even with zero counts
                 this.mergeSourceDefsFromNodes();
+                const normalizedDefs = {};
+                Object.keys(this.sourceDefs || {}).forEach(key => {
+                    const norm = String(key || '').trim().toLowerCase();
+                    if (!norm) return;
+                    if (!normalizedDefs[norm]) {
+                        normalizedDefs[norm] = this.sourceDefs[key];
+                    }
+                });
+                this.sourceDefs = normalizedDefs;
                 const known = Object.keys(this.sourceDefs || {});
 
-                // count nodes per source
+                // count nodes per source + color distribution per source
                 const counts = {};
+                const colorStats = {};
                 (this.nodes || []).forEach(n => {
                     const s = this.getSourceKey(n);
+                    if (!s) return;
                     counts[s] = (counts[s] || 0) + 1;
+                    const c = (this.resolveNodeColor(n) || '').toLowerCase();
+                    if (!c) return;
+                    if (!colorStats[s]) colorStats[s] = {};
+                    colorStats[s][c] = (colorStats[s][c] || 0) + 1;
                 });
+
+                const pickLegendSwatch = (source) => {
+                    const stats = colorStats[source];
+                    if (stats) {
+                        const ranked = Object.entries(stats).sort((a, b) => b[1] - a[1]);
+                        if (ranked.length > 1) {
+                            const c1 = ranked[0][0];
+                            const c2 = ranked[1][0];
+                            if (c1 && c2 && c1 !== c2) {
+                                return { fill: `linear-gradient(135deg, ${c1}, ${c2})`, border: c1 };
+                            }
+                        }
+                        if (ranked.length) {
+                            return { fill: ranked[0][0], border: ranked[0][0] };
+                        }
+                    }
+                    const fallback = this.sourceDefs[source] || this.getSourceColor(source) || '#00E5FF';
+                    return { fill: fallback, border: fallback };
+                };
 
                 // Sort by count desc, then name
                 known.sort((a, b) => {
@@ -1813,14 +1935,14 @@
                 });
 
                 legendContent.innerHTML = known.map(source => {
-                    const color = this.sourceDefs[source] || '#00E5FF';
+                    const swatch = pickLegendSwatch(source);
                     const count = counts[source] || 0;
                     const active = this.activeSources && this.activeSources.has(source);
                     const cls = active ? 'legend-item' : 'legend-item inactive';
                     const label = source.toUpperCase();
                     return `
                     <div class="${cls}" data-source="${source}" style="cursor:pointer;">
-                        <div class="legend-color" style="background: ${color}; border-color: ${color};"></div>
+                        <div class="legend-color" style="background: ${swatch.fill}; border-color: ${swatch.border};"></div>
                         <div class="legend-label" title="${label}">${label}</div>
                         <div class="legend-count">(${count})</div>
                     </div>
@@ -1853,8 +1975,8 @@
                     hash |= 0;
                 }
                 const hue = Math.abs(hash) % 360;
-                const sat = 70;
-                const light = 52;
+                const sat = 82;
+                const light = 60;
                 const h = hue / 360;
                 const s = sat / 100;
                 const l = light / 100;
@@ -1927,30 +2049,40 @@
             }
 
             buildRenderEdges(visibleById) {
-                const maxEdges = 8;
+                const maxEdges = (CONFIG.performance && CONFIG.performance.maxEdgesPerNode)
+                    ? CONFIG.performance.maxEdgesPerNode
+                    : 8;
                 const candidates = [];
                 const selected = [];
                 const degree = {};
+                const activeTypes = this.getActiveEdgeTypes();
+                const priorityMap = {
+                    SAME_GROUP: 1,
+                    TIME_CLUSTER: 2,
+                    DOMAIN_PATTERN_MATCH: 3,
+                    GROUP_SECTOR_OVERLAP: 4,
+                    GROUP_COUNTRY_OVERLAP: 5,
+                    CROSS_GROUP_SECTOR: 6
+                };
 
                 this.edges.forEach(edge => {
                     if (!edge || !edge.source || !edge.target) return;
+                    if (activeTypes && edge.type && !activeTypes.has(edge.type)) return;
                     const sourceNode = this.nodesById[edge.source];
                     const targetNode = this.nodesById[edge.target];
                     if (!sourceNode || !targetNode) return;
                     if (!visibleById[edge.source] || !visibleById[edge.target]) return;
-                    const metrics = this.computeEdgeMetrics(sourceNode, targetNode);
-                    if (metrics.dispersion > 0.55) return;
-                    candidates.push({
-                        edge,
-                        sourceNode,
-                        targetNode,
-                        dispersion: metrics.dispersion,
-                        coherence: metrics.coherence,
-                        score: metrics.score
-                    });
+                    const priority = priorityMap[edge.type] || 99;
+                    candidates.push({ edge, priority });
                 });
 
-                candidates.sort((a, b) => b.score - a.score);
+                candidates.sort((a, b) => {
+                    if (a.priority !== b.priority) return a.priority - b.priority;
+                    const aKey = `${a.edge.source}-${a.edge.target}-${a.edge.type || ''}`;
+                    const bKey = `${b.edge.source}-${b.edge.target}-${b.edge.type || ''}`;
+                    return aKey.localeCompare(bKey);
+                });
+
                 candidates.forEach(item => {
                     const sId = item.edge.source;
                     const tId = item.edge.target;
@@ -1959,47 +2091,7 @@
                     if (sCount >= maxEdges || tCount >= maxEdges) return;
                     degree[sId] = sCount + 1;
                     degree[tId] = tCount + 1;
-                    selected.push(Object.assign({}, item.edge, {
-                        dispersion: item.dispersion,
-                        coherence: item.coherence,
-                        edge_strength: item.coherence
-                    }));
-                });
-
-                const visibleNodes = this.nodes.filter(n => n && n.id && visibleById[n.id]);
-                visibleNodes.forEach(node => {
-                    if ((degree[node.id] || 0) > 0) return;
-                    let best = null;
-                    const nSpec = this.getSpectrumValue(node);
-                    visibleNodes.forEach(other => {
-                        if (!other || other.id === node.id) return;
-                        const disp = Math.abs(nSpec - this.getSpectrumValue(other));
-                        const dist = node && other ? node.x - other.x : 0;
-                        const dy = node && other ? node.y - other.y : 0;
-                        const dz = node && other ? node.z - other.z : 0;
-                        const d3 = Math.sqrt((dist * dist) + (dy * dy) + (dz * dz));
-                        if (!best || disp < best.dispersion || (disp === best.dispersion && d3 < best.distance)) {
-                            best = { other, dispersion: disp, distance: d3 };
-                        }
-                    });
-                    if (!best || !best.other) return;
-                    const other = best.other;
-                    const otherCount = degree[other.id] || 0;
-                    if (otherCount >= maxEdges) {
-                        // allow a minimal tether even when neighbor is saturated to avoid floating nodes
-                    }
-                    const metrics = this.computeEdgeMetrics(node, other);
-                    selected.push({
-                        id: `tether-${node.id}-${other.id}`,
-                        source: node.id,
-                        target: other.id,
-                        synthetic: true,
-                        dispersion: metrics.dispersion,
-                        coherence: metrics.coherence,
-                        edge_strength: Math.min(0.5, metrics.coherence)
-                    });
-                    degree[node.id] = (degree[node.id] || 0) + 1;
-                    degree[other.id] = (degree[other.id] || 0) + 1;
+                    selected.push(Object.assign({}, item.edge));
                 });
 
                 return { edges: selected, degree };
@@ -2041,9 +2133,6 @@
             applyFilters() {
                 // low-level UI filter trigger: mirror into activeSources if needed
                 this.applyLocalFilter();
-                const searchEl = document.getElementById('search-input');
-                const query = searchEl ? searchEl.value : this.searchQuery;
-                this.searchNodes(query || '');
             }
 
             searchNodes(query) {
@@ -2059,29 +2148,21 @@
                     const haystack = this.buildSearchText(data);
                     data.searchHit = terms.every(term => haystack.includes(term));
                 });
+                this.applyLocalFilter();
                 this.updateSelectionHighlight();
             }
 
             applyLocalFilter() {
                 // Apply current activeSources set to node and edge visibility
                 const active = this.getActiveSourceSet();
-                const severity = this.getActiveSeverity();
-                const windowValue = this.getActiveTimeWindow();
-                const windowSeconds = this.getTimeWindowSeconds(windowValue);
-                const cutoff = windowSeconds ? (Date.now() / 1000) - windowSeconds : null;
-                const allowAllSeverity = !severity || severity === 'all';
+                const terms = String(this.searchQuery || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+                const useSearch = terms.length > 0;
                 this.nodeMeshes.forEach(proxy => {
                     const n = proxy.userData || {};
                     const s = this.getSourceKey(n);
-                    const sev = String(n.severity || '').toLowerCase();
-                    const severityOk = allowAllSeverity || (sev && sev === severity);
                     const sourceOk = !active || active.has(s);
-                    let timeOk = true;
-                    if (cutoff !== null) {
-                        const ts = this.getNodeTimestamp(n);
-                        timeOk = ts !== null && ts >= cutoff;
-                    }
-                    proxy.visible = sourceOk && severityOk && timeOk;
+                    const searchOk = !useSearch || !!n.searchHit;
+                    proxy.visible = sourceOk && searchOk;
                     const scale = proxy.visible ? (proxy.baseScale || 1.0) : 0.0001;
                     proxy.scale.setScalar(scale);
                     this.syncInstance(proxy);
@@ -2157,6 +2238,7 @@
                     const restLength = srcState.rest.distanceTo(tgtState.rest);
                     const specDelta = Math.abs((srcState.spectrum || 0.35) - (tgtState.spectrum || 0.35));
                     const convBoost = Math.max(srcState.convergence || 0.0, tgtState.convergence || 0.0);
+                    const w = typeof line.userData.weight === 'number' ? line.userData.weight : 1;
                     this.edgeState.push({
                         line,
                         sourceId: line.userData.sourceId,
@@ -2164,6 +2246,7 @@
                         restLength,
                         specDelta,
                         convBoost,
+                        weight: Math.max(1, Math.min(5, Math.round(w)))
                     });
                 });
             }
@@ -2204,7 +2287,9 @@
                     const stretch = dist - edge.restLength;
                     const similarity = Math.max(0.1, 1.0 - (edge.specDelta || 0));
                     const convBoost = 0.8 + ((edge.convBoost || 0) * 0.6);
-                    const forceMag = stretch * this.physics.springK * (0.65 + (similarity * 0.7)) * convBoost;
+                    const weightNorm = edge.weight ? ((edge.weight - 1) / 4) : 0.0;
+                    const weightBoost = 0.7 + (weightNorm * 0.8);
+                    const forceMag = stretch * this.physics.springK * (0.65 + (similarity * 0.7)) * convBoost * weightBoost;
                     const dir = delta.multiplyScalar(1.0 / dist);
                     const force = dir.multiplyScalar(forceMag);
                     if (forces.has(a.id)) forces.get(a.id).add(force);
@@ -2310,7 +2395,7 @@
             }
 
             showUI() {
-                document.querySelector('.intel-panel').style.display = 'none';
+                document.querySelector('.intel-panel').style.display = 'block';
                 document.querySelector('.intel-legend').style.display = 'block';
                 document.querySelector('.status-indicator').style.display = 'block';
             }

@@ -1,0 +1,1208 @@
+# ============================================================
+# ACE-T-SPECTRUM: Agent Framework (local-first, no paid APIs)
+# Creates:
+#   agents/ (new package)
+#   agents/config.yaml (default config)
+#   agents/run.py (orchestrator)
+#   agents/*.py modules (bus, store, schemas, etc.)
+#   agents/agents/*.py (actual agent implementations)
+#   scripts/run_agents.sh
+# ============================================================
+
+set -euo pipefail
+
+ROOT="$(pwd)"
+echo "[+] Installing agent framework into: $ROOT"
+
+mkdir -p agents/agents agents/utils scripts
+
+# ----------------------------
+# agents/__init__.py
+# ----------------------------
+cat > agents/__init__.py <<'PY'
+__all__ = ["run"]
+PY
+
+# ----------------------------
+# agents/config.yaml
+# ----------------------------
+cat > agents/config.yaml <<'YAML'
+runtime:
+  loop_hz: 2
+  max_inflight_tasks: 200
+  shutdown_grace_seconds: 10
+  log_level: INFO
+
+storage:
+  sqlite_path: db/osint.db
+  artifacts_dir: data
+  quarantine_dir: data/quarantine
+
+bus:
+  max_queue: 5000
+  event_ttl_seconds: 86400
+
+inputs:
+  rss_feeds:
+    - name: "CISA Alerts"
+      url: "https://www.cisa.gov/uscert/ncas/alerts.xml"
+      enabled: true
+    - name: "CISA Current Activity"
+      url: "https://www.cisa.gov/uscert/ncas/current-activity.xml"
+      enabled: true
+    - name: "CERT/CC Vulnerability Notes"
+      url: "https://www.kb.cert.org/vuls/atomfeed"
+      enabled: true
+
+  public_pages:
+    # Add open pages that do not require login
+    # The scraper uses conditional GET + caching + rate limits
+    - name: "Ransomware Live Recent Victims"
+      url: "https://ransomware.live/recent"
+      enabled: false
+
+  local_files:
+    # Watch local drop folders (no network required)
+    - name: "Intel Drops"
+      path: "data/intel_drops"
+      enabled: true
+
+fetch:
+  user_agent: "ACE-T-SPECTRUM/agents (+local-first)"
+  timeout_seconds: 20
+  per_host_rps: 0.5
+  max_bytes: 4000000
+
+ollama:
+  enabled: true
+  binary: "ollama"
+  model: "qwen2.5-coder:7b"
+  max_tokens: 800
+  temperature: 0.2
+
+outputs:
+  write_graph_json: true
+  graph_json_path: "data/graph_3d.json"
+  timeline_json_path: "data/timeline.json"
+  intel_bundle_json_path: "data/intel_bundle.json"
+YAML
+
+# ----------------------------
+# agents/schemas.py
+# ----------------------------
+cat > agents/schemas.py <<'PY'
+from __future__ import annotations
+from dataclasses import dataclass, field, asdict
+from typing import Any, Dict, Optional, List
+import time
+import hashlib
+import json
+
+def _now_utc() -> float:
+    return time.time()
+
+def stable_hash(obj: Any) -> str:
+    raw = json.dumps(obj, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+@dataclass
+class Event:
+    """
+    The atomic unit of work in the agent swarm.
+
+    type:        semantic routing key, e.g. "raw.rss.item", "norm.intel", "ioc.extracted"
+    source:      source label
+    ts_utc:      event timestamp in epoch seconds UTC
+    payload:     structured content
+    event_id:    deterministic hash for dedupe
+    parent_id:   optional lineage pointer
+    tags:        optional tags for filtering/risk lanes
+    """
+    type: str
+    source: str
+    payload: Dict[str, Any]
+    ts_utc: float = field(default_factory=_now_utc)
+    event_id: str = ""
+    parent_id: Optional[str] = None
+    tags: List[str] = field(default_factory=list)
+
+    def finalize(self) -> "Event":
+        if not self.event_id:
+            self.event_id = stable_hash({
+                "type": self.type,
+                "source": self.source,
+                "ts_bucket": int(self.ts_utc // 5),  # 5s bucket for stability
+                "payload": self.payload
+            })
+        return self
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+PY
+
+# ----------------------------
+# agents/bus.py
+# ----------------------------
+cat > agents/bus.py <<'PY'
+from __future__ import annotations
+import asyncio
+from typing import Dict, Callable, Awaitable, List, Optional
+from .schemas import Event
+
+Handler = Callable[[Event], Awaitable[None]]
+
+class EventBus:
+    def __init__(self, max_queue: int = 5000):
+        self.q: asyncio.Queue[Event] = asyncio.Queue(maxsize=max_queue)
+        self.routes: Dict[str, List[Handler]] = {}
+        self._stop = asyncio.Event()
+
+    def subscribe(self, event_type_prefix: str, handler: Handler) -> None:
+        self.routes.setdefault(event_type_prefix, []).append(handler)
+
+    async def publish(self, ev: Event) -> None:
+        await self.q.put(ev)
+
+    def stop(self) -> None:
+        self._stop.set()
+
+    def stopped(self) -> bool:
+        return self._stop.is_set()
+
+    async def run(self, max_inflight: int = 200):
+        inflight = set()
+
+        async def _dispatch(ev: Event):
+            matched = []
+            for prefix, handlers in self.routes.items():
+                if ev.type.startswith(prefix):
+                    matched.extend(handlers)
+            # No handler is acceptable: event may exist for archival or future routes
+            for h in matched:
+                await h(ev)
+
+        while not self._stop.is_set():
+            try:
+                ev = await asyncio.wait_for(self.q.get(), timeout=0.25)
+            except asyncio.TimeoutError:
+                continue
+
+            task = asyncio.create_task(_dispatch(ev))
+            inflight.add(task)
+            task.add_done_callback(lambda t: inflight.discard(t))
+
+            while len(inflight) >= max_inflight:
+                await asyncio.sleep(0.01)
+
+        if inflight:
+            await asyncio.gather(*inflight, return_exceptions=True)
+PY
+
+# ----------------------------
+# agents/store.py
+# ----------------------------
+cat > agents/store.py <<'PY'
+from __future__ import annotations
+import sqlite3
+from typing import Any, Dict, Optional, Iterable, Tuple
+import json
+import time
+
+class Store:
+    """
+    SQLite-backed event store and working memory.
+
+    Uses your existing db/osint.db by default. Creates tables if missing.
+    """
+    def __init__(self, sqlite_path: str):
+        self.sqlite_path = sqlite_path
+        self._init()
+
+    def _conn(self):
+        return sqlite3.connect(self.sqlite_path)
+
+    def _init(self):
+        with self._conn() as c:
+            c.execute("""
+            CREATE TABLE IF NOT EXISTS agent_events (
+                event_id TEXT PRIMARY KEY,
+                ts_utc REAL NOT NULL,
+                type TEXT NOT NULL,
+                source TEXT NOT NULL,
+                parent_id TEXT,
+                tags TEXT,
+                payload_json TEXT NOT NULL
+            );
+            """)
+            c.execute("""
+            CREATE INDEX IF NOT EXISTS idx_agent_events_ts ON agent_events(ts_utc);
+            """)
+            c.execute("""
+            CREATE INDEX IF NOT EXISTS idx_agent_events_type ON agent_events(type);
+            """)
+
+            c.execute("""
+            CREATE TABLE IF NOT EXISTS agent_kv (
+                k TEXT PRIMARY KEY,
+                v_json TEXT NOT NULL,
+                ts_utc REAL NOT NULL
+            );
+            """)
+
+            c.execute("""
+            CREATE TABLE IF NOT EXISTS agent_seen (
+                key TEXT PRIMARY KEY,
+                ts_utc REAL NOT NULL
+            );
+            """)
+
+    def put_event(self, ev: Dict[str, Any]) -> bool:
+        """
+        Insert event; returns False if duplicate (by event_id).
+        """
+        try:
+            with self._conn() as c:
+                c.execute("""
+                    INSERT INTO agent_events(event_id, ts_utc, type, source, parent_id, tags, payload_json)
+                    VALUES(?,?,?,?,?,?,?)
+                """, (
+                    ev["event_id"], ev["ts_utc"], ev["type"], ev["source"], ev.get("parent_id"),
+                    json.dumps(ev.get("tags", []), ensure_ascii=False),
+                    json.dumps(ev["payload"], ensure_ascii=False)
+                ))
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+    def seen(self, key: str) -> bool:
+        with self._conn() as c:
+            row = c.execute("SELECT 1 FROM agent_seen WHERE key=? LIMIT 1", (key,)).fetchone()
+            return row is not None
+
+    def mark_seen(self, key: str) -> None:
+        with self._conn() as c:
+            c.execute("INSERT OR REPLACE INTO agent_seen(key, ts_utc) VALUES(?,?)", (key, time.time()))
+
+    def kv_get(self, k: str) -> Optional[Dict[str, Any]]:
+        with self._conn() as c:
+            row = c.execute("SELECT v_json FROM agent_kv WHERE k=? LIMIT 1", (k,)).fetchone()
+            if not row:
+                return None
+            return json.loads(row[0])
+
+    def kv_set(self, k: str, v: Dict[str, Any]) -> None:
+        with self._conn() as c:
+            c.execute("INSERT OR REPLACE INTO agent_kv(k, v_json, ts_utc) VALUES(?,?,?)",
+                      (k, json.dumps(v, ensure_ascii=False), time.time()))
+PY
+
+# ----------------------------
+# agents/artifacts.py
+# ----------------------------
+cat > agents/artifacts.py <<'PY'
+from __future__ import annotations
+from typing import Any, Dict
+import json
+import os
+import tempfile
+import time
+
+def atomic_write_json(path: str, obj: Any) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=".tmp_", suffix=".json", dir=os.path.dirname(path))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(obj, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, path)
+    finally:
+        try:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        except Exception:
+            pass
+
+def now_iso_utc() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+PY
+
+# ----------------------------
+# agents/fetch.py  (free/public fetcher: caching + conditional GET)
+# ----------------------------
+cat > agents/fetch.py <<'PY'
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Optional, Dict, Tuple
+import hashlib
+import os
+import time
+import urllib.request
+import urllib.error
+
+@dataclass
+class FetchResult:
+    url: str
+    status: int
+    content: bytes = b""
+    etag: Optional[str] = None
+    last_modified: Optional[str] = None
+    from_cache: bool = False
+
+def _hash_url(url: str) -> str:
+    return hashlib.sha256(url.encode("utf-8")).hexdigest()[:24]
+
+class Fetcher:
+    """
+    Minimal dependency fetcher:
+    - polite user agent
+    - per-host RPS externalized by caller (simple)
+    - conditional GET using ETag/Last-Modified cached on disk
+    """
+    def __init__(self, cache_dir: str, user_agent: str, timeout_s: int = 20, max_bytes: int = 4_000_000):
+        self.cache_dir = cache_dir
+        self.user_agent = user_agent
+        self.timeout_s = timeout_s
+        self.max_bytes = max_bytes
+        os.makedirs(cache_dir, exist_ok=True)
+
+    def _meta_path(self, url: str) -> str:
+        return os.path.join(self.cache_dir, f"{_hash_url(url)}.meta")
+
+    def _body_path(self, url: str) -> str:
+        return os.path.join(self.cache_dir, f"{_hash_url(url)}.body")
+
+    def _load_meta(self, url: str) -> Dict[str, str]:
+        p = self._meta_path(url)
+        if not os.path.exists(p):
+            return {}
+        out = {}
+        with open(p, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                if ":" in line:
+                    k, v = line.split(":", 1)
+                    out[k.strip()] = v.strip()
+        return out
+
+    def _save_meta(self, url: str, etag: Optional[str], last_modified: Optional[str]) -> None:
+        p = self._meta_path(url)
+        with open(p, "w", encoding="utf-8") as f:
+            if etag:
+                f.write(f"ETag: {etag}\n")
+            if last_modified:
+                f.write(f"Last-Modified: {last_modified}\n")
+
+    def get(self, url: str) -> FetchResult:
+        meta = self._load_meta(url)
+        headers = {
+            "User-Agent": self.user_agent,
+            "Accept": "*/*",
+        }
+        if meta.get("ETag"):
+            headers["If-None-Match"] = meta["ETag"]
+        if meta.get("Last-Modified"):
+            headers["If-Modified-Since"] = meta["Last-Modified"]
+
+        req = urllib.request.Request(url, headers=headers, method="GET")
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout_s) as resp:
+                status = getattr(resp, "status", 200)
+                data = resp.read(self.max_bytes + 1)
+                if len(data) > self.max_bytes:
+                    data = data[:self.max_bytes]
+                etag = resp.headers.get("ETag")
+                lm = resp.headers.get("Last-Modified")
+                self._save_meta(url, etag, lm)
+                with open(self._body_path(url), "wb") as f:
+                    f.write(data)
+                return FetchResult(url=url, status=status, content=data, etag=etag, last_modified=lm, from_cache=False)
+        except urllib.error.HTTPError as e:
+            if e.code == 304:
+                bp = self._body_path(url)
+                data = b""
+                if os.path.exists(bp):
+                    with open(bp, "rb") as f:
+                        data = f.read(self.max_bytes)
+                return FetchResult(url=url, status=304, content=data, etag=meta.get("ETag"), last_modified=meta.get("Last-Modified"), from_cache=True)
+            return FetchResult(url=url, status=e.code, content=b"")
+        except Exception:
+            return FetchResult(url=url, status=0, content=b"")
+PY
+
+# ----------------------------
+# agents/llm.py  (local ollama adapter, optional)
+# ----------------------------
+cat > agents/llm.py <<'PY'
+from __future__ import annotations
+from typing import Optional
+import subprocess
+import json
+
+class OllamaLLM:
+    def __init__(self, binary: str, model: str, max_tokens: int = 800, temperature: float = 0.2):
+        self.binary = binary
+        self.model = model
+        self.max_tokens = max_tokens
+        self.temperature = temperature
+
+    def generate_json(self, system: str, user: str) -> Optional[dict]:
+        """
+        Calls local 'ollama run <model>' with a constrained JSON-only instruction.
+        Returns parsed JSON dict or None.
+        """
+        prompt = (
+            f"{system}\n\n"
+            "Return ONLY valid JSON. No markdown. No commentary.\n\n"
+            f"{user}"
+        )
+        try:
+            p = subprocess.run(
+                [self.binary, "run", self.model],
+                input=prompt.encode("utf-8"),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=120
+            )
+            out = p.stdout.decode("utf-8", errors="ignore").strip()
+            # attempt to isolate JSON
+            start = out.find("{")
+            end = out.rfind("}")
+            if start >= 0 and end > start:
+                out = out[start:end+1]
+            return json.loads(out)
+        except Exception:
+            return None
+PY
+
+# ----------------------------
+# agents/base.py
+# ----------------------------
+cat > agents/base.py <<'PY'
+from __future__ import annotations
+from typing import Optional, Dict, Any
+import asyncio
+import logging
+from .bus import EventBus
+from .store import Store
+from .schemas import Event
+
+class Agent:
+    """
+    Base class:
+      - start(): async background loops (producers)
+      - handle(): event handlers (consumers)
+    """
+    name = "agent"
+
+    def __init__(self, bus: EventBus, store: Store, cfg: Dict[str, Any], logger: Optional[logging.Logger]=None):
+        self.bus = bus
+        self.store = store
+        self.cfg = cfg
+        self.log = logger or logging.getLogger(self.name)
+
+    async def start(self) -> None:
+        return
+
+    async def handle(self, ev: Event) -> None:
+        return
+
+    async def emit(self, ev: Event) -> None:
+        ev.finalize()
+        inserted = self.store.put_event(ev.to_dict())
+        if inserted:
+            await self.bus.publish(ev)
+        else:
+            # Dedupe: event already exists
+            pass
+
+    async def sleep(self, seconds: float) -> None:
+        await asyncio.sleep(seconds)
+PY
+
+# ----------------------------
+# agents/utils/text.py
+# ----------------------------
+cat > agents/utils/text.py <<'PY'
+from __future__ import annotations
+import re
+from typing import Dict, List
+
+IOC_PATTERNS = {
+    "ipv4": re.compile(r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b"),
+    "domain": re.compile(r"\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,63})\b", re.I),
+    "email": re.compile(r"\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,63}\b", re.I),
+    "sha256": re.compile(r"\b[a-f0-9]{64}\b", re.I),
+    "md5": re.compile(r"\b[a-f0-9]{32}\b", re.I),
+    "url": re.compile(r"\bhttps?://[^\s<>\]]+\b", re.I),
+}
+
+def extract_iocs(text: str) -> Dict[str, List[str]]:
+    out = {}
+    for k, rx in IOC_PATTERNS.items():
+        hits = rx.findall(text or "")
+        if hits:
+            # de-dupe while keeping order
+            seen = set()
+            uniq = []
+            for h in hits:
+                if h not in seen:
+                    seen.add(h)
+                    uniq.append(h)
+            out[k] = uniq
+    return out
+PY
+
+# ----------------------------
+# agents/agents/rss_ingest.py
+# ----------------------------
+cat > agents/agents/rss_ingest.py <<'PY'
+from __future__ import annotations
+import asyncio
+import logging
+import time
+import xml.etree.ElementTree as ET
+from typing import Dict, Any, List
+from ..base import Agent
+from ..schemas import Event
+from ..fetch import Fetcher
+
+class RSSIngestAgent(Agent):
+    name = "rss_ingest"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        cache_dir = ".cache/agents/http"
+        fetch_cfg = self.cfg.get("fetch", {})
+        self.fetcher = Fetcher(
+            cache_dir=cache_dir,
+            user_agent=fetch_cfg.get("user_agent", "ACE-T-SPECTRUM/agents"),
+            timeout_s=int(fetch_cfg.get("timeout_seconds", 20)),
+            max_bytes=int(fetch_cfg.get("max_bytes", 4_000_000)),
+        )
+
+    async def start(self) -> None:
+        feeds = self.cfg.get("inputs", {}).get("rss_feeds", [])
+        loop_hz = float(self.cfg.get("runtime", {}).get("loop_hz", 2))
+        sleep_s = max(1.0, 1.0 / loop_hz)
+
+        while not self.bus.stopped():
+            for f in feeds:
+                if not f.get("enabled", True):
+                    continue
+                await self._poll_feed(f["name"], f["url"])
+                await asyncio.sleep(0.2)
+            await asyncio.sleep(sleep_s)
+
+    async def _poll_feed(self, name: str, url: str) -> None:
+        res = self.fetcher.get(url)
+        if res.status not in (200, 304):
+            return
+        if not res.content:
+            return
+
+        try:
+            root = ET.fromstring(res.content)
+        except Exception:
+            return
+
+        # RSS/Atom tolerant extraction
+        items = []
+        # RSS
+        for item in root.findall(".//item"):
+            title = (item.findtext("title") or "").strip()
+            link = (item.findtext("link") or "").strip()
+            desc = (item.findtext("description") or "").strip()
+            pub = (item.findtext("pubDate") or "").strip()
+            items.append({"title": title, "link": link, "summary": desc, "published": pub})
+
+        # Atom
+        ns = {"a": "http://www.w3.org/2005/Atom"}
+        for entry in root.findall(".//a:entry", ns):
+            title = (entry.findtext("a:title", default="", namespaces=ns) or "").strip()
+            link_el = entry.find("a:link", ns)
+            link = (link_el.get("href") if link_el is not None else "") or ""
+            summary = (entry.findtext("a:summary", default="", namespaces=ns) or "").strip()
+            updated = (entry.findtext("a:updated", default="", namespaces=ns) or "").strip()
+            items.append({"title": title, "link": link, "summary": summary, "published": updated})
+
+        for it in items:
+            key = f"rss:{name}:{it.get('link') or it.get('title')}"
+            if self.store.seen(key):
+                continue
+            self.store.mark_seen(key)
+            ev = Event(
+                type="raw.rss.item",
+                source=name,
+                payload={
+                    "feed": name,
+                    "url": url,
+                    "item": it,
+                    "fetched_status": res.status,
+                    "fetched_from_cache": res.from_cache
+                },
+                tags=["rss","raw"]
+            )
+            await self.emit(ev)
+PY
+
+# ----------------------------
+# agents/agents/file_watch.py
+# ----------------------------
+cat > agents/agents/file_watch.py <<'PY'
+from __future__ import annotations
+import asyncio
+import os
+import time
+from typing import Dict, Any
+from ..base import Agent
+from ..schemas import Event
+
+class FileWatchAgent(Agent):
+    name = "file_watch"
+
+    async def start(self) -> None:
+        inputs = self.cfg.get("inputs", {}).get("local_files", [])
+        loop_hz = float(self.cfg.get("runtime", {}).get("loop_hz", 2))
+        sleep_s = max(1.0, 1.0 / loop_hz)
+
+        while not self.bus.stopped():
+            for spec in inputs:
+                if not spec.get("enabled", True):
+                    continue
+                path = spec.get("path")
+                if not path:
+                    continue
+                os.makedirs(path, exist_ok=True)
+                await self._scan_dir(spec.get("name","local_files"), path)
+            await asyncio.sleep(sleep_s)
+
+    async def _scan_dir(self, name: str, path: str) -> None:
+        try:
+            for fn in os.listdir(path):
+                fp = os.path.join(path, fn)
+                if os.path.isdir(fp):
+                    continue
+                st = os.stat(fp)
+                key = f"file:{fp}:{int(st.st_mtime)}:{st.st_size}"
+                if self.store.seen(key):
+                    continue
+                self.store.mark_seen(key)
+                # read bounded
+                data = b""
+                try:
+                    with open(fp, "rb") as f:
+                        data = f.read(2_000_000)
+                except Exception:
+                    continue
+                ev = Event(
+                    type="raw.file",
+                    source=name,
+                    payload={
+                        "path": fp,
+                        "filename": fn,
+                        "mtime_utc": st.st_mtime,
+                        "size": st.st_size,
+                        "content_b64": None,
+                        "content_text": data.decode("utf-8", errors="ignore")
+                    },
+                    tags=["file","raw"]
+                )
+                await self.emit(ev)
+        except Exception:
+            return
+PY
+
+# ----------------------------
+# agents/agents/normalize.py
+# ----------------------------
+cat > agents/agents/normalize.py <<'PY'
+from __future__ import annotations
+from typing import Dict, Any
+from ..base import Agent
+from ..schemas import Event
+
+class NormalizeAgent(Agent):
+    name = "normalize"
+
+    async def handle(self, ev: Event) -> None:
+        if ev.type == "raw.rss.item":
+            item = ev.payload.get("item", {})
+            norm = {
+                "title": item.get("title",""),
+                "url": item.get("link",""),
+                "summary": item.get("summary",""),
+                "published": item.get("published",""),
+                "source": ev.source,
+                "kind": "rss_item"
+            }
+            out = Event(
+                type="norm.intel",
+                source=ev.source,
+                payload=norm,
+                parent_id=ev.event_id,
+                tags=["norm","intel"]
+            )
+            await self.emit(out)
+
+        elif ev.type == "raw.file":
+            text = ev.payload.get("content_text","")
+            norm = {
+                "title": ev.payload.get("filename",""),
+                "url": f"file://{ev.payload.get('path','')}",
+                "summary": text[:2000],
+                "published": "",
+                "source": ev.source,
+                "kind": "local_file",
+                "path": ev.payload.get("path","")
+            }
+            out = Event(
+                type="norm.intel",
+                source=ev.source,
+                payload=norm,
+                parent_id=ev.event_id,
+                tags=["norm","intel"]
+            )
+            await self.emit(out)
+PY
+
+# ----------------------------
+# agents/agents/ioc_extract.py
+# ----------------------------
+cat > agents/agents/ioc_extract.py <<'PY'
+from __future__ import annotations
+from ..base import Agent
+from ..schemas import Event
+from ..utils.text import extract_iocs
+
+class IOCExtractAgent(Agent):
+    name = "ioc_extract"
+
+    async def handle(self, ev: Event) -> None:
+        if ev.type != "norm.intel":
+            return
+        text = "\n".join([
+            ev.payload.get("title",""),
+            ev.payload.get("summary",""),
+            ev.payload.get("url",""),
+        ])
+        iocs = extract_iocs(text)
+        if not iocs:
+            return
+        out = Event(
+            type="ioc.extracted",
+            source=ev.source,
+            payload={
+                "iocs": iocs,
+                "intel": ev.payload
+            },
+            parent_id=ev.event_id,
+            tags=["ioc"]
+        )
+        await self.emit(out)
+PY
+
+# ----------------------------
+# agents/agents/llm_enrich.py (optional local ollama)
+# ----------------------------
+cat > agents/agents/llm_enrich.py <<'PY'
+from __future__ import annotations
+from typing import Any, Dict
+from ..base import Agent
+from ..schemas import Event
+from ..llm import OllamaLLM
+
+SYSTEM = """You are an intelligence extraction engine.
+You convert raw intel snippets into a strict JSON object with fields:
+- entities: [{type, value}]
+- topics: [string]
+- indicators: {ransomware_group, malware_family, vuln_id, cve_list[]}
+- geo: {countries[], regions[], cities[]}
+- confidence: 0..1
+If unknown, use empty arrays/strings and confidence <= 0.4.
+"""
+
+class LLMEnrichAgent(Agent):
+    name = "llm_enrich"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        ocfg = self.cfg.get("ollama", {})
+        self.enabled = bool(ocfg.get("enabled", False))
+        self.llm = OllamaLLM(
+            binary=ocfg.get("binary", "ollama"),
+            model=ocfg.get("model", "qwen2.5-coder:7b"),
+            max_tokens=int(ocfg.get("max_tokens", 800)),
+            temperature=float(ocfg.get("temperature", 0.2)),
+        )
+
+    async def handle(self, ev: Event) -> None:
+        if not self.enabled:
+            return
+        if ev.type != "norm.intel":
+            return
+
+        user = {
+            "title": ev.payload.get("title",""),
+            "url": ev.payload.get("url",""),
+            "summary": ev.payload.get("summary","")[:3500],
+            "source": ev.payload.get("source","")
+        }
+        prompt = (
+            "Extract entities/topics/indicators/geo from this intel.\n"
+            f"INTEL_JSON:\n{user}\n"
+        )
+        out = self.llm.generate_json(system=SYSTEM, user=prompt)
+        if not out or not isinstance(out, dict):
+            return
+
+        ev2 = Event(
+            type="enrich.llm",
+            source=ev.source,
+            payload={"enrichment": out, "intel": ev.payload},
+            parent_id=ev.event_id,
+            tags=["enrich","llm"]
+        )
+        await self.emit(ev2)
+PY
+
+# ----------------------------
+# agents/agents/graph_writer.py
+# Writes node/edge deltas into intel_bundle.json + optionally merges into graph_3d.json
+# ----------------------------
+cat > agents/agents/graph_writer.py <<'PY'
+from __future__ import annotations
+from typing import Dict, Any, List, Tuple
+import os
+import math
+from ..base import Agent
+from ..schemas import Event
+from ..artifacts import atomic_write_json, now_iso_utc
+
+def _load_json(path: str, default):
+    try:
+        import json
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        return default
+    return default
+
+def _safe_id(s: str) -> str:
+    # stable, filesystem/graph safe id
+    import base64
+    raw = s.encode("utf-8", errors="ignore")
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+class GraphWriterAgent(Agent):
+    name = "graph_writer"
+
+    async def handle(self, ev: Event) -> None:
+        if ev.type not in ("norm.intel", "ioc.extracted", "enrich.llm"):
+            return
+
+        out_cfg = self.cfg.get("outputs", {})
+        artifacts_dir = self.cfg.get("storage", {}).get("artifacts_dir", "data")
+        intel_path = out_cfg.get("intel_bundle_json_path", os.path.join(artifacts_dir, "intel_bundle.json"))
+        graph_path = out_cfg.get("graph_json_path", os.path.join(artifacts_dir, "graph_3d.json"))
+
+        bundle = _load_json(intel_path, default={"timestamp_utc": now_iso_utc(), "items": []})
+        bundle["timestamp_utc"] = now_iso_utc()
+
+        bundle["items"].append({
+            "event_id": ev.event_id,
+            "type": ev.type,
+            "source": ev.source,
+            "ts_utc": ev.ts_utc,
+            "payload": ev.payload,
+            "parent_id": ev.parent_id,
+            "tags": ev.tags,
+        })
+        # keep bounded
+        if len(bundle["items"]) > 5000:
+            bundle["items"] = bundle["items"][-5000:]
+
+        atomic_write_json(intel_path, bundle)
+
+        if not out_cfg.get("write_graph_json", True):
+            return
+
+        # Minimal graph merge strategy:
+        # - Create/refresh nodes for intel items and IOCs
+        # - Create edges intel->ioc, intel->enrichment markers
+        g = _load_json(graph_path, default={"nodes": [], "links": []})
+        nodes = {n.get("id"): n for n in g.get("nodes", []) if n.get("id")}
+        links = {(l.get("source"), l.get("target"), l.get("type","")): l for l in g.get("links", [])}
+
+        def upsert_node(n: Dict[str, Any]):
+            nodes[n["id"]] = {**nodes.get(n["id"], {}), **n}
+
+        def upsert_link(src: str, dst: str, typ: str, meta: Dict[str, Any]):
+            k = (src, dst, typ)
+            links[k] = {**links.get(k, {"source": src, "target": dst, "type": typ}), **meta}
+
+        if ev.type == "norm.intel":
+            intel = ev.payload
+            nid = _safe_id(intel.get("url") or intel.get("title") or ev.event_id)
+            upsert_node({
+                "id": nid,
+                "label": intel.get("title","")[:120],
+                "source": intel.get("source",""),
+                "kind": intel.get("kind","intel"),
+                "url": intel.get("url",""),
+                "first_observed": intel.get("published","") or "",
+                "last_observed": now_iso_utc(),
+            })
+
+        if ev.type == "ioc.extracted":
+            intel = ev.payload.get("intel", {})
+            intel_id = _safe_id(intel.get("url") or intel.get("title") or ev.parent_id or ev.event_id)
+            upsert_node({
+                "id": intel_id,
+                "label": intel.get("title","")[:120],
+                "source": intel.get("source",""),
+                "kind": intel.get("kind","intel"),
+                "url": intel.get("url",""),
+                "last_observed": now_iso_utc(),
+            })
+            iocs = ev.payload.get("iocs", {})
+            for typ, vals in iocs.items():
+                for v in vals:
+                    ioc_id = _safe_id(f"ioc:{typ}:{v}")
+                    upsert_node({
+                        "id": ioc_id,
+                        "label": v[:120],
+                        "source": "IOC",
+                        "kind": f"ioc:{typ}",
+                        "value": v,
+                        "last_observed": now_iso_utc(),
+                    })
+                    upsert_link(intel_id, ioc_id, "intel_has_ioc", {"weight": 1})
+
+        if ev.type == "enrich.llm":
+            intel = ev.payload.get("intel", {})
+            intel_id = _safe_id(intel.get("url") or intel.get("title") or ev.parent_id or ev.event_id)
+            upsert_node({
+                "id": intel_id,
+                "label": intel.get("title","")[:120],
+                "source": intel.get("source",""),
+                "kind": intel.get("kind","intel"),
+                "url": intel.get("url",""),
+                "last_observed": now_iso_utc(),
+            })
+            enrich = ev.payload.get("enrichment", {})
+            ents = enrich.get("entities", []) or []
+            for e in ents:
+                t = (e.get("type") or "entity").strip().lower()
+                v = (e.get("value") or "").strip()
+                if not v:
+                    continue
+                eid = _safe_id(f"ent:{t}:{v}")
+                upsert_node({
+                    "id": eid,
+                    "label": v[:120],
+                    "source": "ENRICH",
+                    "kind": f"entity:{t}",
+                    "value": v,
+                    "last_observed": now_iso_utc(),
+                })
+                upsert_link(intel_id, eid, "intel_mentions", {"weight": 1})
+
+        g["nodes"] = list(nodes.values())
+        g["links"] = list(links.values())
+        atomic_write_json(graph_path, g)
+PY
+
+# ----------------------------
+# agents/agents/timeline_writer.py
+# ----------------------------
+cat > agents/agents/timeline_writer.py <<'PY'
+from __future__ import annotations
+from typing import Dict, Any
+import os
+from ..base import Agent
+from ..schemas import Event
+from ..artifacts import atomic_write_json, now_iso_utc
+
+def _load_json(path: str, default):
+    try:
+        import json
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        return default
+    return default
+
+class TimelineWriterAgent(Agent):
+    name = "timeline_writer"
+
+    async def handle(self, ev: Event) -> None:
+        if ev.type not in ("norm.intel", "ioc.extracted", "enrich.llm"):
+            return
+        out_cfg = self.cfg.get("outputs", {})
+        artifacts_dir = self.cfg.get("storage", {}).get("artifacts_dir", "data")
+        timeline_path = out_cfg.get("timeline_json_path", os.path.join(artifacts_dir, "timeline.json"))
+
+        tl = _load_json(timeline_path, default={"timestamp_utc": now_iso_utc(), "events": []})
+        tl["timestamp_utc"] = now_iso_utc()
+
+        summary = ""
+        if ev.type == "norm.intel":
+            summary = (ev.payload.get("title","") or "")[:200]
+        elif ev.type == "ioc.extracted":
+            summary = "IOC extracted"
+        elif ev.type == "enrich.llm":
+            summary = "LLM enrichment"
+
+        tl["events"].append({
+            "ts_utc": ev.ts_utc,
+            "iso_utc": now_iso_utc(),
+            "type": ev.type,
+            "source": ev.source,
+            "summary": summary,
+            "event_id": ev.event_id,
+            "parent_id": ev.parent_id,
+            "tags": ev.tags
+        })
+        if len(tl["events"]) > 10000:
+            tl["events"] = tl["events"][-10000:]
+
+        atomic_write_json(timeline_path, tl)
+PY
+
+# ----------------------------
+# agents/run.py (orchestrator)
+# ----------------------------
+cat > agents/run.py <<'PY'
+from __future__ import annotations
+import asyncio
+import logging
+import os
+from typing import Dict, Any
+import signal
+
+from .bus import EventBus
+from .store import Store
+
+from .agents.rss_ingest import RSSIngestAgent
+from .agents.file_watch import FileWatchAgent
+from .agents.normalize import NormalizeAgent
+from .agents.ioc_extract import IOCExtractAgent
+from .agents.llm_enrich import LLMEnrichAgent
+from .agents.graph_writer import GraphWriterAgent
+from .agents.timeline_writer import TimelineWriterAgent
+
+def _load_yaml(path: str) -> Dict[str, Any]:
+    try:
+        import yaml
+    except Exception as e:
+        raise RuntimeError("Missing dependency: pyyaml. Install: pip install pyyaml") from e
+    with open(path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+def _setup_logging(level: str):
+    logging.basicConfig(
+        level=getattr(logging, level.upper(), logging.INFO),
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+    )
+
+async def main(config_path: str = "agents/config.yaml"):
+    cfg = _load_yaml(config_path)
+    _setup_logging(cfg.get("runtime", {}).get("log_level", "INFO"))
+
+    bus = EventBus(max_queue=int(cfg.get("bus", {}).get("max_queue", 5000)))
+    store = Store(sqlite_path=cfg.get("storage", {}).get("sqlite_path", "db/osint.db"))
+
+    # Instantiate agents
+    rss = RSSIngestAgent(bus, store, cfg)
+    files = FileWatchAgent(bus, store, cfg)
+    norm = NormalizeAgent(bus, store, cfg)
+    ioc = IOCExtractAgent(bus, store, cfg)
+    llm = LLMEnrichAgent(bus, store, cfg)
+    graph = GraphWriterAgent(bus, store, cfg)
+    timeline = TimelineWriterAgent(bus, store, cfg)
+
+    # Subscribe consumers
+    bus.subscribe("raw.", norm.handle)
+    bus.subscribe("norm.", ioc.handle)
+    bus.subscribe("norm.", llm.handle)
+    bus.subscribe("norm.", graph.handle)
+    bus.subscribe("ioc.", graph.handle)
+    bus.subscribe("enrich.", graph.handle)
+    bus.subscribe("norm.", timeline.handle)
+    bus.subscribe("ioc.", timeline.handle)
+    bus.subscribe("enrich.", timeline.handle)
+
+    # Graceful stop
+    loop = asyncio.get_running_loop()
+    stop_event = asyncio.Event()
+
+    def _stop(*_):
+        bus.stop()
+        stop_event.set()
+
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        try:
+            loop.add_signal_handler(sig, _stop)
+        except NotImplementedError:
+            pass
+
+    # Ensure required dirs
+    os.makedirs(cfg.get("storage", {}).get("artifacts_dir", "data"), exist_ok=True)
+    os.makedirs(cfg.get("storage", {}).get("quarantine_dir", "data/quarantine"), exist_ok=True)
+    os.makedirs("data/intel_drops", exist_ok=True)
+
+    # Start producers + bus
+    producers = [
+        asyncio.create_task(rss.start()),
+        asyncio.create_task(files.start()),
+    ]
+    bus_task = asyncio.create_task(bus.run(max_inflight=int(cfg.get("runtime", {}).get("max_inflight_tasks", 200))))
+
+    await stop_event.wait()
+
+    # shutdown grace
+    grace = int(cfg.get("runtime", {}).get("shutdown_grace_seconds", 10))
+    try:
+        await asyncio.wait_for(asyncio.gather(*producers, return_exceptions=True), timeout=grace)
+    except asyncio.TimeoutError:
+        pass
+    try:
+        await asyncio.wait_for(bus_task, timeout=grace)
+    except asyncio.TimeoutError:
+        pass
+
+if __name__ == "__main__":
+    asyncio.run(main())
+PY
+
+# ----------------------------
+# scripts/run_agents.sh
+# ----------------------------
+cat > scripts/run_agents.sh <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+# From repo root:
+#   bash scripts/run_agents.sh
+#
+# Notes:
+# - Requires pyyaml: pip install pyyaml
+# - Uses local Ollama if enabled in agents/config.yaml
+
+python -m agents.run agents/config.yaml
+SH
+chmod +x scripts/run_agents.sh
+
+# ----------------------------
+# Add dependency note (no forced install)
+# ----------------------------
+if ! python -c "import yaml" >/dev/null 2>&1; then
+  echo "[!] pyyaml missing. Install it inside your env:"
+  echo "    pip install pyyaml"
+fi
+
+echo
+echo "[+] Done."
+echo "[+] Run: bash scripts/run_agents.sh"
+echo "[+] Drop local intel files into: data/intel_drops/"
+echo

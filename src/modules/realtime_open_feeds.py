@@ -540,13 +540,14 @@ class ThreatFeedParser:
         iocs: List[Dict[str, Any]] = []
         try:
             feed_data = json.loads(data)
-            entries = feed_data.get("data", [])
-            if isinstance(entries, dict):
-                entries = list(entries.values())
-            if not isinstance(entries, list):
-                entries = []
+            # ThreatFox returns {id: [ioc_objects], ...}
+            # Flatten all IOC arrays into a single list
+            all_entries = []
+            for ioc_list in feed_data.values():
+                if isinstance(ioc_list, list):
+                    all_entries.extend(ioc_list)
 
-            for entry in entries:
+            for entry in all_entries:
                 if not isinstance(entry, dict):
                     continue
                 ioc_type = entry.get("ioc_type", "").lower()

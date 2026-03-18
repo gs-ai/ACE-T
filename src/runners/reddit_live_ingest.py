@@ -35,6 +35,7 @@ SEEN_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "reddit_see
 # Reddit API configuration
 REDDIT_CONFIG = None
 REDDIT_INSTANCE = None
+REDDIT_DISABLED = str(os.getenv("ACE_T_EXCLUDE_REDDIT", "1")).strip().lower() in {"1", "true", "yes"}
 
 def load_config() -> Dict[str, Any]:
     """Load configuration from YAML file."""
@@ -486,6 +487,8 @@ def ingest_posts(subreddit: str = "Intelligence", limit: int | None = None, sort
     - sort: 'top' or 'new' (default 'top')
     - time_filter: timeframe for 'top' (e.g., 'day','week','month')
     """
+    if REDDIT_DISABLED:
+        return
     cfg_limit = None
     try:
         env_limit = os.getenv("ACE_T_REDDIT_MAX_POSTS") or os.getenv("REDDIT_MAX_POSTS")
@@ -559,6 +562,8 @@ def ingest_posts(subreddit: str = "Intelligence", limit: int | None = None, sort
 
 
 def ingest_comments(subreddit: str = "Intelligence", limit_posts: int = None) -> None:
+    if REDDIT_DISABLED:
+        return
     """Ingest comments for the subreddit. limit_posts controls how many recent posts to fetch comments for.
     If limit_posts is None it reads ACE_T_REDDIT_COMMENT_POSTS or defaults to 10."""
     try:

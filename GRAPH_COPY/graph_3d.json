@@ -1,0 +1,985 @@
+{
+  "nodes": [
+    {
+      "id": "incransom_PK_PINH\u00c3O_&_KOIFFMAN_ATTORNEYS_AT_LAW_0",
+      "label": "PK PINH\u00c3O & KOIFFMAN ATTORNEYS AT LAW",
+      "kind": "ransomware",
+      "victim_name": "PK PINH\u00c3O & KOIFFMAN ATTORNEYS AT LAW",
+      "victim_domain": "incblog6qu4y4mm4zvw5nrmue6qbwtgjsxpw6b7ixzssu36tsajldoad.onion",
+      "group": "incransom",
+      "sector": "law",
+      "country": "BR",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/UEsgUElOSMODTyAmIEtPSUZGTUFOIEFUVE9STkVZUyBBVCBMQVdAaW5jcmFuc29t",
+      "first_observed": "2026-01-30T13:39:02.239291+00:00",
+      "last_observed": "2026-01-30T13:39:02.239291+00:00",
+      "description": "PK Advogados specializes in providing legal services that facilitate technology and innovation, targeting large and medium-sized companies. Their areas of expertise include family business planning, digital law, and various corporate legal services. The firm emphasizes creative solutions and multidisciplinary approaches, particularly in contracts, regulatory matters, and compliance. They also focus on sectors such as telecommunications, finance, and startups within the realms of blockchain and fintech\r Laek: 100GB \r WE HAS COLLECTED SUCH DATA AS: \r - Confidential documents \r - Clients Data \r - NDA \r - Financial data \r - Operations \r - Corporate data \r - Business Agreements \r - Development \r - Financial databases, all transactions, all clients\r And a lot of other VERY IMPORTANT information!",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-30T13:39:02.239291+00:00",
+      "last_activity": "2026-01-30T13:39:02.239291+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "0apt_Noble_&_Associates_Law_1",
+      "label": "Noble & Associates Law",
+      "kind": "ransomware",
+      "victim_name": "Noble & Associates Law",
+      "victim_domain": "www.ransomware.live",
+      "group": "0apt",
+      "sector": "law",
+      "country": "US",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/Tm9ibGUgJiBBc3NvY2lhdGVzIExhd0AwYXB0",
+      "first_observed": "2026-01-30T12:03:45.828196+00:00",
+      "last_observed": "2026-01-30T12:03:45.828196+00:00",
+      "description": "Divorce settlements, corporate mergers, wills.",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-30T12:03:45.828196+00:00",
+      "last_activity": "2026-01-30T12:03:45.828196+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "0apt_Apex_Law_Firm_2",
+      "label": "Apex Law Firm",
+      "kind": "ransomware",
+      "victim_name": "Apex Law Firm",
+      "victim_domain": "www.ransomware.live",
+      "group": "0apt",
+      "sector": "law",
+      "country": "US",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/QXBleCBMYXcgRmlybUAwYXB0",
+      "first_observed": "2026-01-30T12:03:36.899750+00:00",
+      "last_observed": "2026-01-30T12:03:36.899750+00:00",
+      "description": "Case files, settlement agreements, witness lists.",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-30T12:03:36.899750+00:00",
+      "last_activity": "2026-01-30T12:03:36.899750+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "incransom_Callagy_Law_Firm_3",
+      "label": "Callagy Law Firm",
+      "kind": "ransomware",
+      "victim_name": "Callagy Law Firm",
+      "victim_domain": "incblog6qu4y4mm4zvw5nrmue6qbwtgjsxpw6b7ixzssu36tsajldoad.onion",
+      "group": "incransom",
+      "sector": "law",
+      "country": "US",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/Q2FsbGFneSBMYXcgRmlybUBpbmNyYW5zb20=",
+      "first_observed": "2026-01-28T05:40:20.984604+00:00",
+      "last_observed": "2026-01-28T05:40:20.984604+00:00",
+      "description": "CALLAGY LAW, P.C.\r 650 From Road, Suite 240\r Paramus, NJ 07652\r callagylaw.com\r \r This law firm specializes in various legal areas, including business litigation, personal injury, family law, and healthcare law.\r The firm is known for its commitment to providing comprehensive legal representation and has been operational since 1997.\r \r Total data in the leak: 355 GB (480,169 Files, 38,388 Folders)\r \r Leaked data:\r - Clients: companies and individuals\r - Data Classification: confidential, Private/Proprietary\r - Special data: Corporate email correspondence, external business correspondence, corporate documents,company policies and regulations,customer contracts and NDAs (Non-Disclosure Agreements), \r court hearing materials and litigation case files (litigation documents),customers' personal data and their medical confidentiality (PII,PHI) and other related information. \r - Financial data: financial metrics / financial performance data, invoices, payments, and other financial transactions.",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-28T05:40:20.984604+00:00",
+      "last_activity": "2026-01-28T05:40:20.984604+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "incransom_newkirklaw.com_4",
+      "label": "newkirklaw.com",
+      "kind": "ransomware",
+      "victim_name": "newkirklaw.com",
+      "victim_domain": "newkirklaw.com",
+      "group": "incransom",
+      "sector": "law",
+      "country": "US",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/bmV3a2lya2xhdy5jb21AaW5jcmFuc29t",
+      "first_observed": "2026-01-28T02:40:27.606548+00:00",
+      "last_observed": "2026-01-28T02:40:27.606548+00:00",
+      "description": "Newkirk Zwagerman, P.L.C. is a law firm based in Des Moines, specializing in employment law and advocating for employees' rights. They provide legal services to individuals facing discrimination, harassment, and retaliation in the workplace, as well as those involved in executive employment disputes and Title IX actions. The firm serves clients in Iowa and Minnesota, offering personalized legal representation to help employees navigate complex employment issues. With a commitment to fairness and accountability, Newkirk Zwagerman, P.L.C. empowers clients to stand up against larger corporate entities and seek justice",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-28T02:40:27.606548+00:00",
+      "last_activity": "2026-01-28T02:40:27.606548+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "pear_MMD_Insurance_Law_Advocates_5",
+      "label": "MMD Insurance Law Advocates",
+      "kind": "ransomware",
+      "victim_name": "MMD Insurance Law Advocates",
+      "victim_domain": "mmdinsurancelawadvocate.com",
+      "group": "pear",
+      "sector": "law",
+      "country": "US",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/TU1EIEluc3VyYW5jZSBMYXcgQWR2b2NhdGVzQHBlYXI=",
+      "first_observed": "2026-01-27T16:39:57.681569+00:00",
+      "last_observed": "2026-01-27T16:39:57.681569+00:00",
+      "description": "Dedicated to representing homeowners, business owners and condominium associations in insurance disputes",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-27T16:39:57.681569+00:00",
+      "last_activity": "2026-01-27T16:39:57.681569+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "play_Routten_&_Laster_Law_6",
+      "label": "Routten & Laster Law",
+      "kind": "ransomware",
+      "victim_name": "Routten & Laster Law",
+      "victim_domain": "www.routtenlasterlaw.com",
+      "group": "play",
+      "sector": "law",
+      "country": "Unknown",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/Um91dHRlbiAmIExhc3RlciBMYXdAcGxheQ==",
+      "first_observed": "2026-01-27T01:38:20.752198+00:00",
+      "last_observed": "2026-01-27T01:38:20.752198+00:00",
+      "description": "United States",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-27T01:38:20.752198+00:00",
+      "last_activity": "2026-01-27T01:38:20.752198+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "nightspire_Prince_&_Schmidt_LLP_7",
+      "label": "Prince & Schmidt LLP",
+      "kind": "ransomware",
+      "victim_name": "Prince & Schmidt LLP",
+      "victim_domain": "lawforpersonalinjury.com",
+      "group": "nightspire",
+      "sector": "law",
+      "country": "US",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/UHJpbmNlICYgU2NobWlkdCBMTFBAbmlnaHRzcGlyZQ==",
+      "first_observed": "2026-01-26T20:51:17.486003+00:00",
+      "last_observed": "2026-01-26T20:51:17.486003+00:00",
+      "description": "Prince & Schmidt LLP",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-26T20:51:17.486003+00:00",
+      "last_activity": "2026-01-26T20:51:17.486003+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "anubis_Langley_Twigg_Law_8",
+      "label": "Langley Twigg Law",
+      "kind": "ransomware",
+      "victim_name": "Langley Twigg Law",
+      "victim_domain": "om6q4a6cyipxvt7ioudxt24cw4oqu4yodmqzl25mqd2hgllymrgu4aqd.onion",
+      "group": "anubis",
+      "sector": "law",
+      "country": "NZ",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/TGFuZ2xleSBUd2lnZyBMYXdAYW51Ymlz",
+      "first_observed": "2026-01-26T03:50:21.080037+00:00",
+      "last_observed": "2026-01-26T03:50:21.080037+00:00",
+      "description": "Personal and Corporate data breach.",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-26T03:50:21.080037+00:00",
+      "last_activity": "2026-01-26T03:50:21.080037+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "clop_WRENLAWFIRM.COM_9",
+      "label": "WRENLAWFIRM.COM",
+      "kind": "ransomware",
+      "victim_name": "WRENLAWFIRM.COM",
+      "victim_domain": "wrenlawfirm.com",
+      "group": "clop",
+      "sector": "law",
+      "country": "Unknown",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/V1JFTkxBV0ZJUk0uQ09NQGNsb3A=",
+      "first_observed": "2026-01-25T21:16:32.233848+00:00",
+      "last_observed": "2026-01-25T21:16:32.233848+00:00",
+      "description": "WRENLAWFIRM.COM",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-25T21:16:32.233848+00:00",
+      "last_activity": "2026-01-25T21:16:32.233848+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "clop_LDHRLAW.COM_10",
+      "label": "LDHRLAW.COM",
+      "kind": "ransomware",
+      "victim_name": "LDHRLAW.COM",
+      "victim_domain": "ldhrlaw.com",
+      "group": "clop",
+      "sector": "law",
+      "country": "US",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/TERIUkxBVy5DT01AY2xvcA==",
+      "first_observed": "2026-01-25T21:15:56.724399+00:00",
+      "last_observed": "2026-01-25T21:15:56.724399+00:00",
+      "description": "LDHRLAW.COM",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-25T21:15:56.724399+00:00",
+      "last_activity": "2026-01-25T21:15:56.724399+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "clop_KAZMILAW.COM_11",
+      "label": "KAZMILAW.COM",
+      "kind": "ransomware",
+      "victim_name": "KAZMILAW.COM",
+      "victim_domain": "kazmilaw.com",
+      "group": "clop",
+      "sector": "law",
+      "country": "TR",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/S0FaTUlMQVcuQ09NQGNsb3A=",
+      "first_observed": "2026-01-25T21:10:30.550322+00:00",
+      "last_observed": "2026-01-25T21:10:30.550322+00:00",
+      "description": "KAZMILAW.COM\" refers to the Kazmi Law office, a firm based in the United States. They offer legal services in various areas such as family law, immigration law, and personal injury law. The firm is headed by Saad Kazmi, an experienced attorney passionate about his clients' rights and justice. The firm serves diverse clients and makes an effort to create personalized strategies for each case.",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-25T21:10:30.550322+00:00",
+      "last_activity": "2026-01-25T21:10:30.550322+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "clop_TOMLLAWYERS.COM_12",
+      "label": "TOMLLAWYERS.COM",
+      "kind": "ransomware",
+      "victim_name": "TOMLLAWYERS.COM",
+      "victim_domain": "tomllawyers.com",
+      "group": "clop",
+      "sector": "law",
+      "country": "DE",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/VE9NTExBV1lFUlMuQ09NQGNsb3A=",
+      "first_observed": "2026-01-25T21:01:04.314968+00:00",
+      "last_observed": "2026-01-25T21:01:04.314968+00:00",
+      "description": "TOMLLAWYERS.COM",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-25T21:01:04.314968+00:00",
+      "last_activity": "2026-01-25T21:01:04.314968+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "clop_MCMATHLAW.COM_13",
+      "label": "MCMATHLAW.COM",
+      "kind": "ransomware",
+      "victim_name": "MCMATHLAW.COM",
+      "victim_domain": "mcmathlaw.com",
+      "group": "clop",
+      "sector": "law",
+      "country": "US",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/TUNNQVRITEFXLkNPTUBjbG9w",
+      "first_observed": "2026-01-25T20:54:08.855652+00:00",
+      "last_observed": "2026-01-25T20:54:08.855652+00:00",
+      "description": "MCMATHLAW.COM\" is the online platform for McMath Woods P.A., a law firm based in Little Rock, Arkansas, U.S. They offer a wide array of legal services, including car accidents, employment law, personal injury, wrongful death, and environmental law. The firm provides representation to individuals and families who have been wronged by negligence, fraud or illegal actions of others.",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-25T20:54:08.855652+00:00",
+      "last_activity": "2026-01-25T20:54:08.855652+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "devman_www.****law.com_14",
+      "label": "www.****law.com",
+      "kind": "ransomware",
+      "victim_name": "www.****law.com",
+      "victim_domain": "devmanblggk7ddrtqj3tsocnayow3bwnozab2s4yhv4shpv6ueitjzid.onion",
+      "group": "devman",
+      "sector": "law",
+      "country": "US",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/d3d3LioqKipsYXcuY29tQGRldm1hbg==",
+      "first_observed": "2026-01-21T19:21:20.411308+00:00",
+      "last_observed": "2026-01-21T19:21:20.411308+00:00",
+      "description": "www.****law.com",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-21T19:21:20.411308+00:00",
+      "last_activity": "2026-01-21T19:21:20.411308+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "sinobi_Bikkal_&_Associates_(sblawyers)_15",
+      "label": "Bikkal & Associates (sblawyers)",
+      "kind": "ransomware",
+      "victim_name": "Bikkal & Associates (sblawyers)",
+      "victim_domain": "sinobi6ftrg27d6g4sjdt65malds6cfptlnjyw52rskakqjda6uvb7yd.onion",
+      "group": "sinobi",
+      "sector": "law",
+      "country": "US",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/Qmlra2FsICYgQXNzb2NpYXRlcyAoc2JsYXd5ZXJzKUBzaW5vYmk=",
+      "first_observed": "2026-01-19T03:07:30.723544+00:00",
+      "last_observed": "2026-01-19T03:07:30.723544+00:00",
+      "description": "Bikkal & Associates, P.C. is a full-service immigration law firm based in New York, specializing in immigration and nationality law for individuals, families, and employers. With over 40 years of experience, the firm provides comprehensive assistance with various immigration matters, including employment-based immigration, naturalization, and family-based immigration. They are dedicated to protecting the rights of immigrants and offer personalized legal guidance to navigate complex immigration processes. The firm serves clients in New York, the tri-state area, and nationwide.",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-19T03:07:30.723544+00:00",
+      "last_activity": "2026-01-19T03:07:30.723544+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "qilin_Dreher_Law_Firm_16",
+      "label": "Dreher Law Firm",
+      "kind": "ransomware",
+      "victim_name": "Dreher Law Firm",
+      "victim_domain": "www.dreherlawfirm.com",
+      "group": "qilin",
+      "sector": "law",
+      "country": "US",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/RHJlaGVyIExhdyBGaXJtQHFpbGlu",
+      "first_observed": "2026-01-19T00:48:52.803835+00:00",
+      "last_observed": "2026-01-19T00:48:52.803835+00:00",
+      "description": "Dreher Law Firm",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-19T00:48:52.803835+00:00",
+      "last_activity": "2026-01-19T00:48:52.803835+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "qilin_Bergmanis_Preyra_17",
+      "label": "Bergmanis Preyra",
+      "kind": "ransomware",
+      "victim_name": "Bergmanis Preyra",
+      "victim_domain": "www.bplawyers.ca",
+      "group": "qilin",
+      "sector": "law",
+      "country": "CA",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/QmVyZ21hbmlzIFByZXlyYUBxaWxpbg==",
+      "first_observed": "2026-01-16T01:58:14.629098+00:00",
+      "last_observed": "2026-01-16T01:58:14.629098+00:00",
+      "description": "Bergmanis Preyra",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-16T01:58:14.629098+00:00",
+      "last_activity": "2026-01-16T01:58:14.629098+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "akira_Epport_Richman_&_Robbins,_Kalamazoo_Valley_Community_College,_B&J_Transportation,_FR_Law_G..._18",
+      "label": "Epport Richman & Robbins, Kalamazoo Valley Community College, B&J Transportation, FR Law G...",
+      "kind": "ransomware",
+      "victim_name": "Epport Richman & Robbins, Kalamazoo Valley Community College, B&J Transportation, FR Law G...",
+      "victim_domain": "www.ransomware.live",
+      "group": "akira",
+      "sector": "law",
+      "country": "Unknown",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/RXBwb3J0IFJpY2htYW4gJiBSb2JiaW5zLCBLYWxhbWF6b28gVmFsbGV5IENvbW11bml0eSBDb2xsZWdlLCBCJkogVHJhbnNwb3J0YXRpb24sIEZSIExhdyBHLi4uQGFraXJh",
+      "first_observed": "2026-01-12T19:44:22.344307+00:00",
+      "last_observed": "2026-01-12T19:44:22.344307+00:00",
+      "description": "We obtained about 10gb of data of the following companies:\n\nEpport, Richman & Robbins, LLP is a Los Angeles-based law firm th\nat specializes in complex commercial and banking litigation acros\ns California, as well as sophisticated real estate transactions n\nationwide.\n\nTKH Group, PC is an accounting firm based in Otsego, MI, offering\na wide range of services including tax preparation, financial pl\nanning, and business consulting.\n\nB&J Transportation specializes in airport transfers, business tra\nnsfers, and event transportation, ensuring clients remain on sche\ndule and together throughout their journey.\n\nFR Law Group PLLC is a law firm based in Phoenix, AZ, that specia\nlizes in providing legal services from a business perspective.\n\nRed River Glazing is a commercial and residential glass company w\nith offices in Fargo and Bismarck, North Dakota.\n\nYou will find personal employee personal data, client information\n, numerous project files, accounting and financials and other int\nernal operational files.\n",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-12T19:44:22.344307+00:00",
+      "last_activity": "2026-01-12T19:44:22.344307+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "incransom_The_Carlson_Law_Firm_19",
+      "label": "The Carlson Law Firm",
+      "kind": "ransomware",
+      "victim_name": "The Carlson Law Firm",
+      "victim_domain": "incblog6qu4y4mm4zvw5nrmue6qbwtgjsxpw6b7ixzssu36tsajldoad.onion",
+      "group": "incransom",
+      "sector": "law",
+      "country": "US",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/VGhlIENhcmxzb24gTGF3IEZpcm1AaW5jcmFuc29t",
+      "first_observed": "2026-01-09T21:17:12.276291+00:00",
+      "last_observed": "2026-01-09T21:17:12.276291+00:00",
+      "description": "Established in 1976, The Carlson Law Firm has built a reputation not only for our formidable presence in courtrooms but for our deep-rooted desire to serve the community. Our foundation rests on the shoulders of our Managing Partner, Craig Carlson. A proud veteran, Craig's values are the compass that has guided our firm's journey, helping us grow from a modest establishment in Killeen, Texas, to a renowned legal powerhouse with 17 locations in Texas, an office in California, and another in Florida.",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-09T21:17:12.276291+00:00",
+      "last_activity": "2026-01-09T21:17:12.276291+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    },
+    {
+      "id": "akira_Udall_Law_Firm_20",
+      "label": "Udall Law Firm",
+      "kind": "ransomware",
+      "victim_name": "Udall Law Firm",
+      "victim_domain": "www.ransomware.live",
+      "group": "akira",
+      "sector": "law",
+      "country": "US",
+      "source": "ransomware.live",
+      "subsource": "victim_search",
+      "source_url": "https://www.ransomware.live/id/VWRhbGwgTGF3IEZpcm1AYWtpcmE=",
+      "first_observed": "2026-01-08T21:18:12.464051+00:00",
+      "last_observed": "2026-01-08T21:18:12.464051+00:00",
+      "description": "Udall Law Firm is a reputable legal practice serving clients thro\nughout Arizona since 1952, with offices located in Tucson and Pho\nenix. The firm offers a wide range of legal services, including b\nusiness law, personal injury, estate planning, and real estate la\nw, among others. It is dedicated to providing customized legal so\nlutions and responsive communication to meet the needs of its cli\nents.\n\nWe will upload 78gb of corporate data soon. Large amount of clien\nts' personal information (passport numbers, SSNs, drivers license\ns, death/birth certs, financials and so on), NDA, police incident\ns, confidentiality agreements and so on.\n",
+      "confidence": 0.55,
+      "severity": "high",
+      "posted_at": "2026-01-08T21:18:12.464051+00:00",
+      "last_activity": "2026-01-08T21:18:12.464051+00:00",
+      "spectrum_color": "#ff1a1a",
+      "source_color": "#ff1a1a"
+    }
+  ],
+  "edges": [
+    {
+      "source": "0apt_Apex_Law_Firm_2",
+      "target": "0apt_Noble_&_Associates_Law_1",
+      "type": "SAME_GROUP",
+      "weight": 5
+    },
+    {
+      "source": "akira_Udall_Law_Firm_20",
+      "target": "akira_Epport_Richman_&_Robbins,_Kalamazoo_Valley_Community_College,_B&J_Transportation,_FR_Law_G..._18",
+      "type": "SAME_GROUP",
+      "weight": 5
+    },
+    {
+      "source": "clop_MCMATHLAW.COM_13",
+      "target": "clop_KAZMILAW.COM_11",
+      "type": "SAME_GROUP",
+      "weight": 5
+    },
+    {
+      "source": "clop_MCMATHLAW.COM_13",
+      "target": "clop_LDHRLAW.COM_10",
+      "type": "SAME_GROUP",
+      "weight": 5
+    },
+    {
+      "source": "clop_MCMATHLAW.COM_13",
+      "target": "clop_TOMLLAWYERS.COM_12",
+      "type": "SAME_GROUP",
+      "weight": 5
+    },
+    {
+      "source": "clop_MCMATHLAW.COM_13",
+      "target": "clop_WRENLAWFIRM.COM_9",
+      "type": "SAME_GROUP",
+      "weight": 5
+    },
+    {
+      "source": "incransom_The_Carlson_Law_Firm_19",
+      "target": "incransom_Callagy_Law_Firm_3",
+      "type": "SAME_GROUP",
+      "weight": 5
+    },
+    {
+      "source": "incransom_The_Carlson_Law_Firm_19",
+      "target": "incransom_PK_PINH\u00c3O_&_KOIFFMAN_ATTORNEYS_AT_LAW_0",
+      "type": "SAME_GROUP",
+      "weight": 5
+    },
+    {
+      "source": "incransom_The_Carlson_Law_Firm_19",
+      "target": "incransom_newkirklaw.com_4",
+      "type": "SAME_GROUP",
+      "weight": 5
+    },
+    {
+      "source": "qilin_Bergmanis_Preyra_17",
+      "target": "qilin_Dreher_Law_Firm_16",
+      "type": "SAME_GROUP",
+      "weight": 5
+    },
+    {
+      "source": "0apt_Apex_Law_Firm_2",
+      "target": "0apt_Noble_&_Associates_Law_1",
+      "type": "GROUP_SECTOR_OVERLAP",
+      "weight": 3
+    },
+    {
+      "source": "akira_Epport_Richman_&_Robbins,_Kalamazoo_Valley_Community_College,_B&J_Transportation,_FR_Law_G..._18",
+      "target": "akira_Udall_Law_Firm_20",
+      "type": "GROUP_SECTOR_OVERLAP",
+      "weight": 3
+    },
+    {
+      "source": "clop_KAZMILAW.COM_11",
+      "target": "clop_LDHRLAW.COM_10",
+      "type": "GROUP_SECTOR_OVERLAP",
+      "weight": 3
+    },
+    {
+      "source": "clop_KAZMILAW.COM_11",
+      "target": "clop_MCMATHLAW.COM_13",
+      "type": "GROUP_SECTOR_OVERLAP",
+      "weight": 3
+    },
+    {
+      "source": "clop_KAZMILAW.COM_11",
+      "target": "clop_TOMLLAWYERS.COM_12",
+      "type": "GROUP_SECTOR_OVERLAP",
+      "weight": 3
+    },
+    {
+      "source": "clop_KAZMILAW.COM_11",
+      "target": "clop_WRENLAWFIRM.COM_9",
+      "type": "GROUP_SECTOR_OVERLAP",
+      "weight": 3
+    },
+    {
+      "source": "clop_LDHRLAW.COM_10",
+      "target": "clop_MCMATHLAW.COM_13",
+      "type": "GROUP_SECTOR_OVERLAP",
+      "weight": 3
+    },
+    {
+      "source": "clop_LDHRLAW.COM_10",
+      "target": "clop_TOMLLAWYERS.COM_12",
+      "type": "GROUP_SECTOR_OVERLAP",
+      "weight": 3
+    },
+    {
+      "source": "clop_LDHRLAW.COM_10",
+      "target": "clop_WRENLAWFIRM.COM_9",
+      "type": "GROUP_SECTOR_OVERLAP",
+      "weight": 3
+    },
+    {
+      "source": "clop_MCMATHLAW.COM_13",
+      "target": "clop_TOMLLAWYERS.COM_12",
+      "type": "GROUP_SECTOR_OVERLAP",
+      "weight": 3
+    },
+    {
+      "source": "clop_MCMATHLAW.COM_13",
+      "target": "clop_WRENLAWFIRM.COM_9",
+      "type": "GROUP_SECTOR_OVERLAP",
+      "weight": 3
+    },
+    {
+      "source": "clop_TOMLLAWYERS.COM_12",
+      "target": "clop_WRENLAWFIRM.COM_9",
+      "type": "GROUP_SECTOR_OVERLAP",
+      "weight": 3
+    },
+    {
+      "source": "incransom_Callagy_Law_Firm_3",
+      "target": "incransom_PK_PINH\u00c3O_&_KOIFFMAN_ATTORNEYS_AT_LAW_0",
+      "type": "GROUP_SECTOR_OVERLAP",
+      "weight": 3
+    },
+    {
+      "source": "incransom_Callagy_Law_Firm_3",
+      "target": "incransom_The_Carlson_Law_Firm_19",
+      "type": "GROUP_SECTOR_OVERLAP",
+      "weight": 3
+    },
+    {
+      "source": "incransom_Callagy_Law_Firm_3",
+      "target": "incransom_newkirklaw.com_4",
+      "type": "GROUP_SECTOR_OVERLAP",
+      "weight": 3
+    },
+    {
+      "source": "incransom_PK_PINH\u00c3O_&_KOIFFMAN_ATTORNEYS_AT_LAW_0",
+      "target": "incransom_The_Carlson_Law_Firm_19",
+      "type": "GROUP_SECTOR_OVERLAP",
+      "weight": 3
+    },
+    {
+      "source": "incransom_PK_PINH\u00c3O_&_KOIFFMAN_ATTORNEYS_AT_LAW_0",
+      "target": "incransom_newkirklaw.com_4",
+      "type": "GROUP_SECTOR_OVERLAP",
+      "weight": 3
+    },
+    {
+      "source": "incransom_The_Carlson_Law_Firm_19",
+      "target": "incransom_newkirklaw.com_4",
+      "type": "GROUP_SECTOR_OVERLAP",
+      "weight": 3
+    },
+    {
+      "source": "qilin_Bergmanis_Preyra_17",
+      "target": "qilin_Dreher_Law_Firm_16",
+      "type": "GROUP_SECTOR_OVERLAP",
+      "weight": 3
+    },
+    {
+      "source": "0apt_Apex_Law_Firm_2",
+      "target": "0apt_Noble_&_Associates_Law_1",
+      "type": "GROUP_COUNTRY_OVERLAP",
+      "weight": 2
+    },
+    {
+      "source": "clop_LDHRLAW.COM_10",
+      "target": "clop_MCMATHLAW.COM_13",
+      "type": "GROUP_COUNTRY_OVERLAP",
+      "weight": 2
+    },
+    {
+      "source": "incransom_Callagy_Law_Firm_3",
+      "target": "incransom_The_Carlson_Law_Firm_19",
+      "type": "GROUP_COUNTRY_OVERLAP",
+      "weight": 2
+    },
+    {
+      "source": "incransom_Callagy_Law_Firm_3",
+      "target": "incransom_newkirklaw.com_4",
+      "type": "GROUP_COUNTRY_OVERLAP",
+      "weight": 2
+    },
+    {
+      "source": "incransom_The_Carlson_Law_Firm_19",
+      "target": "incransom_newkirklaw.com_4",
+      "type": "GROUP_COUNTRY_OVERLAP",
+      "weight": 2
+    },
+    {
+      "source": "0apt_Apex_Law_Firm_2",
+      "target": "incransom_PK_PINH\u00c3O_&_KOIFFMAN_ATTORNEYS_AT_LAW_0",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "0apt_Apex_Law_Firm_2",
+      "target": "incransom_Callagy_Law_Firm_3",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "0apt_Apex_Law_Firm_2",
+      "target": "incransom_newkirklaw.com_4",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "0apt_Noble_&_Associates_Law_1",
+      "target": "incransom_PK_PINH\u00c3O_&_KOIFFMAN_ATTORNEYS_AT_LAW_0",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "0apt_Noble_&_Associates_Law_1",
+      "target": "incransom_Callagy_Law_Firm_3",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "0apt_Noble_&_Associates_Law_1",
+      "target": "incransom_newkirklaw.com_4",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "akira_Epport_Richman_&_Robbins,_Kalamazoo_Valley_Community_College,_B&J_Transportation,_FR_Law_G..._18",
+      "target": "incransom_The_Carlson_Law_Firm_19",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "akira_Epport_Richman_&_Robbins,_Kalamazoo_Valley_Community_College,_B&J_Transportation,_FR_Law_G..._18",
+      "target": "qilin_Bergmanis_Preyra_17",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "akira_Epport_Richman_&_Robbins,_Kalamazoo_Valley_Community_College,_B&J_Transportation,_FR_Law_G..._18",
+      "target": "qilin_Dreher_Law_Firm_16",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "akira_Udall_Law_Firm_20",
+      "target": "incransom_The_Carlson_Law_Firm_19",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "akira_Udall_Law_Firm_20",
+      "target": "qilin_Bergmanis_Preyra_17",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "akira_Udall_Law_Firm_20",
+      "target": "qilin_Dreher_Law_Firm_16",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "anubis_Langley_Twigg_Law_8",
+      "target": "clop_WRENLAWFIRM.COM_9",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "anubis_Langley_Twigg_Law_8",
+      "target": "clop_LDHRLAW.COM_10",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "anubis_Langley_Twigg_Law_8",
+      "target": "clop_KAZMILAW.COM_11",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "clop_KAZMILAW.COM_11",
+      "target": "nightspire_Prince_&_Schmidt_LLP_7",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "clop_KAZMILAW.COM_11",
+      "target": "play_Routten_&_Laster_Law_6",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "clop_LDHRLAW.COM_10",
+      "target": "nightspire_Prince_&_Schmidt_LLP_7",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "clop_LDHRLAW.COM_10",
+      "target": "play_Routten_&_Laster_Law_6",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "clop_MCMATHLAW.COM_13",
+      "target": "nightspire_Prince_&_Schmidt_LLP_7",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "clop_MCMATHLAW.COM_13",
+      "target": "play_Routten_&_Laster_Law_6",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "clop_MCMATHLAW.COM_13",
+      "target": "pear_MMD_Insurance_Law_Advocates_5",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "clop_TOMLLAWYERS.COM_12",
+      "target": "pear_MMD_Insurance_Law_Advocates_5",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "clop_TOMLLAWYERS.COM_12",
+      "target": "incransom_newkirklaw.com_4",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "clop_TOMLLAWYERS.COM_12",
+      "target": "incransom_Callagy_Law_Firm_3",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "clop_WRENLAWFIRM.COM_9",
+      "target": "pear_MMD_Insurance_Law_Advocates_5",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "clop_WRENLAWFIRM.COM_9",
+      "target": "devman_www.****law.com_14",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "devman_www.****law.com_14",
+      "target": "sinobi_Bikkal_&_Associates_(sblawyers)_15",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "devman_www.****law.com_14",
+      "target": "qilin_Dreher_Law_Firm_16",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "incransom_PK_PINH\u00c3O_&_KOIFFMAN_ATTORNEYS_AT_LAW_0",
+      "target": "sinobi_Bikkal_&_Associates_(sblawyers)_15",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "incransom_The_Carlson_Law_Firm_19",
+      "target": "qilin_Bergmanis_Preyra_17",
+      "type": "CROSS_GROUP_SECTOR",
+      "weight": 1
+    },
+    {
+      "source": "0apt_Apex_Law_Firm_2",
+      "target": "0apt_Noble_&_Associates_Law_1",
+      "type": "DOMAIN_PATTERN_MATCH",
+      "weight": 4
+    },
+    {
+      "source": "0apt_Apex_Law_Firm_2",
+      "target": "akira_Epport_Richman_&_Robbins,_Kalamazoo_Valley_Community_College,_B&J_Transportation,_FR_Law_G..._18",
+      "type": "DOMAIN_PATTERN_MATCH",
+      "weight": 4
+    },
+    {
+      "source": "0apt_Noble_&_Associates_Law_1",
+      "target": "akira_Epport_Richman_&_Robbins,_Kalamazoo_Valley_Community_College,_B&J_Transportation,_FR_Law_G..._18",
+      "type": "DOMAIN_PATTERN_MATCH",
+      "weight": 4
+    },
+    {
+      "source": "anubis_Langley_Twigg_Law_8",
+      "target": "devman_www.****law.com_14",
+      "type": "DOMAIN_PATTERN_MATCH",
+      "weight": 4
+    },
+    {
+      "source": "anubis_Langley_Twigg_Law_8",
+      "target": "incransom_Callagy_Law_Firm_3",
+      "type": "DOMAIN_PATTERN_MATCH",
+      "weight": 4
+    },
+    {
+      "source": "devman_www.****law.com_14",
+      "target": "incransom_Callagy_Law_Firm_3",
+      "type": "DOMAIN_PATTERN_MATCH",
+      "weight": 4
+    },
+    {
+      "source": "incransom_PK_PINH\u00c3O_&_KOIFFMAN_ATTORNEYS_AT_LAW_0",
+      "target": "incransom_The_Carlson_Law_Firm_19",
+      "type": "DOMAIN_PATTERN_MATCH",
+      "weight": 4
+    },
+    {
+      "source": "incransom_PK_PINH\u00c3O_&_KOIFFMAN_ATTORNEYS_AT_LAW_0",
+      "target": "sinobi_Bikkal_&_Associates_(sblawyers)_15",
+      "type": "DOMAIN_PATTERN_MATCH",
+      "weight": 4
+    },
+    {
+      "source": "incransom_The_Carlson_Law_Firm_19",
+      "target": "sinobi_Bikkal_&_Associates_(sblawyers)_15",
+      "type": "DOMAIN_PATTERN_MATCH",
+      "weight": 4
+    },
+    {
+      "source": "0apt_Apex_Law_Firm_2",
+      "target": "0apt_Noble_&_Associates_Law_1",
+      "type": "TIME_CLUSTER",
+      "weight": 3
+    },
+    {
+      "source": "clop_KAZMILAW.COM_11",
+      "target": "clop_LDHRLAW.COM_10",
+      "type": "TIME_CLUSTER",
+      "weight": 3
+    },
+    {
+      "source": "clop_KAZMILAW.COM_11",
+      "target": "clop_MCMATHLAW.COM_13",
+      "type": "TIME_CLUSTER",
+      "weight": 3
+    },
+    {
+      "source": "clop_KAZMILAW.COM_11",
+      "target": "clop_TOMLLAWYERS.COM_12",
+      "type": "TIME_CLUSTER",
+      "weight": 3
+    },
+    {
+      "source": "clop_KAZMILAW.COM_11",
+      "target": "clop_WRENLAWFIRM.COM_9",
+      "type": "TIME_CLUSTER",
+      "weight": 3
+    },
+    {
+      "source": "clop_LDHRLAW.COM_10",
+      "target": "clop_MCMATHLAW.COM_13",
+      "type": "TIME_CLUSTER",
+      "weight": 3
+    },
+    {
+      "source": "clop_LDHRLAW.COM_10",
+      "target": "clop_TOMLLAWYERS.COM_12",
+      "type": "TIME_CLUSTER",
+      "weight": 3
+    },
+    {
+      "source": "clop_LDHRLAW.COM_10",
+      "target": "clop_WRENLAWFIRM.COM_9",
+      "type": "TIME_CLUSTER",
+      "weight": 3
+    },
+    {
+      "source": "clop_MCMATHLAW.COM_13",
+      "target": "clop_TOMLLAWYERS.COM_12",
+      "type": "TIME_CLUSTER",
+      "weight": 3
+    },
+    {
+      "source": "clop_MCMATHLAW.COM_13",
+      "target": "clop_WRENLAWFIRM.COM_9",
+      "type": "TIME_CLUSTER",
+      "weight": 3
+    },
+    {
+      "source": "clop_TOMLLAWYERS.COM_12",
+      "target": "clop_WRENLAWFIRM.COM_9",
+      "type": "TIME_CLUSTER",
+      "weight": 3
+    }
+  ],
+  "metadata": {
+    "total_threats": 21,
+    "processed_records": 21,
+    "threat_incidents": 21,
+    "generated_at": "2026-01-30T10:07:22.447639Z",
+    "batch_info": "SPECTRUM graph: 21 nodes, 85 edges from ACE-T, Original SPECTRUM, and Twitter data"
+  }
+}

@@ -1,0 +1,58 @@
+runtime:
+  loop_hz: 2
+  max_inflight_tasks: 200
+  shutdown_grace_seconds: 10
+  log_level: INFO
+
+storage:
+  sqlite_path: db/osint.db
+  artifacts_dir: data
+  quarantine_dir: data/quarantine
+
+bus:
+  max_queue: 5000
+  event_ttl_seconds: 86400
+
+inputs:
+  rss_feeds:
+    - name: "CISA Alerts"
+      url: "https://www.cisa.gov/uscert/ncas/alerts.xml"
+      enabled: true
+    - name: "CISA Current Activity"
+      url: "https://www.cisa.gov/uscert/ncas/current-activity.xml"
+      enabled: true
+    - name: "CERT/CC Vulnerability Notes"
+      url: "https://www.kb.cert.org/vuls/atomfeed"
+      enabled: true
+
+  public_pages:
+    # Add open pages that do not require login
+    # The scraper uses conditional GET + caching + rate limits
+    - name: "Ransomware Live Recent Victims"
+      url: "https://ransomware.live/recent"
+      enabled: false
+
+  local_files:
+    # Watch local drop folders (no network required)
+    - name: "Intel Drops"
+      path: "data/intel_drops"
+      enabled: true
+
+fetch:
+  user_agent: "ACE-T-SPECTRUM/agents (+local-first)"
+  timeout_seconds: 20
+  per_host_rps: 0.5
+  max_bytes: 4000000
+
+ollama:
+  enabled: true
+  binary: "ollama"
+  model: "qwen2.5-coder:7b"
+  max_tokens: 800
+  temperature: 0.2
+
+outputs:
+  write_graph_json: true
+  graph_json_path: "data/graph_3d.json"
+  timeline_json_path: "data/timeline.json"
+  intel_bundle_json_path: "data/intel_bundle.json"

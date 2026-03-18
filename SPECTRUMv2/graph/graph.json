@@ -1,0 +1,91 @@
+{
+  "nodes": [
+    {
+      "id": "LockBit_Hospital_Corp_0",
+      "victim_name": "Hospital Corp",
+      "victim_domain": null,
+      "group": "LockBit",
+      "sector": "Healthcare",
+      "country": "US",
+      "source": "Test",
+      "first_observed": "2026-01-20T10:00:00Z",
+      "last_observed": "2026-01-20T10:00:00Z",
+      "description": "Hospital hit by LockBit ransomware"
+    },
+    {
+      "id": "LockBit_Tech_Solutions_Inc_1",
+      "victim_name": "Tech Solutions Inc",
+      "victim_domain": null,
+      "group": "LockBit",
+      "sector": "Technology",
+      "country": "US",
+      "source": "Test",
+      "first_observed": "2026-01-20T11:00:00Z",
+      "last_observed": "2026-01-20T11:00:00Z",
+      "description": "Tech company encrypted by LockBit"
+    },
+    {
+      "id": "Conti_Global_Bank_2",
+      "victim_name": "Global Bank",
+      "victim_domain": null,
+      "group": "Conti",
+      "sector": "Finance",
+      "country": "UK",
+      "source": "Test",
+      "first_observed": "2026-01-21T10:00:00Z",
+      "last_observed": "2026-01-21T10:00:00Z",
+      "description": "Bank affected by Conti ransomware"
+    },
+    {
+      "id": "Conti_Manufacturing_LLC_3",
+      "victim_name": "Manufacturing LLC",
+      "victim_domain": null,
+      "group": "Conti",
+      "sector": "Manufacturing",
+      "country": "DE",
+      "source": "Test",
+      "first_observed": "2026-01-21T12:00:00Z",
+      "last_observed": "2026-01-21T12:00:00Z",
+      "description": "Manufacturing firm hit by Conti"
+    },
+    {
+      "id": "REvil_Retail_Chain_4",
+      "victim_name": "Retail Chain",
+      "victim_domain": null,
+      "group": "REvil",
+      "sector": "Retail",
+      "country": "US",
+      "source": "Test",
+      "first_observed": "2026-01-22T10:00:00Z",
+      "last_observed": "2026-01-22T10:00:00Z",
+      "description": "Retail stores encrypted by REvil"
+    }
+  ],
+  "edges": [
+    {
+      "source": "LockBit_Hospital_Corp_0",
+      "target": "LockBit_Tech_Solutions_Inc_1",
+      "type": "SAME_GROUP",
+      "weight": 5
+    },
+    {
+      "source": "Conti_Global_Bank_2",
+      "target": "Conti_Manufacturing_LLC_3",
+      "type": "SAME_GROUP",
+      "weight": 5
+    },
+    {
+      "source": "LockBit_Hospital_Corp_0",
+      "target": "LockBit_Tech_Solutions_Inc_1",
+      "type": "GROUP_COUNTRY_OVERLAP",
+      "weight": 2
+    }
+  ],
+  "metadata": {
+    "total_threats": 5,
+    "processed_records": 5,
+    "ransomware_incidents": 5,
+    "generated_at": "2026-01-27T14:43:02.508334Z",
+    "batch_info": "SPECTRUM graph: 5 nodes, 3 edges"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "sources": [
+    {
+      "name": "abuse.ch threatfox",
+      "color": "#39ff14"
+    },
+    {
+      "name": "abuse.ch urlhaus",
+      "color": "#00c8ff"
+    },
+    {
+      "name": "ransomware.live",
+      "color": "#ff3333"
+    }
+  ]
+}

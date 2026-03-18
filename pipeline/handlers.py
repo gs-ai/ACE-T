@@ -161,9 +161,10 @@ def collect_stage(stage: Dict[str, Any], inputs: Dict[str, Any], retention_days:
     band = stage.get("band")
     collectors = set(stage.get("collectors") or [])
     outputs: Dict[str, List[Dict[str, Any]]] = {name: [] for name in stage.get("outputs") or []}
+    reddit_disabled = str(os.getenv("ACE_T_EXCLUDE_REDDIT", "1")).strip().lower() in {"1", "true", "yes"}
 
     if os.getenv("ACE_T_PIPELINE_LIVE_COLLECT", "").strip().lower() in {"1", "true", "yes"}:
-        if "posts" in collectors:
+        if "posts" in collectors and not reddit_disabled:
             subreddits = []
             for target in inputs.get("validated_targets") or []:
                 if not isinstance(target, dict):
