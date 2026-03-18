@@ -146,6 +146,65 @@
             backdrop-filter: blur(5px);
             max-height: 400px;
             overflow-y: auto;
+            scrollbar-color: #0a0a0a #000000;
+        }
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            position: relative;
+        }
+        .panel-close {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            border: 1px solid rgba(0,229,255,0.7);
+            background: rgba(0,0,0,0.7);
+            color: #00E5FF;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 12px;
+            line-height: 16px;
+            padding: 0;
+            cursor: pointer;
+        }
+        .panel-close:hover {
+            background: rgba(0,229,255,0.1);
+        }
+
+        .intel-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .intel-panel::-webkit-scrollbar-track {
+            background: #000000;
+        }
+
+        .intel-panel::-webkit-scrollbar-thumb {
+            background: #0a0a0a;
+            border-radius: 6px;
+            border: 1px solid #000000;
+        }
+
+        .legend-list {
+            scrollbar-color: #0a0a0a #000000;
+        }
+
+        .legend-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .legend-list::-webkit-scrollbar-track {
+            background: #000000;
+        }
+
+        .legend-list::-webkit-scrollbar-thumb {
+            background: #0a0a0a;
+            border-radius: 6px;
+            border: 1px solid #000000;
         }
 
         .panel-title {
@@ -208,13 +267,13 @@
             background: rgba(0, 0, 0, 0.9);
             border: 1px solid #00E5FF;
             border-radius: 6px;
-            padding: 8px 10px;
+            padding: 6px 8px;
             font-size: 10px;
             z-index: 1000;
             -webkit-backdrop-filter: blur(5px);
             backdrop-filter: blur(5px);
-            width: 240px;
-            min-width: 200px;
+            width: 220px;
+            min-width: 180px;
             max-width: 45vw;
             overflow: hidden;
         }
@@ -248,25 +307,39 @@
         }
 
         .legend-list {
-            margin-top: 8px;
+            margin-top: 6px;
             max-height: calc(100vh - 180px);
             overflow-y: auto;
-            padding-right: 4px;
+            padding-right: 3px;
         }
 
         .legend-item {
             display: grid;
-            grid-template-columns: 12px minmax(0, 1fr) auto;
+            grid-template-columns: 10px minmax(0, 1fr) auto;
             align-items: center;
-            margin-bottom: 6px;
-            padding: 6px;
+            margin-bottom: 4px;
+            padding: 4px;
             border-radius: 6px;
             transition: background 140ms ease, transform 140ms ease;
-            column-gap: 8px;
+            column-gap: 6px;
         }
 
         .legend-item.inactive { opacity: 0.28; transform: translateY(0px); }
         .legend-item:hover { background: rgba(0,229,255,0.02); transform: translateY(-2px); cursor: pointer; }
+        .legend-item.category-item { cursor: pointer; }
+        .legend-item.category-item:hover { background: rgba(0,229,255,0.02); transform: translateY(-2px); }
+        .legend-item.category-item.inactive { opacity: 0.28; }
+
+        .time-toggle {
+            display: flex;
+            gap: 6px;
+        }
+
+        .intel-button.small {
+            padding: 4px 8px;
+            font-size: 9px;
+            letter-spacing: 0.06em;
+        }
 
         .legend-color {
             width: 12px;
@@ -279,7 +352,7 @@
         .legend-label {
             color: #FFFFFF;
             text-transform: uppercase;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 700;
             letter-spacing: 0.06em;
             white-space: nowrap;
@@ -288,11 +361,12 @@
         }
 
         .legend-count {
-            min-width: 34px;
+            min-width: 28px;
             text-align: right;
             color: rgba(255,255,255,0.62);
             font-weight: 700;
             letter-spacing: 0.04em;
+            font-size: 9px;
         }
 
         .legend-resizer {
@@ -303,6 +377,31 @@
             height: 100%;
             cursor: ew-resize;
             z-index: 1001;
+        }
+
+        .legend-section-title {
+            margin-top: 8px;
+            padding-top: 5px;
+            border-top: 1px solid rgba(0, 229, 255, 0.2);
+            color: rgba(0, 229, 255, 0.85);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+            font-size: 9px;
+        }
+
+        .legend-list--categories {
+            max-height: none;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            column-gap: 8px;
+            row-gap: 4px;
+            padding-right: 0;
+        }
+
+        .legend-list--categories .legend-item {
+            margin-bottom: 0;
+            padding: 3px 4px;
         }
 
         /* Status indicators */
@@ -363,27 +462,17 @@
             <div class="intel-title">ACE-T Intelligence Graph</div>
             <div class="intel-controls">
                 <div class="control-group">
-                    <label class="control-label">Severity</label>
-                    <select id="severity-filter" class="control-input" title="Filter nodes by severity level">
-                        <option value="all">All</option>
-                        <option value="critical">Critical</option>
-                        <option value="high">High</option>
-                        <option value="medium">Medium</option>
-                        <option value="low">Low</option>
-                    </select>
+                    <label class="control-label">Search</label>
+                    <input type="text" id="search-input" class="control-input" placeholder="Search nodes...">
                 </div>
                 <div class="control-group">
                     <label class="control-label">Time Window</label>
-                    <select id="time-filter" class="control-input" title="Filter nodes by time window">
-                        <option value="all">All Data</option>
-                        <option value="1d">Last 24h</option>
-                        <option value="7d">Last 7d</option>
-                        <option value="30d">Last 30d</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label class="control-label">Search</label>
-                    <input type="text" id="search-input" class="control-input" placeholder="Search nodes...">
+                    <div class="time-toggle" id="time-toggle">
+                        <button class="intel-button small" data-window="all">All</button>
+                        <button class="intel-button small" data-window="30d">30 Days</button>
+                        <button class="intel-button small active" data-window="7d">7 Days</button>
+                        <button class="intel-button small" data-window="24h">24 Hours</button>
+                    </div>
                 </div>
                 <div class="control-group">
                     <label class="control-label">Edges</label>
@@ -398,29 +487,31 @@
                 </div>
                 <button id="fit-button" class="intel-button">Fit View</button>
                 <button id="spin-button" class="intel-button active">Auto Spin</button>
+                <button id="tumbler-button" class="intel-button small active">Tumbler: Split</button>
                 <button id="reset-button" class="intel-button">Reset</button>
             </div>
         </div>
 
         <!-- Node Details Panel -->
         <div class="intel-panel" id="node-panel">
-            <div class="panel-title">Node Details</div>
+            <div class="panel-header">
+                <div class="panel-title">Node Details</div>
+                <button class="panel-close" id="panel-close" aria-label="Close node details">×</button>
+            </div>
             <div class="panel-content" id="panel-content">
-                <div class="panel-field">
-                    <div class="field-label">Status</div>
-                    <div class="field-value">Click a node to view details</div>
-                </div>
             </div>
         </div>
 
         <!-- Legend -->
-        <details class="intel-legend" id="legend">
+        <details class="intel-legend" id="legend" open>
             <summary>
                 Sources
                 <span class="legend-caret">▾</span>
             </summary>
             <div class="legend-resizer" id="legend-resizer" title="Drag to resize"></div>
             <div class="legend-list" id="legend-content"></div>
+            <div class="legend-section-title">Categories</div>
+            <div class="legend-list legend-list--categories" id="category-legend-content"></div>
         </details>
 
         <!-- Status Indicator -->
@@ -437,15 +528,18 @@
     <script type="module">
         import * as THREE from '/three/vendor/three.module.js';
         import { OrbitControls } from '/three/vendor/controls/OrbitControls.js';
+        import { Line2 } from '/three/vendor/lines/Line2.js';
+        import { LineMaterial } from '/three/vendor/lines/LineMaterial.js';
+        import { LineGeometry } from '/three/vendor/lines/LineGeometry.js';
 
         // Intelligence Graph Configuration
         const CONFIG = {
             backgroundColor: 0x000000,
             nodeColor: 0x00E5FF,
             edgeColor: 0x00E5FF,
-            nodeOpacity: 0.78,
-            depthBoost: 3.1,
-            depthJitter: 90.0,
+            nodeOpacity: 0.9,
+            depthBoost: 2.8,
+            depthJitter: 70.0,
             surveillanceColors: {
                 low: 0xFFB347,    // Amber
                 moderate: 0x00D0FF, // Cyan
@@ -462,24 +556,59 @@
                 detail: 2
             },
             nodeRadius: {
-                base: 6.0,
-                scale: 3.2,
-                min: 3.0,
-                max: 24.0
+                base: 7.2,
+                scale: 3.6,
+                min: 3.4,
+                max: 26.0
             },
             animation: {
                 pulseSpeed: 2.0,
                 rotationSpeed: 0.0028,
-                surveillancePulseMultiplier: 1.5
+                wheelSpeed: 0.18,
+                surveillancePulseMultiplier: 1.5,
+                materializeDuration: 1800
             },
             performance: {
-                maxPixelRatio: 1.5,
+                maxPixelRatio: 2.5,
                 maxEdgesPerNode: 6
             },
             sourceBands: {
                 spacing: 220,
                 jitter: 60
+            },
+            triAxis: {
+                laneCount: 3,
+                laneSpacing: 220,
+                laneJitter: 18,
+                laneSpin: [1, -1, 1]
+            },
+            layoutSafety: {
+                enabled: true,
+                minGap: 2.2,
+                separationStrength: 0.6,
+                edgeClearance: 2.0,
+                edgePush: 0.65,
+                edgeBendStrength: 0.5,
+                cellSize: 48,
+                edgeCheckInterval: 0.35,
+                maxEdgeSamples: 28
             }
+        };
+
+        const CATEGORY_COLORS = {
+            'Law': '#ff1a1a',
+            'Government': '#5fd1ff',
+            'Manufacturing': '#ff7a8a',
+            'Technology': '#ff9a3c',
+            'Healthcare': '#ffd452',
+            'Financial Services': '#43d6c6',
+            'Construction': '#7ab6ff',
+            'Business Services': '#b27cff',
+            'Education': '#c8ced6',
+            'Energy': '#5b8cff',
+            'Transportation': '#ff8f66',
+            'ThreatFox': '#39ff14',
+            'URLhaus': '#00c8ff'
         };
 
         class IntelligenceGraph3D {
@@ -492,8 +621,12 @@
                 this.edges = [];
                 this.nodeMeshes = [];
                 this.instancedMeshes = [];
+                this.instancedGlowMeshes = [];
+                this.instancedCoreGlowMeshes = [];
                 this.sharedNodeGeometry = null;
                 this.edgeLines = [];
+                this.proxyEdges = [];
+                this.clusters = {};
                 this.selectedNode = null;
                 this.autoSpin = true;
                 this.clock = new THREE.Clock();
@@ -503,16 +636,31 @@
                 this.nodeMeshesById = {};
                 this.dragging = null;
                 this.dragMoved = false;
+                this.lastPointerHit = null;
+                this.suppressClick = false;
                 this.autoSpinBeforeDrag = null;
                 this.searchQuery = '';
+                this.timeWindow = '7d';
                 this.sourceDefs = null;
                 this.activeSources = null;
+                this.activeCategories = null;
                 this.metaSources = null;
+                this.metaClusters = null;
+                this.allowAutoExpand = false;
+                this.enableAutoCollapse = false;
+                this.spinSplit = true;
+                this.sourceSpinDirection = {};
+                this.sourceLaneMap = {};
+                this.laneColorMap = {};
                 this.graphEndpoint = null;
                 this.loadRetryHandle = null;
                 this.activeEdgeTypes = null;
+                this.enablePolling = true;
+                this.pollIntervalMs = 10000;
+                this.physicsActiveUntil = 0;
+                this.spinAngle = 0;
                 this.physics = {
-                    enabled: true,
+                    enabled: false,
                     springK: 0.0022,
                     tetherK: 0.0028,
                     damping: 0.84,
@@ -520,8 +668,15 @@
                     dragStrength: 0.55,
                     dragDirect: 0.18,
                     repulseK: 0.22,
-                    noiseK: 0.18
+                    noiseK: 0.0
                 };
+                this.layoutSafetyState = { lastEdgeCheck: 0 };
+                this.layoutSafetyActiveUntil = 0;
+                this._glowTemp = new THREE.Object3D();
+                this.materialize = null;
+                this.materializePositions = null;
+                this.materializeOrigin = null;
+                this.pendingMaterialize = false;
 
                 this.init();
                 this.setupEventListeners();
@@ -648,71 +803,11 @@
                 if (!node) return '';
                 const sourceKey = (node.source_key || '').trim();
                 if (sourceKey) return sourceKey.toLowerCase();
+                const source = (node.source || '').trim();
+                if (source) return source.toLowerCase();
                 const sub = (node.subsource || '').trim();
                 if (sub) return sub.toLowerCase();
-                const source = (node.source || '').trim();
-                return source.toLowerCase();
-            }
-
-            getActiveSeverity() {
-                const el = document.getElementById('severity-filter');
-                const value = (el && el.value ? el.value : 'all');
-                return String(value || 'all').toLowerCase();
-            }
-
-            getActiveTimeWindow() {
-                const el = document.getElementById('time-filter');
-                const value = (el && el.value ? el.value : 'all');
-                return String(value || 'all').toLowerCase();
-            }
-
-            getTimeWindowSeconds(value) {
-                const map = {
-                    '1d': 24 * 60 * 60,
-                    '7d': 7 * 24 * 60 * 60,
-                    '30d': 30 * 24 * 60 * 60
-                };
-                return map[value] || null;
-            }
-
-            coerceTimestamp(value) {
-                if (value === null || value === undefined || value === '') return null;
-                if (typeof value === 'number' && isFinite(value)) {
-                    if (value > 1e12) return value / 1000;
-                    return value;
-                }
-                if (typeof value === 'string') {
-                    const trimmed = value.trim();
-                    if (!trimmed) return null;
-                    const numeric = Number(trimmed);
-                    if (!isNaN(numeric) && /^-?\d+(\.\d+)?$/.test(trimmed)) return this.coerceTimestamp(numeric);
-                    const parsedDate = new Date(trimmed);
-                    if (!isNaN(parsedDate.getTime())) return parsedDate.getTime() / 1000;
-                }
-                return null;
-            }
-
-            getNodeTimestamp(node) {
-                const keys = [
-                    'timestamp', 'detected_at', 'detectedAt', 'created_utc', 'created',
-                    'posted_at', 'post_date', 'published_at', 'published', 'ingested_at',
-                    'last_activity', 'last_seen', 'last_updated', 'updated_at'
-                ];
-                for (const k of keys) {
-                    if (node && node[k] !== undefined && node[k] !== null && node[k] !== '') {
-                        const ts = this.coerceTimestamp(node[k]);
-                        if (ts !== null) return ts;
-                    }
-                }
-                if (node && node.payload && typeof node.payload === 'object') {
-                    for (const k of keys) {
-                        if (node.payload[k] !== undefined && node.payload[k] !== null && node.payload[k] !== '') {
-                            const ts = this.coerceTimestamp(node.payload[k]);
-                            if (ts !== null) return ts;
-                        }
-                    }
-                }
-                return null;
+                return '';
             }
 
             buildSearchText(node) {
@@ -722,12 +817,35 @@
                     node && node.name,
                     node && node.title,
                     node && node.kind,
+                    node && node.severity,
                     node && node.source,
                     node && node.subsource,
+                    node && node.victim_name,
+                    node && node.victim_domain,
+                    node && node.group,
+                    node && node.sector,
+                    node && node.country,
+                    node && node.description,
+                    node && node.source_url,
                     node && node.url,
                     node && node.post_url,
-                    node && node.author_url
+                    node && node.author_url,
+                    node && node.indicator,
+                    node && node.ioc_type
                 ];
+                if (node && Array.isArray(node.tags)) {
+                    parts.push(...node.tags);
+                }
+                if (node && node.payload && typeof node.payload === 'object') {
+                    const payload = node.payload;
+                    const payloadKeys = [
+                        'title', 'name', 'description', 'summary', 'content', 'context',
+                        'victim', 'victim_name', 'group', 'sector', 'country', 'source', 'url', 'post_url'
+                    ];
+                    payloadKeys.forEach((k) => {
+                        if (payload[k]) parts.push(payload[k]);
+                    });
+                }
                 return parts.filter(Boolean).join(' ').toLowerCase();
             }
 
@@ -812,7 +930,7 @@
                 nodes.forEach(node => {
                     const spec = this.getSpectrumValue(node);
                     const conf = this.getConfidenceValue(node);
-                    const c = new THREE.Color(this.resolveNodeColor(node));
+                    const c = new THREE.Color(this.getIntegratedNodeColor(node));
                     specSum += spec;
                     confSum += conf;
                     colorSum.r += c.r;
@@ -827,13 +945,27 @@
                 };
             }
 
+            boostNodeColor(input) {
+                const color = new THREE.Color(input || CONFIG.nodeColor);
+                const hsl = { h: 0, s: 0, l: 0 };
+                color.getHSL(hsl);
+                hsl.s = Math.min(1, hsl.s * 1.7);
+                hsl.l = Math.min(1, hsl.l * 1.6);
+                const out = new THREE.Color();
+                out.setHSL(hsl.h, hsl.s, hsl.l);
+                return out;
+            }
+
             createGlassMaterial(stats) {
                 const spec = stats.spectrum;
                 const conf = stats.confidence;
-                const opacity = this.clampValue(0.35 + (conf * 0.55), 0.35, 0.9);
-                const transmission = this.clampValue(0.45 + (spec * 0.5), 0.45, 0.92);
-                const roughness = this.clampValue(1.0 - spec, 0.15, 0.85);
-                const emissiveIntensity = this.clampValue(0.35 + (spec * 0.85), 0.35, 1.0);
+                const opacity = this.clampValue(0.84 + (conf * 0.08), 0.8, 0.94);
+                const transmission = this.clampValue(0.2 + (spec * 0.12), 0.18, 0.36);
+                const roughness = this.clampValue(0.16 - (spec * 0.08), 0.05, 0.22);
+                const emissiveIntensity = this.clampValue(0.2 + (spec * 0.16), 0.16, 0.42);
+                const emissiveColor = stats.color ? stats.color.clone().multiplyScalar(0.52) : new THREE.Color(0x101418);
+                const flakeStrength = this.clampValue(0.24 + (spec * 0.24) + (conf * 0.08), 0.2, 0.52);
+                const flakeScale = 24 + (spec * 14);
 
                 const material = new THREE.MeshPhysicalMaterial({
                     color: 0xffffff,
@@ -841,15 +973,46 @@
                     opacity,
                     transmission,
                     roughness,
-                    metalness: 0.0,
-                    clearcoat: 0.4,
-                    clearcoatRoughness: 0.25,
-                    ior: 1.35,
-                    thickness: 1.5,
-                    emissive: stats.color,
+                    metalness: 0.62,
+                    clearcoat: 1.0,
+                    clearcoatRoughness: 0.08,
+                    ior: 1.52,
+                    thickness: 1.45,
+                    reflectivity: 1.0,
+                    emissive: emissiveColor,
                     emissiveIntensity,
                     vertexColors: true
                 });
+                material.onBeforeCompile = (shader) => {
+                    shader.uniforms.uCrystalTime = { value: 0 };
+                    shader.uniforms.uFlakeStrength = { value: flakeStrength };
+                    shader.uniforms.uFlakeScale = { value: flakeScale };
+                    shader.fragmentShader = shader.fragmentShader
+                        .replace(
+                            '#include <common>',
+                            `#include <common>
+uniform float uCrystalTime;
+uniform float uFlakeStrength;
+uniform float uFlakeScale;
+float crystalHash(vec3 p) {
+    p = fract(p * 0.1031);
+    p += dot(p, p.yzx + 33.33);
+    return fract((p.x + p.y) * p.z);
+}
+`
+                        )
+                        .replace(
+                            '#include <dithering_fragment>',
+                            `float flakeField = crystalHash(floor(vViewPosition * uFlakeScale));
+float flakeMask = smoothstep(0.962, 1.0, flakeField);
+float flicker = 0.72 + 0.28 * sin((uCrystalTime * 1.7) + (flakeField * 45.0));
+float viewFactor = pow(1.0 - clamp(abs(normalize(vViewPosition).z), 0.0, 1.0), 1.8);
+float sparkle = flakeMask * flicker * (0.35 + viewFactor);
+gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
+#include <dithering_fragment>`
+                        );
+                    material.userData.crystalUniforms = shader.uniforms;
+                };
                 material.depthWrite = false;
                 material.depthTest = true;
                 return material;
@@ -860,6 +1023,22 @@
                 proxy.updateMatrix();
                 proxy.instanceMesh.setMatrixAt(proxy.instanceId, proxy.matrix);
                 proxy.instanceMesh.instanceMatrix.needsUpdate = true;
+                if (proxy.glowMesh !== undefined && proxy.glowMesh !== null) {
+                    const glowScale = (proxy.scale && proxy.scale.x ? proxy.scale.x : (proxy.baseScale || 1.0)) * 1.05;
+                    this._glowTemp.position.copy(proxy.position);
+                    this._glowTemp.scale.setScalar(glowScale);
+                    this._glowTemp.updateMatrix();
+                    proxy.glowMesh.setMatrixAt(proxy.glowInstanceId, this._glowTemp.matrix);
+                    proxy.glowMesh.instanceMatrix.needsUpdate = true;
+                }
+                if (proxy.coreGlowMesh !== undefined && proxy.coreGlowMesh !== null) {
+                    const coreScale = (proxy.scale && proxy.scale.x ? proxy.scale.x : (proxy.baseScale || 1.0)) * 0.86;
+                    this._glowTemp.position.copy(proxy.position);
+                    this._glowTemp.scale.setScalar(coreScale);
+                    this._glowTemp.updateMatrix();
+                    proxy.coreGlowMesh.setMatrixAt(proxy.coreGlowInstanceId, this._glowTemp.matrix);
+                    proxy.coreGlowMesh.instanceMatrix.needsUpdate = true;
+                }
             }
 
             resolveProxyFromHit(hit) {
@@ -921,13 +1100,20 @@
                 this.renderer = new THREE.WebGLRenderer({
                     canvas: document.getElementById('three-canvas'),
                     antialias: true,
-                    alpha: false
+                    alpha: false,
+                    powerPreference: 'high-performance',
+                    preserveDrawingBuffer: false,
+                    stencil: false,
+                    depth: true
                 });
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
-                const pixelRatioCap = CONFIG.performance && CONFIG.performance.maxPixelRatio
+                const pixelRatioCap = (CONFIG.performance && CONFIG.performance.maxPixelRatio)
                     ? CONFIG.performance.maxPixelRatio
                     : window.devicePixelRatio;
-                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelRatioCap));
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, Math.max(2.0, pixelRatioCap)));
+                this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.05;
                 this.renderer.shadowMap.enabled = true;
                 this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -948,21 +1134,24 @@
 
             setupLighting() {
                 // Ambient light
-                const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+                const ambientLight = new THREE.AmbientLight(0x3b3b3b, 0.45);
                 this.scene.add(ambientLight);
 
+                const hemiLight = new THREE.HemisphereLight(0x4a6a8f, 0x0c0c0c, 0.3);
+                this.scene.add(hemiLight);
+
                 // Point lights for glass refraction highlights
-                const cameraLight = new THREE.PointLight(0x66CCFF, 1.1, 0, 2);
+                const cameraLight = new THREE.PointLight(0x66CCFF, 1.25, 0, 2);
                 cameraLight.position.set(0, 0, 180);
                 this.camera.add(cameraLight);
                 this.scene.add(this.camera);
 
-                const centerLight = new THREE.PointLight(0x4499FF, 0.9, 0, 2);
+                const centerLight = new THREE.PointLight(0x4499FF, 1.0, 0, 2);
                 centerLight.position.set(0, 0, 0);
                 this.scene.add(centerLight);
 
                 // Key light
-                const keyLight = new THREE.DirectionalLight(0x00E5FF, 0.8);
+                const keyLight = new THREE.DirectionalLight(0x00E5FF, 0.9);
                 keyLight.position.set(100, 100, 50);
                 keyLight.castShadow = true;
                 keyLight.shadow.mapSize.width = 2048;
@@ -970,12 +1159,12 @@
                 this.scene.add(keyLight);
 
                 // Fill light
-                const fillLight = new THREE.DirectionalLight(0x0080FF, 0.4);
+                const fillLight = new THREE.DirectionalLight(0x0080FF, 0.5);
                 fillLight.position.set(-100, -100, -50);
                 this.scene.add(fillLight);
 
                 // Rim light
-                const rimLight = new THREE.DirectionalLight(0x00FFFF, 0.6);
+                const rimLight = new THREE.DirectionalLight(0x00FFFF, 0.75);
                 rimLight.position.set(0, 0, 100);
                 this.scene.add(rimLight);
             }
@@ -986,6 +1175,16 @@
                     this.camera.aspect = window.innerWidth / window.innerHeight;
                     this.camera.updateProjectionMatrix();
                     this.renderer.setSize(window.innerWidth, window.innerHeight);
+                    const pixelRatioCap = (CONFIG.performance && CONFIG.performance.maxPixelRatio)
+                        ? CONFIG.performance.maxPixelRatio
+                        : window.devicePixelRatio;
+                    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, Math.max(2.0, pixelRatioCap)));
+                    const edges = this.edgeLines.concat(this.proxyEdges || []);
+                    edges.forEach(line => {
+                        if (line && line.material && line.material.resolution) {
+                            line.material.resolution.set(window.innerWidth, window.innerHeight);
+                        }
+                    });
                 });
 
                 // Mouse events
@@ -1011,22 +1210,46 @@
                     this.toggleAutoSpin();
                 });
 
+                const tumblerButton = document.getElementById('tumbler-button');
+                if (tumblerButton) {
+                    tumblerButton.addEventListener('click', () => {
+                        this.spinSplit = !this.spinSplit;
+                        tumblerButton.classList.toggle('active', this.spinSplit);
+                        tumblerButton.textContent = this.spinSplit ? 'Tumbler: Split' : 'Tumbler: Unified';
+                    });
+                }
+
                 document.getElementById('reset-button').addEventListener('click', () => {
                     this.resetView();
                 });
 
-                // Filters
-                document.getElementById('severity-filter').addEventListener('change', () => {
-                    this.applyFilters();
-                });
+                if (this.controls && this.controls.addEventListener) {
+                    this.controls.addEventListener('change', () => {
+                        this.allowAutoExpand = true;
+                    });
+                }
 
-                document.getElementById('time-filter').addEventListener('change', () => {
-                    this.applyFilters();
-                });
+                const panelClose = document.getElementById('panel-close');
+                if (panelClose) {
+                    panelClose.addEventListener('click', () => {
+                        this.deselectNode();
+                    });
+                }
 
                 document.getElementById('search-input').addEventListener('input', (e) => {
                     this.searchNodes(e.target.value);
                 });
+                const timeToggle = document.getElementById('time-toggle');
+                if (timeToggle) {
+                    timeToggle.querySelectorAll('[data-window]').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            timeToggle.querySelectorAll('[data-window]').forEach(el => el.classList.remove('active'));
+                            btn.classList.add('active');
+                            this.timeWindow = btn.getAttribute('data-window') || 'all';
+                            this.applyLocalFilter();
+                        });
+                    });
+                }
                 document.querySelectorAll('[data-edge]').forEach(toggle => {
                     toggle.addEventListener('change', () => {
                         this.activeEdgeTypes = null;
@@ -1071,6 +1294,11 @@
             }
 
             async loadData() {
+                const overlay = document.getElementById('loading-overlay');
+                const failSafe = setTimeout(() => {
+                    if (overlay) overlay.style.display = 'none';
+                    this.updateStatus('Loading delayed — retrying in background...');
+                }, 20000);
                 try {
                     this.updateStatus('Fetching intelligence data...');
                     const { data, response } = await this.fetchGraphPayload();
@@ -1078,7 +1306,8 @@
 
                     this.nodes = data.nodes || [];
                     this.edges = data.edges || [];
-                    this.metaSources = (data.meta && Array.isArray(data.meta.sources)) ? data.meta.sources : null;
+                    this.metaSources = (data.meta && Array.isArray(data.meta.sources)) ? data.meta.sources : (data.metadata && Array.isArray(data.metadata.sources) ? data.metadata.sources : null);
+                    this.metaClusters = (data.metadata && Array.isArray(data.metadata.clusters)) ? data.metadata.clusters : (data.meta && Array.isArray(data.meta.clusters) ? data.meta.clusters : null);
                     this.mergeSourceDefsFromNodes();
 
                     this.updateStatus(`Loaded ${this.nodes.length} nodes, ${this.edges.length} connections`);
@@ -1113,30 +1342,35 @@
                     this.processData();
                     this.createVisualization();
                     this.fitCameraToNodes();
+                    this.layoutSafetyActiveUntil = Date.now() + 2600;
                     if (this.loadRetryHandle) {
                         clearTimeout(this.loadRetryHandle);
                         this.loadRetryHandle = null;
                     }
 
                     // Hide loading overlay
-                    document.getElementById('loading-overlay').style.display = 'none';
+                    if (overlay) overlay.style.display = 'none';
 
-                    // Start polling for updates if not already
-                    if (!this.pollHandle) {
-                        this.pollHandle = setInterval(() => this.pollData(), 5000);
+                    // Start polling for updates only when explicitly enabled
+                    if (this.enablePolling && !this.pollHandle) {
+                        this.pollHandle = setInterval(() => this.pollData(), this.pollIntervalMs || 10000);
                     }
 
                     // Update legend using fetched source defs (ensures all sources visible)
-                    this.updateLegend();
+                    this.safeUpdateLegend();
 
                 } catch (error) {
                     console.error('[3D] Failed to load graph data:', error);
                     this.updateStatus('Waiting for intelligence data...');
                     this.scheduleLoadRetry();
+                    if (overlay) overlay.style.display = 'none';
+                } finally {
+                    clearTimeout(failSafe);
                 }
             }
 
             async pollData() {
+                if (!this.enablePolling) return;
                 try {
                     // Poll the active 3D payload so we pick up computed layout changes
                     const { data, response } = await this.fetchGraphPayload();
@@ -1161,17 +1395,23 @@
                     // Update if the exporter reports a new build timestamp OR node/edge counts changed
                     if (newBuiltAt !== this.builtAt || newNodeCount !== this.nodes.length || newEdgeCount !== this.edges.length) {
                         console.log('[3D] Detected graph change - updating visualization');
+                        const snapshot = this.captureNodePositions();
+                        this.materializePositions = snapshot.map;
+                        this.materializeOrigin = snapshot.origin;
+                        this.pendingMaterialize = true;
                         this.nodes = data.nodes || [];
                         this.edges = data.edges || [];
-                        this.metaSources = (data.meta && Array.isArray(data.meta.sources)) ? data.meta.sources : null;
+                        this.metaSources = (data.meta && Array.isArray(data.meta.sources)) ? data.meta.sources : (data.metadata && Array.isArray(data.metadata.sources) ? data.metadata.sources : null);
+                        this.metaClusters = (data.metadata && Array.isArray(data.metadata.clusters)) ? data.metadata.clusters : (data.meta && Array.isArray(data.meta.clusters) ? data.meta.clusters : null);
                         this.mergeSourceDefsFromNodes();
                         this.builtAt = newBuiltAt;
                         this.processData();
                         this.createVisualization();
+                        this.startMaterialize();
                         this.updateStatus(`Updated ${this.nodes.length} nodes, ${this.edges.length} edges`);
                     }
                     // Always refresh the legend order/counts without reloading the whole page
-                    this.updateLegend();
+                    this.safeUpdateLegend();
                 } catch (e) {
                     console.warn('[3D] Poll failed', e);
                 }
@@ -1181,17 +1421,87 @@
 
             processData() {
                 const sourceKeys = Array.from(new Set(this.nodes.map(n => this.getSourceKey(n)).filter(Boolean))).sort();
-                const bandSpacing = CONFIG.sourceBands ? CONFIG.sourceBands.spacing : 200;
-                const bandJitter = CONFIG.sourceBands ? CONFIG.sourceBands.jitter : 40;
+                const triAxis = CONFIG.triAxis || {};
+                const laneCount = Math.max(3, triAxis.laneCount || 3);
+                const centerLane = Math.floor(laneCount / 2);
+                const bandSpacing = triAxis.laneSpacing || (CONFIG.sourceBands ? CONFIG.sourceBands.spacing : 220);
+                const bandJitter = (triAxis.laneJitter !== undefined && triAxis.laneJitter !== null)
+                    ? triAxis.laneJitter
+                    : (CONFIG.sourceBands ? CONFIG.sourceBands.jitter : 18);
+                const laneSpin = Array.isArray(triAxis.laneSpin) ? triAxis.laneSpin : [1, -1, 1];
+                const laneCounts = Array.from({ length: laneCount }, () => 0);
+                const sourceLaneMap = {};
+                const assignLane = (predicate, laneIndex) => {
+                    sourceKeys.forEach(key => {
+                        if (sourceLaneMap[key] !== undefined) return;
+                        if (!predicate(key)) return;
+                        sourceLaneMap[key] = laneIndex;
+                        laneCounts[laneIndex] += 1;
+                    });
+                };
+                assignLane((key) => {
+                    const lower = String(key || '').toLowerCase();
+                    return lower.includes('threatfox') || lower.includes('abuse.ch') || lower.includes('malware');
+                }, 0);
+                assignLane((key) => String(key || '').toLowerCase().includes('urlhaus'), 1 % laneCount);
+                assignLane((key) => {
+                    const lower = String(key || '').toLowerCase();
+                    return lower.includes('ransomware') || lower.includes('extortion');
+                }, 2 % laneCount);
+                sourceKeys.forEach(key => {
+                    if (sourceLaneMap[key] !== undefined) return;
+                    let targetLane = 0;
+                    let minCount = laneCounts[0];
+                    for (let i = 1; i < laneCount; i++) {
+                        if (laneCounts[i] < minCount) {
+                            minCount = laneCounts[i];
+                            targetLane = i;
+                        }
+                    }
+                    sourceLaneMap[key] = targetLane;
+                    laneCounts[targetLane] += 1;
+                });
+
                 const bandMap = {};
-                sourceKeys.forEach((key, idx) => {
-                    const offset = (idx - (sourceKeys.length - 1) / 2) * bandSpacing;
+                sourceKeys.forEach((key) => {
+                    const laneIndex = sourceLaneMap[key] !== undefined ? sourceLaneMap[key] : centerLane;
+                    const offset = (laneIndex - centerLane) * bandSpacing;
                     bandMap[key] = offset;
                 });
+                this.sourceLaneMap = sourceLaneMap;
                 this.sourceBandMap = bandMap;
+                this.sourceSpinDirection = {};
+                sourceKeys.forEach(key => {
+                    const laneIndex = sourceLaneMap[key] !== undefined ? sourceLaneMap[key] : centerLane;
+                    const laneDir = laneSpin[laneIndex] !== undefined ? laneSpin[laneIndex] : ((laneIndex % 2 === 0) ? 1 : -1);
+                    this.sourceSpinDirection[key] = laneDir >= 0 ? 1 : -1;
+                });
+                const laneColorAccum = Array.from({ length: laneCount }, () => new THREE.Color(0, 0, 0));
+                const laneColorCount = Array.from({ length: laneCount }, () => 0);
+                sourceKeys.forEach(key => {
+                    const laneIndex = sourceLaneMap[key] !== undefined ? sourceLaneMap[key] : centerLane;
+                    const sourceColorHex = this.getSourceColor(key) || CONFIG.nodeColor;
+                    const sourceColor = new THREE.Color(sourceColorHex);
+                    laneColorAccum[laneIndex].r += sourceColor.r;
+                    laneColorAccum[laneIndex].g += sourceColor.g;
+                    laneColorAccum[laneIndex].b += sourceColor.b;
+                    laneColorCount[laneIndex] += 1;
+                });
+                this.laneColorMap = {};
+                for (let laneIndex = 0; laneIndex < laneCount; laneIndex++) {
+                    let laneColor;
+                    if (laneColorCount[laneIndex] > 0) {
+                        laneColor = laneColorAccum[laneIndex].clone().multiplyScalar(1 / laneColorCount[laneIndex]);
+                    } else {
+                        laneColor = new THREE.Color(CONFIG.nodeColor);
+                        laneColor.offsetHSL((laneIndex - centerLane) * 0.08, 0.18, 0.05);
+                    }
+                    this.laneColorMap[laneIndex] = `#${laneColor.getHexString()}`;
+                }
 
                 // Assign Z-planes based on data attributes, but preserve exported z if present
                 this.nodes.forEach(node => {
+                    const preserveLayout = !!(node.locked || node.parent_cluster || node.is_cluster);
                     // If exporter provided a z coordinate, keep it
                     if (node.z !== undefined && node.z !== null) {
                         // preserve existing node.z
@@ -1212,24 +1522,62 @@
                         }
                     }
 
-                    // Ensure coordinates exist
-                    node.x = node.x || (Math.random() - 0.5) * 400;
-                    node.y = node.y || (Math.random() - 0.5) * 400;
+                    // Ensure coordinates exist (deterministic fallback)
+                    if (node.x === undefined || node.x === null) {
+                        const seedX = this.hashScalar(`${node.id}-x`);
+                        node.x = (seedX - 0.5) * 400;
+                    }
+                    if (node.y === undefined || node.y === null) {
+                        const seedY = this.hashScalar(`${node.id}-y`);
+                        node.y = (seedY - 0.5) * 400;
+                    }
                     node.z = (node.z !== undefined && node.z !== null) ? node.z : 0;
 
-                    // Boost depth so clusters read as 3D even at distance
-                    const id = String(node.id || '');
-                    let hash = 0;
-                    for (let i = 0; i < id.length; i++) {
-                        hash = ((hash << 5) - hash) + id.charCodeAt(i);
-                        hash |= 0;
+                    if (!preserveLayout) {
+                        // Boost depth so clusters read as 3D even at distance
+                        const id = String(node.id || '');
+                        let hash = 0;
+                        for (let i = 0; i < id.length; i++) {
+                            hash = ((hash << 5) - hash) + id.charCodeAt(i);
+                            hash |= 0;
+                        }
+                        const jitter = (Math.abs(hash) % 1000) / 1000;
+                        node.z = (node.z * CONFIG.depthBoost) + (CONFIG.depthJitter * (jitter - 0.5));
+                        const sourceKey = this.getSourceKey(node);
+                        const laneIndex = sourceLaneMap[sourceKey] !== undefined ? sourceLaneMap[sourceKey] : centerLane;
+                        const bandOffset = bandMap[sourceKey] !== undefined ? bandMap[sourceKey] : ((laneIndex - centerLane) * bandSpacing);
+                        let bandNoise = bandJitter * (this.hashScalar(`${node.id}-band`) - 0.5);
+                        node.z = node.z + bandOffset + bandNoise;
+
+                        if (this.nodes.length > 10) {
+                            const jitterSeed = this.hashScalar(`${node.id}-jitter`);
+                            const jitterX = (jitterSeed - 0.5) * 52;
+                            const jitterY = (this.hashScalar(`${node.id}-jitter-y`) - 0.5) * 52;
+                            node.x += jitterX;
+                            node.y += jitterY;
+                        }
                     }
-                    const jitter = (Math.abs(hash) % 1000) / 1000;
-                    node.z = (node.z * CONFIG.depthBoost) + (CONFIG.depthJitter * (jitter - 0.5));
+                });
+                const laneCenters = Array.from({ length: laneCount }, () => ({ x: 0, y: 0, count: 0 }));
+                this.nodes.forEach(node => {
                     const sourceKey = this.getSourceKey(node);
-                    const bandOffset = bandMap[sourceKey] || 0;
-                    const bandNoise = bandJitter * (this.hashScalar(`${node.id}-band`) - 0.5);
-                    node.z = node.z + bandOffset + bandNoise;
+                    const laneIndex = sourceLaneMap[sourceKey] !== undefined ? sourceLaneMap[sourceKey] : centerLane;
+                    const lane = laneCenters[laneIndex];
+                    lane.x += node.x;
+                    lane.y += node.y;
+                    lane.count += 1;
+                });
+                laneCenters.forEach(lane => {
+                    if (!lane.count) return;
+                    lane.x /= lane.count;
+                    lane.y /= lane.count;
+                });
+                this.nodes.forEach(node => {
+                    const sourceKey = this.getSourceKey(node);
+                    const laneIndex = sourceLaneMap[sourceKey] !== undefined ? sourceLaneMap[sourceKey] : centerLane;
+                    const lane = laneCenters[laneIndex];
+                    node.x -= lane.x;
+                    node.y -= lane.y;
                 });
 
                 // Recentre nodes so auto-spin stays on a tight central axis
@@ -1246,10 +1594,15 @@
             createVisualization() {
                 // Clear existing meshes
                 this.instancedMeshes.forEach(mesh => this.scene.remove(mesh));
+                this.instancedGlowMeshes.forEach(mesh => this.scene.remove(mesh));
+                this.instancedCoreGlowMeshes.forEach(mesh => this.scene.remove(mesh));
                 this.edgeLines.forEach(line => this.scene.remove(line));
+                this.clearProxyEdges();
 
                 this.nodeMeshes = [];
                 this.instancedMeshes = [];
+                this.instancedGlowMeshes = [];
+                this.instancedCoreGlowMeshes = [];
                 this.edgeLines = [];
                 this.nodesById = {};
                 this.nodes.forEach(n => { if (n && n.id) this.nodesById[n.id] = n; });
@@ -1297,28 +1650,89 @@
                     if (!bucket.length) return;
                     const stats = this.computeBandStats(bucket);
                     const material = this.createGlassMaterial(stats);
+                    const glowMaterial = new THREE.MeshBasicMaterial({
+                        transparent: true,
+                        opacity: 0.45,
+                        blending: THREE.AdditiveBlending,
+                        depthWrite: false,
+                        vertexColors: true
+                    });
+                    const coreGlowMaterial = new THREE.MeshBasicMaterial({
+                        transparent: true,
+                        opacity: 0.4,
+                        blending: THREE.AdditiveBlending,
+                        depthWrite: false,
+                        vertexColors: true
+                    });
                     const mesh = new THREE.InstancedMesh(this.sharedNodeGeometry, material, bucket.length);
                     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
                     mesh.renderOrder = 3;
                     mesh.frustumCulled = false;
                     mesh.userData.instanceIdToProxy = [];
                     mesh.userData.bandIndex = bandIndex;
+                    const glowMesh = new THREE.InstancedMesh(this.sharedNodeGeometry, glowMaterial, bucket.length);
+                    glowMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+                    glowMesh.renderOrder = 2;
+                    glowMesh.frustumCulled = false;
+                    const coreGlowMesh = new THREE.InstancedMesh(this.sharedNodeGeometry, coreGlowMaterial, bucket.length);
+                    coreGlowMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+                    coreGlowMesh.renderOrder = 2;
+                    coreGlowMesh.frustumCulled = false;
 
                     bucket.forEach((node, i) => {
                         const sourceKey = this.getSourceKey(node);
                         const radius = this.computeNodeRadius(node);
                         const proxy = new THREE.Object3D();
-                        proxy.position.set(node.x, node.y, node.z);
-                        proxy.scale.setScalar(radius);
                         proxy.userData = node;
                         proxy.userData.sourceKey = sourceKey;
+                        const targetPos = new THREE.Vector3(node.x, node.y, node.z);
+                        let startPos = targetPos;
+                        let isNew = false;
+                        if (this.materializePositions && this.materializePositions.size > 0) {
+                            const prev = this.materializePositions.get(node.id);
+                            if (prev) {
+                                startPos = prev.clone();
+                            } else {
+                                startPos = this.materializeOrigin ? this.materializeOrigin.clone() : targetPos.clone();
+                                isNew = true;
+                            }
+                        }
+                        proxy.userData._materializeStart = startPos.clone();
+                        proxy.userData._materializeTarget = targetPos.clone();
+                        proxy.userData._materializeNew = isNew;
+                        const materializeScale = isNew ? 0.02 : 1.0;
+                        proxy.userData._materializeScale = materializeScale;
                         proxy.baseScale = radius;
+                        proxy.userData._pulseBase = radius * materializeScale;
+                        proxy.position.copy(startPos);
+                        proxy.scale.setScalar(radius * materializeScale);
                         proxy.visible = !active || active.has(sourceKey);
                         proxy.instanceMesh = mesh;
                         proxy.instanceId = i;
+                        proxy.glowMesh = glowMesh;
+                        proxy.glowInstanceId = i;
+                        proxy.coreGlowMesh = coreGlowMesh;
+                        proxy.coreGlowInstanceId = i;
                         proxy.updateMatrix();
+                        const rawColor = new THREE.Color(this.getIntegratedNodeColor(node));
+                        const boosted = this.boostNodeColor(rawColor);
+                        const glowOverride = node && (node.glow_color || node.glowColor || node.glow);
+                        const glowColor = glowOverride ? new THREE.Color(glowOverride) : boosted;
                         mesh.setMatrixAt(i, proxy.matrix);
-                        mesh.setColorAt(i, new THREE.Color(this.resolveNodeColor(node)));
+                        mesh.setColorAt(i, rawColor);
+                        proxy.userData._baseColor = `#${rawColor.getHexString()}`;
+                        const glowScale = radius * 1.08;
+                        this._glowTemp.position.copy(proxy.position);
+                        this._glowTemp.scale.setScalar(glowScale);
+                        this._glowTemp.updateMatrix();
+                        glowMesh.setMatrixAt(i, this._glowTemp.matrix);
+                        glowMesh.setColorAt(i, glowColor);
+                        const coreScale = radius * 0.92;
+                        this._glowTemp.position.copy(proxy.position);
+                        this._glowTemp.scale.setScalar(coreScale);
+                        this._glowTemp.updateMatrix();
+                        coreGlowMesh.setMatrixAt(i, this._glowTemp.matrix);
+                        coreGlowMesh.setColorAt(i, glowColor);
                         this.nodeMeshes.push(proxy);
                         if (proxy.userData && proxy.userData.id) {
                             this.nodeMeshesById[proxy.userData.id] = proxy;
@@ -1330,9 +1744,23 @@
                         mesh.instanceColor.needsUpdate = true;
                     }
                     mesh.instanceMatrix.needsUpdate = true;
+                    if (glowMesh.instanceColor) {
+                        glowMesh.instanceColor.needsUpdate = true;
+                    }
+                    glowMesh.instanceMatrix.needsUpdate = true;
+                    if (coreGlowMesh.instanceColor) {
+                        coreGlowMesh.instanceColor.needsUpdate = true;
+                    }
+                    coreGlowMesh.instanceMatrix.needsUpdate = true;
+                    this.scene.add(coreGlowMesh);
+                    this.instancedCoreGlowMeshes.push(coreGlowMesh);
+                    this.scene.add(glowMesh);
+                    this.instancedGlowMeshes.push(glowMesh);
                     this.scene.add(mesh);
                     this.instancedMeshes.push(mesh);
                 });
+
+                this.initClusters();
 
                 // Create edges
                 edgesToRender.forEach(edge => {
@@ -1352,11 +1780,282 @@
                 });
 
                 this.initPhysics();
+                this.applyClusterDefaults();
 
                 // Update legend
-                this.updateLegend();
+                this.safeUpdateLegend();
                 this.applyLocalFilter();
                 this.searchNodes(this.searchQuery || '');
+            }
+
+            initClusters() {
+                this.clusters = {};
+                this.nodeMeshes.forEach(proxy => {
+                    const node = proxy && proxy.userData;
+                    if (!node) return;
+                    if (node.is_cluster) {
+                        this.clusters[node.id] = this.clusters[node.id] || { centroid: null, childIds: new Set(), collapsed: !!node.collapsed };
+                        this.clusters[node.id].centroid = proxy;
+                        this.clusters[node.id].collapsed = !!node.collapsed;
+                    }
+                    if (node.parent_cluster) {
+                        this.clusters[node.parent_cluster] = this.clusters[node.parent_cluster] || { centroid: null, childIds: new Set(), collapsed: true };
+                        this.clusters[node.parent_cluster].childIds.add(node.id);
+                    }
+                });
+            }
+
+            applyClusterDefaults() {
+                this.clearProxyEdges();
+                if (Array.isArray(this.metaClusters)) {
+                    this.metaClusters.forEach(item => {
+                        if (!item || !item.id) return;
+                        const cluster = this.clusters[item.id];
+                        if (!cluster) return;
+                        if (typeof item.default_collapsed === 'boolean') {
+                            cluster.collapsed = item.default_collapsed;
+                        }
+                    });
+                }
+                Object.keys(this.clusters || {}).forEach(id => {
+                    const cluster = this.clusters[id];
+                    if (!cluster) return;
+                    if (cluster.collapsed) {
+                        this.setClusterCollapsed(id, true, true, true);
+                    }
+                });
+            }
+
+            setClusterCollapsed(clusterId, collapsed, skipFilter, force) {
+                const cluster = this.clusters[clusterId];
+                if (!cluster) return;
+                if (!force && cluster.collapsed === collapsed) return;
+                cluster.collapsed = collapsed;
+
+                cluster.childIds.forEach(childId => {
+                    const proxy = this.nodeMeshesById[childId];
+                    if (!proxy) return;
+                    proxy.visible = !collapsed;
+                    const matScale = (proxy.userData && proxy.userData._materializeScale !== undefined)
+                        ? proxy.userData._materializeScale
+                        : 1.0;
+                    const scale = proxy.visible ? (proxy.baseScale || 1.0) * matScale : 0.0001;
+                    proxy.userData._pulseBase = (proxy.baseScale || 1.0) * matScale;
+                    proxy.scale.setScalar(scale);
+                    this.syncInstance(proxy);
+                });
+
+                if (collapsed) {
+                    this.buildThreatFoxProxyEdges(clusterId);
+                } else {
+                    this.clearProxyEdges();
+                }
+
+                if (this.selectedNode && cluster.childIds.has(this.selectedNode.id) && collapsed) {
+                    this.deselectNode();
+                }
+
+                if (!skipFilter) {
+                    this.applyLocalFilter();
+                }
+            }
+
+            buildThreatFoxProxyEdges(clusterId) {
+                const cluster = this.clusters[clusterId];
+                if (!cluster || !cluster.centroid) return;
+                this.clearProxyEdges();
+
+                const agg = new Map();
+                this.edgeLines.forEach(line => {
+                    const ud = line.userData || {};
+                    const a = ud.sourceId;
+                    const b = ud.targetId;
+                    const aChild = cluster.childIds.has(a);
+                    const bChild = cluster.childIds.has(b);
+                    if (!(aChild || bChild)) return;
+                    if (aChild && bChild) return;
+                    const external = aChild ? b : a;
+                    const weight = typeof ud.weight === 'number' ? ud.weight : 1;
+                    agg.set(external, (agg.get(external) || 0) + weight);
+                });
+
+                agg.forEach((sum, externalId) => {
+                    const extProxy = this.nodeMeshesById[externalId];
+                    if (!extProxy) return;
+                    const edge = {
+                        source: clusterId,
+                        target: externalId,
+                        type: 'THREATFOX_PROXY',
+                        weight: Math.min(5, 1 + Math.log10(1 + sum))
+                    };
+                    const line = this.createEdgeLine(edge);
+                    if (!line) return;
+                    line.userData.sourceId = clusterId;
+                    line.userData.targetId = externalId;
+                    line.userData.weight = edge.weight;
+                    line.userData.baseOpacity = 0.55;
+                    if (line.material) {
+                        line.material.opacity = line.userData.baseOpacity;
+                    }
+                    line.visible = true;
+                    this.scene.add(line);
+                    this.proxyEdges.push(line);
+                });
+            }
+
+            clearProxyEdges() {
+                if (!this.proxyEdges || this.proxyEdges.length === 0) return;
+                this.proxyEdges.forEach(line => {
+                    this.scene.remove(line);
+                    if (line.geometry) line.geometry.dispose && line.geometry.dispose();
+                    if (line.material) line.material.dispose && line.material.dispose();
+                });
+                this.proxyEdges = [];
+            }
+
+            updateAutoCollapse() {
+                if (!this.enableAutoCollapse) return;
+                const cluster = this.clusters && this.clusters['tf:cluster'];
+                if (!cluster || !cluster.centroid) return;
+                const camPos = this.camera.position;
+                const cPos = cluster.centroid.position;
+                const dist = camPos.distanceTo(cPos);
+                const expandDist = 380;
+                const collapseDist = 900;
+                if (cluster.collapsed && dist < expandDist && this.allowAutoExpand) {
+                    this.setClusterCollapsed('tf:cluster', false);
+                } else if (!cluster.collapsed && dist > collapseDist) {
+                    this.setClusterCollapsed('tf:cluster', true);
+                }
+            }
+
+            updateProxyEdgePositions() {
+                if (!this.proxyEdges || this.proxyEdges.length === 0) return;
+                this.proxyEdges.forEach(line => {
+                    if (!line || !line.userData) return;
+                    const src = this.nodeMeshesById[line.userData.sourceId];
+                    const tgt = this.nodeMeshesById[line.userData.targetId];
+                    if (!src || !tgt) return;
+                    const midX = (src.position.x + tgt.position.x) / 2;
+                    const midY = (src.position.y + tgt.position.y) / 2;
+                    const midZ = (src.position.z + tgt.position.z) / 2;
+                    const positions = [
+                        src.position.x, src.position.y, src.position.z,
+                        midX, midY, midZ,
+                        tgt.position.x, tgt.position.y, tgt.position.z
+                    ];
+                    if (line.geometry && typeof line.geometry.setPositions === 'function') {
+                        line.geometry.setPositions(positions);
+                    } else if (line.geometry && line.geometry.attributes && line.geometry.attributes.position) {
+                        const pos = line.geometry.attributes.position.array;
+                        pos[0] = src.position.x;
+                        pos[1] = src.position.y;
+                        pos[2] = src.position.z;
+                        pos[3] = midX;
+                        pos[4] = midY;
+                        pos[5] = midZ;
+                        pos[6] = tgt.position.x;
+                        pos[7] = tgt.position.y;
+                        pos[8] = tgt.position.z;
+                        line.geometry.attributes.position.needsUpdate = true;
+                    }
+                });
+            }
+
+            safeUpdateLegend() {
+                const nodes = this.nodes || [];
+                try {
+                    this.updateLegend();
+                } catch (err) {
+                    console.warn('[3D] Legend update failed', err);
+                }
+
+                const legendContent = document.getElementById('legend-content');
+                const categoryContent = document.getElementById('category-legend-content');
+                const sourceCounts = {};
+                const categoryCounts = {};
+                nodes.forEach(n => {
+                    const source = this.getSourceKey(n);
+                    if (source) sourceCounts[source] = (sourceCounts[source] || 0) + 1;
+                    const raw = String(n.sector || n.victim_category || n.category || '').trim();
+                    if (!raw) return;
+                    const lower = raw.toLowerCase();
+                    if (lower === 'unknown') return;
+                    const match = Object.keys(CATEGORY_COLORS).find(k => k.toLowerCase() === lower);
+                    const cat = match || ((lower === 'cybercrime' || lower === 'threatfox' || lower === 'threat fox') ? 'ThreatFox' : raw);
+                    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+                });
+
+                if (legendContent && legendContent.children.length === 0 && Object.keys(sourceCounts).length) {
+                    const orderedSources = Object.keys(sourceCounts).sort((a, b) => (sourceCounts[b] || 0) - (sourceCounts[a] || 0));
+                    legendContent.innerHTML = orderedSources.map(source => {
+                        const swatch = this.getSourceColor(source) || '#00E5FF';
+                        const label = source.toUpperCase().replace(/[_\\.]+/g, ' ');
+                        const count = sourceCounts[source] || 0;
+                        return `
+                        <div class="legend-item" data-source="${source}">
+                            <div class="legend-color" style="background: ${swatch}; border-color: ${swatch};"></div>
+                            <div class="legend-label" title="${label}">${label}</div>
+                            <div class="legend-count">(${count})</div>
+                        </div>
+                    `;
+                    }).join('');
+                    Array.from(legendContent.querySelectorAll('[data-source]')).forEach(el => {
+                        el.addEventListener('click', () => {
+                            const src = el.getAttribute('data-source');
+                            if (!this.activeSources) this.activeSources = new Set();
+                            if (this.activeSources.has(src)) {
+                                this.activeSources.delete(src);
+                                el.classList.add('inactive');
+                            } else {
+                                this.activeSources.add(src);
+                                el.classList.remove('inactive');
+                            }
+                            this.applyLocalFilter();
+                        });
+                    });
+                }
+
+                if (categoryContent && categoryContent.children.length === 0) {
+                    const ordered = Array.from(new Set([...Object.keys(CATEGORY_COLORS), ...Object.keys(categoryCounts)]));
+                    ordered.sort((a, b) => (categoryCounts[b] || 0) - (categoryCounts[a] || 0));
+                    if (!this.activeCategories) {
+                        this.activeCategories = new Set();
+                        ordered.forEach(cat => this.activeCategories.add(String(cat).toLowerCase()));
+                    }
+                    categoryContent.innerHTML = ordered.map(category => {
+                        const norm = String(category || '').toLowerCase();
+                        const label = String(category).toUpperCase();
+                        const swatch = CATEGORY_COLORS[category] || '#00E5FF';
+                        const count = categoryCounts[category] || 0;
+                        const activeCat = !this.activeCategories || this.activeCategories.has(norm);
+                        const cls = activeCat ? 'legend-item category-item' : 'legend-item category-item inactive';
+                        return `
+                        <div class="${cls}" data-category="${norm}">
+                            <div class="legend-color" style="background: ${swatch}; border-color: ${swatch};"></div>
+                            <div class="legend-label" title="${label}">${label}</div>
+                            <div class="legend-count">(${count})</div>
+                        </div>
+                    `;
+                    }).join('');
+                    Array.from(categoryContent.querySelectorAll('[data-category]')).forEach(el => {
+                        el.addEventListener('click', () => {
+                            const cat = el.getAttribute('data-category');
+                            if (!this.activeCategories) this.activeCategories = new Set();
+                            if (this.activeCategories.has(cat)) {
+                                this.activeCategories.delete(cat);
+                                el.classList.add('inactive');
+                            } else {
+                                this.activeCategories.add(cat);
+                                el.classList.remove('inactive');
+                            }
+                            this.applyLocalFilter();
+                        });
+                    });
+                }
+
+                const legend = document.getElementById('legend');
+                if (legend) legend.style.display = 'block';
             }
 
             createCrystalNode(node) {
@@ -1453,7 +2152,7 @@
                     side: THREE.DoubleSide,
                     blending: THREE.NormalBlending,
                     depthWrite: false,
-                    depthTest: false
+                    depthTest: true
                 });
 
                 const mesh = new THREE.Mesh(geometry, material);
@@ -1472,7 +2171,7 @@
                 mesh.renderOrder = 3;
                 if (mesh.material) {
                     mesh.material.depthWrite = false;
-                    mesh.material.depthTest = false;
+                    mesh.material.depthTest = true;
                     mesh.material.transparent = true;
                     mesh.material.needsUpdate = true;
                 }
@@ -1498,7 +2197,6 @@
 
                 if (!sourceNode || !targetNode) return null;
 
-                const geometry = new THREE.BufferGeometry();
                 const rawWeight = typeof edge.weight === 'number' ? edge.weight : 1;
                 const clampedWeight = Math.max(1, Math.min(5, Math.round(rawWeight)));
 
@@ -1507,52 +2205,53 @@
                     const seed = (this.hashScalar(edge.id || `${edge.source}-${edge.target}`) - 0.5);
                     curveOffset = seed * 16;
                 }
-                const jitter = curveOffset;
                 const mid = new THREE.Vector3(
                     (sourceNode.x + targetNode.x) / 2,
                     (sourceNode.y + targetNode.y) / 2,
                     (sourceNode.z + targetNode.z) / 2
                 );
-                if (jitter !== 0) {
+                if (curveOffset !== 0) {
                     const dir = this.hashDirection(edge.id || `${edge.source}-${edge.target}`);
-                    mid.addScaledVector(dir, jitter);
+                    mid.addScaledVector(dir, curveOffset);
                 }
-                const positions = new Float32Array([
+                const positions = [
                     sourceNode.x, sourceNode.y, sourceNode.z,
                     mid.x, mid.y, mid.z,
                     targetNode.x, targetNode.y, targetNode.z
-                ]);
-
-                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                ];
 
                 const edgeColor = this.getEdgeColor(sourceNode, targetNode);
                 const typeStyle = {
-                    SAME_GROUP: { opacity: 0.07, thickness: 0.55 },
-                    TIME_CLUSTER: { opacity: 0.18, thickness: 0.8 },
-                    DOMAIN_PATTERN_MATCH: { opacity: 0.34, thickness: 1.2 },
-                    GROUP_SECTOR_OVERLAP: { opacity: 0.16, thickness: 0.75 },
-                    GROUP_COUNTRY_OVERLAP: { opacity: 0.12, thickness: 0.65 },
-                    CROSS_GROUP_SECTOR: { opacity: 0.06, thickness: 0.5 }
+                    SAME_GROUP: { opacity: 0.42, width: 1.6 },
+                    TIME_CLUSTER: { opacity: 0.52, width: 1.9 },
+                    DOMAIN_PATTERN_MATCH: { opacity: 0.7, width: 2.6 },
+                    GROUP_SECTOR_OVERLAP: { opacity: 0.48, width: 1.8 },
+                    GROUP_COUNTRY_OVERLAP: { opacity: 0.4, width: 1.6 },
+                    CROSS_GROUP_SECTOR: { opacity: 0.32, width: 1.4 }
                 };
-                const style = typeStyle[edge.type] || { opacity: 0.1, thickness: 0.6 };
-                const edgeOpacity = this.clampValue(style.opacity, 0.05, 0.38);
-                const thickness = this.clampValue(style.thickness, 0.5, 1.4);
-                const material = new THREE.LineBasicMaterial({
+                const style = typeStyle[edge.type] || { opacity: 0.3, width: 1.3 };
+                const edgeOpacity = this.clampValue(style.opacity, 0.16, 0.85);
+                const width = this.clampValue(style.width, 1.0, 3.0);
+                const geometry = new LineGeometry();
+                geometry.setPositions(positions);
+                const material = new LineMaterial({
                     color: edgeColor,
                     transparent: true,
-                    // thinner, dimmer connectors to keep nodes visible
                     opacity: edgeOpacity,
+                    linewidth: width,
+                    depthWrite: false,
+                    depthTest: true
                 });
-                material.linewidth = thickness;
-                material.depthWrite = false;
-
-                const line = new THREE.Line(geometry, material);
+                material.resolution.set(window.innerWidth, window.innerHeight);
+                const line = new Line2(geometry, material);
+                line.computeLineDistances();
                 line.userData = {
                     sourceId: edge.source,
                     targetId: edge.target,
                     weight: clampedWeight,
-                    curveOffset: jitter,
-                    curveDir: jitter ? this.hashDirection(edge.id || `${edge.source}-${edge.target}`) : null
+                    curveOffset,
+                    curveDir: curveOffset ? this.hashDirection(edge.id || `${edge.source}-${edge.target}`) : null,
+                    baseOpacity: edgeOpacity
                 };
                 line.renderOrder = 1;
                 return line;
@@ -1614,6 +2313,9 @@
                     return;
                 }
 
+                this.lastPointerHit = proxy;
+                this.physicsActiveUntil = Date.now() + 4000;
+                this.physics.enabled = true;
                 this.dragging = { id: proxy.userData.id, plane, lastPoint };
                 this.dragMoved = false;
                 this.autoSpinBeforeDrag = this.autoSpin;
@@ -1649,7 +2351,14 @@
                         this.autoSpin = this.autoSpinBeforeDrag;
                         this.autoSpinBeforeDrag = null;
                     }
+                    this.physicsActiveUntil = Date.now() + 2000;
+                    this.physics.enabled = true;
                 }
+                if (this.lastPointerHit && !this.dragMoved) {
+                    this.selectNode(this.lastPointerHit.userData);
+                    this.suppressClick = true;
+                }
+                this.lastPointerHit = null;
             }
 
             _intersectPlane(event, plane, out) {
@@ -1664,6 +2373,10 @@
             }
 
             handleNodeClick(event) {
+                if (this.suppressClick) {
+                    this.suppressClick = false;
+                    return;
+                }
                 if (this.dragMoved) {
                     this.dragMoved = false;
                     return;
@@ -1680,23 +2393,45 @@
                 const intersects = raycaster.intersectObjects(this.instancedMeshes, false);
                 if (intersects.length > 0) {
                     const proxy = this.resolveProxyFromHit(intersects[0]);
-                    if (!proxy) {
-                        this.deselectNode();
-                        return;
+                    if (proxy) {
+                        if (proxy.userData && proxy.userData.is_cluster && proxy.userData.id === 'tf:cluster') {
+                            this.allowAutoExpand = true;
+                            this.setClusterCollapsed('tf:cluster', false);
+                            return;
+                        }
+                        this.selectNode(proxy.userData);
                     }
-                    this.selectNode(proxy.userData);
-                } else {
-                    this.deselectNode();
                 }
+            }
+
+            pickNearestNode(event) {
+                const rect = this.renderer.domElement.getBoundingClientRect();
+                const mx = event.clientX - rect.left;
+                const my = event.clientY - rect.top;
+                let best = null;
+                let bestDist = 22;
+                this.nodeMeshes.forEach(proxy => {
+                    if (!proxy || !proxy.visible) return;
+                    const pos = proxy.position.clone().project(this.camera);
+                    const sx = (pos.x * 0.5 + 0.5) * rect.width;
+                    const sy = (-pos.y * 0.5 + 0.5) * rect.height;
+                    const dx = sx - mx;
+                    const dy = sy - my;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        best = proxy;
+                    }
+                });
+                return best;
             }
 
             selectNode(node) {
                 this.selectedNode = node;
                 this.updateNodePanel(node);
 
-                // Stop auto-spin when selecting
-                this.autoSpin = false;
-                document.getElementById('spin-button').classList.remove('active');
+                // Stop auto-spin when selecting (freeze in-place)
+                this.stopAutoSpinFreeze();
                 this.updateSelectionHighlight();
             }
 
@@ -1708,13 +2443,28 @@
 
             updateSelectionHighlight() {
                 const selectedId = this.selectedNode && this.selectedNode.id;
+                const neighborIds = new Set();
+                if (selectedId) {
+                    const edges = this.edgeLines.concat(this.proxyEdges || []);
+                    edges.forEach(line => {
+                        if (!line || !line.userData) return;
+                        const sId = line.userData.sourceId;
+                        const tId = line.userData.targetId;
+                        if (sId === selectedId && tId) neighborIds.add(tId);
+                        if (tId === selectedId && sId) neighborIds.add(sId);
+                    });
+                }
                 this.nodeMeshes.forEach(proxy => {
                     const baseScale = proxy.baseScale || 1.0;
                     const isSelected = selectedId && proxy.userData && proxy.userData.id === selectedId;
                     const isSearchHit = !!(proxy.userData && proxy.userData.searchHit);
+                    const isNeighbor = !!(proxy.userData && neighborIds.has(proxy.userData.id));
                     let scale = baseScale;
                     if (isSearchHit && !isSelected) {
                         scale = baseScale * 1.15;
+                    }
+                    if (isNeighbor && !isSelected) {
+                        scale = Math.max(scale, baseScale * 1.2);
                     }
                     if (isSelected) {
                         scale = baseScale * 1.35;
@@ -1722,9 +2472,25 @@
                     if (!proxy.visible) {
                         scale = 0.0001;
                     }
-                    proxy.scale.setScalar(scale);
-                    this.syncInstance(proxy);
+                    proxy.userData._pulseBase = scale;
+                    proxy.userData._isSelected = !!isSelected;
+                    proxy.userData._isNeighbor = !!isNeighbor;
+                    proxy.userData._highlighted = !!(isSelected || isNeighbor);
                 });
+
+                const edges = this.edgeLines.concat(this.proxyEdges || []);
+                edges.forEach(line => {
+                    if (!line || !line.userData || !line.material) return;
+                    if (line.userData.baseOpacity === undefined) {
+                        line.userData.baseOpacity = line.material.opacity;
+                    }
+                    const sId = line.userData.sourceId;
+                    const tId = line.userData.targetId;
+                    const highlight = !!selectedId && (sId === selectedId || tId === selectedId);
+                    line.userData.highlighted = highlight;
+                });
+                this.highlightedNodeIds = new Set(neighborIds);
+                if (selectedId) this.highlightedNodeIds.add(selectedId);
             }
 
             updateNodePanel(node) {
@@ -1732,17 +2498,29 @@
                 const content = document.getElementById('panel-content');
 
                 if (!node) {
-                    content.innerHTML = `
-                        <div class="panel-field">
-                            <div class="field-label">Status</div>
-                            <div class="field-value">Click a node to view intelligence details</div>
-                        </div>
-                    `;
+                    content.innerHTML = '';
                     panel.style.display = 'none';
                     return;
                 }
 
                 panel.style.display = 'block';
+
+                const ignoreValues = new Set(['n/a', 'na', 'unknown', 'unknown victim', 'n\\a', 'none']);
+                const shouldShow = (value) => {
+                    if (value === undefined || value === null) return false;
+                    const text = String(value).trim();
+                    if (!text) return false;
+                    return !ignoreValues.has(text.toLowerCase());
+                };
+                const addField = (label, value) => {
+                    if (!shouldShow(value)) return '';
+                    return `
+                    <div class="panel-field">
+                        <div class="field-label">${label}</div>
+                        <div class="field-value">${value}</div>
+                    </div>
+                    `;
+                };
 
                 // build link elements (safe-ish, project is internal GUI)
                 const links = [];
@@ -1764,6 +2542,10 @@
                     if (v === undefined || v === null || v === '') return 'N/A';
                     const n = Number(v);
                     if (isNaN(n)) return String(v);
+                    if (n > 1) {
+                        const pct = Math.min(100, n);
+                        return `${pct.toFixed(2)} (${pct.toFixed(0)}%)`;
+                    }
                     return `${n.toFixed(2)} (${(n * 100).toFixed(0)}%)`;
                 }
 
@@ -1811,6 +2593,7 @@
                 }
 
                 function formatRelative(agoMs) {
+                    if (agoMs < 0) return '0s ago';
                     const sec = Math.floor(agoMs / 1000);
                     if (sec < 60) return `${sec}s ago`;
                     if (sec < 3600) return `${Math.floor(sec/60)}m ago`;
@@ -1832,82 +2615,39 @@
                 const postDisplay = explicitPost ? prettyTime(explicitPost) : (node.posted_at || node.created_utc || node.timestamp ? prettyTime(node.posted_at || node.created_utc || node.timestamp) : 'N/A');
                 const lastDisplay = (node.last_activity || node.last_seen || node.updated_at || node.detected_at || node.meta && node.meta.built_at) ? prettyTime(pickTimestamp(node)) : 'N/A';
 
-                content.innerHTML = `
-                    <div class="panel-field">
-                        <div class="field-label">ID</div>
-                        <div class="field-value">${node.id}</div>
-                    </div>
-                    <div class="panel-field">
-                        <div class="field-label">Label</div>
-                        <div class="field-value label">${(node.label || 'Unknown')}</div>
-                    </div>
-                    <div class="panel-field">
-                        <div class="field-label">Victim</div>
-                        <div class="field-value">${node.victim_name || 'N/A'}</div>
-                    </div>
-                    <div class="panel-field">
-                        <div class="field-label">Group</div>
-                        <div class="field-value">${node.group || 'N/A'}</div>
-                    </div>
-                    <div class="panel-field">
-                        <div class="field-label">Sector</div>
-                        <div class="field-value">${node.sector || 'N/A'}</div>
-                    </div>
-                    <div class="panel-field">
-                        <div class="field-label">Country</div>
-                        <div class="field-value">${node.country || 'N/A'}</div>
-                    </div>
-                    <div class="panel-field">
-                        <div class="field-label">Kind</div>
-                        <div class="field-value">${node.kind || 'n/a'}</div>
-                    </div>
-                    <div class="panel-field">
-                        <div class="field-label">Severity</div>
-                        <div class="field-value">${(node.severity || 'unknown').toUpperCase()}</div>
-                    </div>
-                    <div class="panel-field">
-                        <div class="field-label">Source</div>
-                        <div class="field-value">${node.source || 'Unknown'}</div>
-                    </div>
-                    <div class="panel-field">
-                        <div class="field-label">Subsource</div>
-                        <div class="field-value">${node.subsource || 'N/A'}</div>
-                    </div>
-                    <div class="panel-field">
-                        <div class="field-label">Description</div>
-                        <div class="field-value">${node.description || 'N/A'}</div>
-                    </div>
-                    <div class="panel-field">
-                        <div class="field-label">Source URL</div>
-                        <div class="field-value">${sourceUrl ? `<a href="${sourceUrl}" target="_blank" rel="noopener" class="field-link">${sourceUrl}</a>` : 'N/A'}</div>
-                    </div>
-                    <div class="panel-field">
-                        <div class="field-label">Confidence</div>
-                        <div class="field-value">${conf}</div>
-                    </div>
-                    <div class="panel-field">
-                        <div class="field-label">Posted</div>
-                        <div class="field-value">${postDisplay}</div>
-                    </div>
-                    <div class="panel-field">
-                        <div class="field-label">Last Activity</div>
-                        <div class="field-value">${lastDisplay}</div>
-                    </div>
-                    <div class="panel-field">
-                        <div class="field-label">Surveillance</div>
-                        <div class="field-value">${surv}</div>
-                    </div>
-                    ${links.length > 0 ? `
+                const fields = [];
+                fields.push(addField('ID', node.id));
+                fields.push(addField('Label', node.label || node.victim_name));
+                fields.push(addField('Victim', node.victim_name || node.label));
+                fields.push(addField('Group', node.group));
+                fields.push(addField('Sector', node.sector || node.victim_category));
+                fields.push(addField('Country', node.country));
+                fields.push(addField('Kind', node.kind || node.category));
+                fields.push(addField('Severity', node.severity));
+                fields.push(addField('Source', node.source));
+                fields.push(addField('Subsource', node.subsource));
+                fields.push(addField('Description', node.description));
+                if (sourceUrl) {
+                    fields.push(addField('Source URL', `<a href="${sourceUrl}" target="_blank" rel="noopener" class="field-link">${sourceUrl}</a>`));
+                }
+                if (shouldShow(conf)) fields.push(addField('Confidence', conf));
+                if (shouldShow(postDisplay)) fields.push(addField('Posted', postDisplay));
+                if (shouldShow(lastDisplay)) fields.push(addField('Last Activity', lastDisplay));
+                fields.push(addField('Surveillance', surv));
+                if (links.length > 0) {
+                    fields.push(`
                     <div class="panel-field">
                         <div class="field-label">Links</div>
                         <div class="field-value field-links">${links.join('')}</div>
                     </div>
-                    ` : ''}
-                `;
+                    `);
+                }
+                content.innerHTML = fields.filter(Boolean).join('');
             }
 
             updateLegend() {
                 const legendContent = document.getElementById('legend-content');
+                const categoryContent = document.getElementById('category-legend-content');
                 // Use canonical source defs so we include all known sources even with zero counts
                 this.mergeSourceDefsFromNodes();
                 const normalizedDefs = {};
@@ -1921,12 +2661,55 @@
                 this.sourceDefs = normalizedDefs;
                 const known = Object.keys(this.sourceDefs || {});
 
-                // count nodes per source
+                // count nodes per source + color distribution per source
                 const counts = {};
+                const colorStats = {};
+                const categoryCounts = {};
+                const categoryColorStats = {};
+                const normalizeCategory = (value) => {
+                    const raw = String(value || '').trim();
+                    if (!raw) return '';
+                    const lower = raw.toLowerCase();
+                    if (lower === 'cybercrime' || lower === 'threatfox' || lower === 'threat fox') return 'ThreatFox';
+                    if (lower === 'public sector') return 'Government';
+                    if (lower === 'transportation/logistics' || lower === 'transportation / logistics') return 'Transportation';
+                    const match = Object.keys(CATEGORY_COLORS).find(k => k.toLowerCase() === lower);
+                    return match || raw;
+                };
                 (this.nodes || []).forEach(n => {
                     const s = this.getSourceKey(n);
+                    if (!s) return;
                     counts[s] = (counts[s] || 0) + 1;
+                    const c = (this.resolveNodeColor(n) || '').toLowerCase();
+                    if (!c) return;
+                    if (!colorStats[s]) colorStats[s] = {};
+                    colorStats[s][c] = (colorStats[s][c] || 0) + 1;
+
+                    let cat = normalizeCategory(n.sector || n.victim_category || n.category || '');
+                    if (!cat || cat.toLowerCase() === 'unknown') return;
+                    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+                    if (!categoryColorStats[cat]) categoryColorStats[cat] = {};
+                    categoryColorStats[cat][c] = (categoryColorStats[cat][c] || 0) + 1;
                 });
+
+                const pickLegendSwatch = (source) => {
+                    const stats = colorStats[source];
+                    if (stats) {
+                        const ranked = Object.entries(stats).sort((a, b) => b[1] - a[1]);
+                        if (ranked.length > 1) {
+                            const c1 = ranked[0][0];
+                            const c2 = ranked[1][0];
+                            if (c1 && c2 && c1 !== c2) {
+                                return { fill: `linear-gradient(135deg, ${c1}, ${c2})`, border: c1 };
+                            }
+                        }
+                        if (ranked.length) {
+                            return { fill: ranked[0][0], border: ranked[0][0] };
+                        }
+                    }
+                    const fallback = this.sourceDefs[source] || this.getSourceColor(source) || '#00E5FF';
+                    return { fill: fallback, border: fallback };
+                };
 
                 // Sort by count desc, then name
                 known.sort((a, b) => {
@@ -1937,14 +2720,14 @@
                 });
 
                 legendContent.innerHTML = known.map(source => {
-                    const color = this.sourceDefs[source] || '#00E5FF';
+                    const swatch = pickLegendSwatch(source);
                     const count = counts[source] || 0;
                     const active = this.activeSources && this.activeSources.has(source);
                     const cls = active ? 'legend-item' : 'legend-item inactive';
-                    const label = source.toUpperCase();
+                    const label = source.toUpperCase().replace(/[_\\.]+/g, ' ');
                     return `
                     <div class="${cls}" data-source="${source}" style="cursor:pointer;">
-                        <div class="legend-color" style="background: ${color}; border-color: ${color};"></div>
+                        <div class="legend-color" style="background: ${swatch.fill}; border-color: ${swatch.border};"></div>
                         <div class="legend-label" title="${label}">${label}</div>
                         <div class="legend-count">(${count})</div>
                     </div>
@@ -1964,13 +2747,78 @@
                     });
                 });
 
-                document.getElementById('legend').style.display = known.length > 0 ? 'block' : 'none';
+                if (categoryContent) {
+                    const categoryKeys = new Set(Object.keys(CATEGORY_COLORS));
+                    Object.keys(categoryCounts).forEach(k => categoryKeys.add(k));
+                    const ordered = Array.from(categoryKeys);
+                    ordered.sort((a, b) => {
+                        const ca = categoryCounts[a] || 0;
+                        const cb = categoryCounts[b] || 0;
+                        if (cb !== ca) return cb - ca;
+                        return a.localeCompare(b);
+                    });
+                    if (!this.activeCategories) {
+                        this.activeCategories = new Set();
+                        ordered.forEach(cat => {
+                            if (cat) this.activeCategories.add(String(cat).toLowerCase());
+                        });
+                    }
+                    const pickCategorySwatch = (category) => {
+                        if (CATEGORY_COLORS[category]) {
+                            return { fill: CATEGORY_COLORS[category], border: CATEGORY_COLORS[category] };
+                        }
+                        const stats = categoryColorStats[category];
+                        if (stats) {
+                            const ranked = Object.entries(stats).sort((a, b) => b[1] - a[1]);
+                            if (ranked.length) {
+                                return { fill: ranked[0][0], border: ranked[0][0] };
+                            }
+                        }
+                        return { fill: '#00E5FF', border: '#00E5FF' };
+                    };
+                    categoryContent.innerHTML = ordered.map(category => {
+                        const norm = String(category || '').toLowerCase();
+                        const count = categoryCounts[category] || 0;
+                        const swatch = pickCategorySwatch(category);
+                        const label = category.toUpperCase();
+                        const activeCat = !this.activeCategories || this.activeCategories.has(norm);
+                        const cls = activeCat ? 'legend-item category-item' : 'legend-item category-item inactive';
+                        return `
+                        <div class="${cls}" data-category="${norm}">
+                            <div class="legend-color" style="background: ${swatch.fill}; border-color: ${swatch.border};"></div>
+                            <div class="legend-label" title="${label}">${label}</div>
+                            <div class="legend-count">(${count})</div>
+                        </div>
+                    `;
+                    }).join('');
+                    Array.from(categoryContent.querySelectorAll('[data-category]')).forEach(el => {
+                        el.addEventListener('click', () => {
+                            const cat = el.getAttribute('data-category');
+                            if (!this.activeCategories) this.activeCategories = new Set();
+                            if (this.activeCategories.has(cat)) {
+                                this.activeCategories.delete(cat);
+                                el.classList.add('inactive');
+                            } else {
+                                this.activeCategories.add(cat);
+                                el.classList.remove('inactive');
+                            }
+                            this.applyLocalFilter();
+                        });
+                    });
+                }
+
+                const hasSources = known.length > 0;
+                const hasCategories = categoryContent && categoryContent.innerHTML.trim().length > 0;
+                document.getElementById('legend').style.display = (hasSources || hasCategories) ? 'block' : 'none';
             }
 
             getSourceColor(source) {
                 // Prefer server-provided sourceDefs when available
-                if (this.sourceDefs && this.sourceDefs[source]) return this.sourceDefs[source];
                 const key = (source || '').toLowerCase();
+                if (this.sourceDefs) {
+                    if (this.sourceDefs[source]) return this.sourceDefs[source];
+                    if (this.sourceDefs[key]) return this.sourceDefs[key];
+                }
                 let hash = 0;
                 for (let i = 0; i < key.length; i++) {
                     hash = ((hash << 5) - hash) + key.charCodeAt(i);
@@ -2007,12 +2855,61 @@
                 return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
             }
 
+            getLaneIndexForNode(node) {
+                const triAxis = CONFIG.triAxis || {};
+                const laneCount = Math.max(3, triAxis.laneCount || 3);
+                const centerLane = Math.floor(laneCount / 2);
+                const sourceKey = this.getSourceKey(node);
+                if (!sourceKey) return centerLane;
+                if (this.sourceLaneMap && this.sourceLaneMap[sourceKey] !== undefined) {
+                    return this.sourceLaneMap[sourceKey];
+                }
+                return centerLane;
+            }
+
+            getIntegratedNodeColor(node) {
+                const baseHex = this.resolveNodeColor(node) || CONFIG.nodeColor;
+                const accentHex = this.getAccentColor(node) || baseHex;
+                const base = new THREE.Color(baseHex);
+                base.lerp(new THREE.Color(accentHex), 0.22);
+                const laneIdx = this.getLaneIndexForNode(node);
+                const laneHex = this.laneColorMap && this.laneColorMap[laneIdx];
+                if (laneHex) {
+                    base.lerp(new THREE.Color(laneHex), 0.28);
+                }
+                return `#${base.getHexString()}`;
+            }
+
+            isRansomwareKey(sourceKey) {
+                const key = String(sourceKey || '').toLowerCase();
+                if (!key) return false;
+                return key.includes('ransomware');
+            }
+
             resolveNodeColor(node) {
                 if (!node) return CONFIG.nodeColor;
+                if (node.node_color) return node.node_color;
+                if (node.nodeColor) return node.nodeColor;
+                if (node.override_color) return node.override_color;
                 if (node.spectrum_color) return node.spectrum_color;
                 if (node.spectral_color) return node.spectral_color;
                 if (node.spectralColor) return node.spectralColor;
                 if (node.color && String(node.color).length) return node.color;
+                const sector = node.sector || node.victim_category || node.category || '';
+                const normalized = String(sector || '').trim().toLowerCase();
+                if (normalized) {
+                    if (normalized === 'cybercrime' || normalized === 'threatfox' || normalized === 'threat fox') {
+                        return CATEGORY_COLORS.ThreatFox || CATEGORY_COLORS['ThreatFox'];
+                    }
+                    const mapped = Object.keys(CATEGORY_COLORS).find(k => k.toLowerCase() === normalized);
+                    if (mapped) return CATEGORY_COLORS[mapped];
+                    if (normalized === 'public sector') return CATEGORY_COLORS.Government || CATEGORY_COLORS['Government'];
+                    if (normalized === 'transportation/logistics' || normalized === 'transportation / logistics') {
+                        return CATEGORY_COLORS.Transportation || CATEGORY_COLORS['Transportation'];
+                    }
+                }
+                if (node.source_color) return node.source_color;
+                if (node.sourceColor) return node.sourceColor;
                 return CONFIG.nodeColor;
             }
 
@@ -2031,11 +2928,28 @@
             getEdgeColor(sourceNode, targetNode) {
                 const aKey = this.getSourceKey(sourceNode);
                 const bKey = this.getSourceKey(targetNode);
-                const aColor = new THREE.Color(this.resolveNodeColor(sourceNode));
+                const aNodeHex = this.resolveNodeColor(sourceNode);
+                const bNodeHex = this.resolveNodeColor(targetNode);
+                const aSourceHex = this.getSourceColor(aKey) || aNodeHex;
+                const bSourceHex = this.getSourceColor(bKey) || bNodeHex;
+                const aIsRansom = this.isRansomwareKey(aKey);
+                const bIsRansom = this.isRansomwareKey(bKey);
+                if (aIsRansom && bIsRansom) {
+                    const aColor = new THREE.Color(aNodeHex);
+                    const bColor = new THREE.Color(bNodeHex);
+                    return aKey === bKey ? aColor.lerp(bColor, 0.5) : aColor.lerp(bColor, 0.4);
+                }
+                if (aIsRansom && !bIsRansom) {
+                    return new THREE.Color(aSourceHex);
+                }
+                if (bIsRansom && !aIsRansom) {
+                    return new THREE.Color(bSourceHex);
+                }
+                const aColor = new THREE.Color(aSourceHex);
                 if (!bKey || aKey === bKey) {
                     return aColor;
                 }
-                const bColor = new THREE.Color(this.resolveNodeColor(targetNode));
+                const bColor = new THREE.Color(bSourceHex);
                 return aColor.lerp(bColor, 0.5);
             }
 
@@ -2099,6 +3013,131 @@
                 return { edges: selected, degree };
             }
 
+            getSpinDirection(node) {
+                if (!this.spinSplit) return 1;
+                const key = this.getSourceKey(node);
+                if (key && this.sourceSpinDirection && this.sourceSpinDirection[key] !== undefined) {
+                    return this.sourceSpinDirection[key];
+                }
+                const laneIdx = this.getLaneIndexForNode(node);
+                const laneSpin = (CONFIG.triAxis && Array.isArray(CONFIG.triAxis.laneSpin))
+                    ? CONFIG.triAxis.laneSpin
+                    : [1, -1, 1];
+                if (laneSpin[laneIdx] !== undefined) {
+                    return laneSpin[laneIdx] >= 0 ? 1 : -1;
+                }
+                return -1;
+            }
+
+            applyWheelSpin(time) {
+                if (!this.autoSpin) return;
+                const angle = this.spinAngle || 0;
+                this.nodeState.forEach(state => {
+                    const proxy = state.proxy;
+                    if (!proxy) return;
+                    const dir = this.getSpinDirection(proxy.userData || {});
+                    const ang = angle * dir;
+                    const cos = Math.cos(ang);
+                    const sin = Math.sin(ang);
+                    const base = state.position;
+                    if (!state.displayPosition) state.displayPosition = new THREE.Vector3();
+                    state.displayPosition.set(
+                        base.x * cos - base.y * sin,
+                        base.x * sin + base.y * cos,
+                        base.z
+                    );
+                    proxy.position.copy(state.displayPosition);
+                    this.syncInstance(proxy);
+                });
+            }
+
+            captureNodePositions() {
+                const map = new Map();
+                let sx = 0, sy = 0, sz = 0, count = 0;
+                this.nodeState.forEach(state => {
+                    if (!state || !state.proxy) return;
+                    const pos = this._getNodePos(state) || state.position;
+                    if (!pos) return;
+                    const v = pos.clone();
+                    map.set(state.id, v);
+                    sx += v.x;
+                    sy += v.y;
+                    sz += v.z;
+                    count += 1;
+                });
+                const origin = count ? new THREE.Vector3(sx / count, sy / count, sz / count) : new THREE.Vector3();
+                return { map, origin };
+            }
+
+            startMaterialize() {
+                if (!this.pendingMaterialize || !this.materializePositions || this.materializePositions.size === 0) {
+                    this.pendingMaterialize = false;
+                    this.materialize = null;
+                    return;
+                }
+                const durationMs = (CONFIG.animation && CONFIG.animation.materializeDuration)
+                    ? CONFIG.animation.materializeDuration
+                    : 1800;
+                this.materialize = {
+                    start: performance.now(),
+                    duration: durationMs
+                };
+                this.pendingMaterialize = false;
+                this.physics.enabled = false;
+                this.physicsActiveUntil = 0;
+            }
+
+            updateMaterialize() {
+                if (!this.materialize) return;
+                const now = performance.now();
+                const elapsed = now - this.materialize.start;
+                const t = this.materialize.duration > 0 ? Math.min(1, elapsed / this.materialize.duration) : 1;
+                const eased = 1 - Math.pow(1 - t, 3);
+                this.nodeState.forEach(state => {
+                    const proxy = state.proxy;
+                    if (!proxy || !proxy.userData) return;
+                    const start = proxy.userData._materializeStart;
+                    const target = proxy.userData._materializeTarget;
+                    if (!start || !target) return;
+                    const pos = start.clone().lerp(target, eased);
+                    state.position.copy(pos);
+                    proxy.position.copy(pos);
+                    if (proxy.userData) {
+                        proxy.userData.x = pos.x;
+                        proxy.userData.y = pos.y;
+                        proxy.userData.z = pos.z;
+                    }
+                    const base = proxy.baseScale || 1.0;
+                    const isNew = !!proxy.userData._materializeNew;
+                    const scaleFactor = isNew ? Math.max(0.02, eased) : 1.0;
+                    proxy.userData._materializeScale = scaleFactor;
+                    proxy.userData._pulseBase = base * scaleFactor;
+                    if (!proxy.userData._isSelected && !proxy.userData._isNeighbor) {
+                        proxy.scale.setScalar(proxy.userData._pulseBase);
+                    }
+                    this.syncInstance(proxy);
+                });
+                if (t >= 1) {
+                    this.nodeState.forEach(state => {
+                        if (!state || !state.proxy || !state.proxy.userData) return;
+                        const proxy = state.proxy;
+                        state.rest.copy(state.position);
+                        proxy.userData._materializeStart = null;
+                        proxy.userData._materializeTarget = null;
+                        proxy.userData._materializeNew = false;
+                        proxy.userData._materializeScale = 1.0;
+                        proxy.userData._pulseBase = proxy.baseScale || 1.0;
+                    });
+                    this.materialize = null;
+                    this.materializePositions = null;
+                    this.materializeOrigin = null;
+                }
+            }
+
+            _getNodePos(state) {
+                return (state && state.displayPosition) ? state.displayPosition : state.position;
+            }
+
             fitCameraToNodes() {
                 if (this.nodes.length === 0) return;
 
@@ -2121,8 +3160,38 @@
             }
 
             toggleAutoSpin() {
-                this.autoSpin = !this.autoSpin;
-                document.getElementById('spin-button').classList.toggle('active', this.autoSpin);
+                if (this.autoSpin) {
+                    this.stopAutoSpinFreeze();
+                    return;
+                }
+                this.autoSpin = true;
+                document.getElementById('spin-button').classList.add('active');
+            }
+
+            stopAutoSpinFreeze() {
+                if (!this.autoSpin && !this.nodeState.size) return;
+                this.autoSpin = false;
+                const spinBtn = document.getElementById('spin-button');
+                if (spinBtn) spinBtn.classList.remove('active');
+                this.spinAngle = 0;
+                this.physics.enabled = false;
+                this.physicsActiveUntil = 0;
+                this.layoutSafetyActiveUntil = 0;
+                this.nodeState.forEach(state => {
+                    if (!state || !state.proxy) return;
+                    const pos = state.displayPosition ? state.displayPosition.clone() : state.position.clone();
+                    state.displayPosition = null;
+                    state.position.copy(pos);
+                    state.rest.copy(pos);
+                    state.velocity.set(0, 0, 0);
+                    state.proxy.position.copy(pos);
+                    if (state.proxy.userData) {
+                        state.proxy.userData.x = pos.x;
+                        state.proxy.userData.y = pos.y;
+                        state.proxy.userData.z = pos.z;
+                    }
+                    this.syncInstance(state.proxy);
+                });
             }
 
             resetView() {
@@ -2135,9 +3204,6 @@
             applyFilters() {
                 // low-level UI filter trigger: mirror into activeSources if needed
                 this.applyLocalFilter();
-                const searchEl = document.getElementById('search-input');
-                const query = searchEl ? searchEl.value : this.searchQuery;
-                this.searchNodes(query || '');
             }
 
             searchNodes(query) {
@@ -2153,29 +3219,62 @@
                     const haystack = this.buildSearchText(data);
                     data.searchHit = terms.every(term => haystack.includes(term));
                 });
+                this.applyLocalFilter();
                 this.updateSelectionHighlight();
             }
 
             applyLocalFilter() {
                 // Apply current activeSources set to node and edge visibility
                 const active = this.getActiveSourceSet();
-                const severity = this.getActiveSeverity();
-                const windowValue = this.getActiveTimeWindow();
-                const windowSeconds = this.getTimeWindowSeconds(windowValue);
-                const cutoff = windowSeconds ? (Date.now() / 1000) - windowSeconds : null;
-                const allowAllSeverity = !severity || severity === 'all';
+                const terms = String(this.searchQuery || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+                const useSearch = terms.length > 0;
+                const windowKey = this.timeWindow || 'all';
+                const now = Date.now();
+                const windowMs = windowKey === '24h'
+                    ? 24 * 60 * 60 * 1000
+                    : (windowKey === '7d'
+                        ? 7 * 24 * 60 * 60 * 1000
+                        : (windowKey === '30d'
+                            ? 30 * 24 * 60 * 60 * 1000
+                            : null));
+                const parseTime = (value) => {
+                    if (!value) return null;
+                    if (typeof value === 'number') {
+                        return value > 1e12 ? value : value * 1000;
+                    }
+                    const text = String(value).trim();
+                    if (!text) return null;
+                    const parsed = Date.parse(text);
+                    return Number.isNaN(parsed) ? null : parsed;
+                };
                 this.nodeMeshes.forEach(proxy => {
                     const n = proxy.userData || {};
+                    const clusterId = n.parent_cluster;
+                    const cluster = clusterId ? (this.clusters && this.clusters[clusterId]) : null;
+                    const clusterCollapsed = cluster ? cluster.collapsed : false;
                     const s = this.getSourceKey(n);
-                    const sev = String(n.severity || '').toLowerCase();
-                    const severityOk = allowAllSeverity || (sev && sev === severity);
                     const sourceOk = !active || active.has(s);
-                    let timeOk = true;
-                    if (cutoff !== null) {
-                        const ts = this.getNodeTimestamp(n);
-                        timeOk = ts !== null && ts >= cutoff;
+                    const searchOk = !useSearch || !!n.searchHit;
+                    const rawCategory = (n.sector || n.victim_category || n.category || '').toString().trim();
+                    let normalizedCategory = rawCategory
+                        ? rawCategory.replace(/\\+/g, '/').replace(/\s+/g, ' ').toLowerCase()
+                        : '';
+                    if (normalizedCategory === 'cyber crime') normalizedCategory = 'threatfox';
+                    if (normalizedCategory === 'cybercrime') normalizedCategory = 'threatfox';
+                    if (normalizedCategory === 'threat fox') normalizedCategory = 'threatfox';
+                    if (normalizedCategory === 'public sector') normalizedCategory = 'government';
+                    if (normalizedCategory === 'transportation/logistics' || normalizedCategory === 'transportation / logistics') {
+                        normalizedCategory = 'transportation';
                     }
-                    proxy.visible = sourceOk && severityOk && timeOk;
+                    const categoryOk = !this.activeCategories || !normalizedCategory || this.activeCategories.has(normalizedCategory);
+                    let timeOk = true;
+                    if (windowMs) {
+                        const timeValue = parseTime(n.posted_at) || parseTime(n.discovered) || parseTime(n.first_observed) || parseTime(n.last_observed) || parseTime(n.timestamp);
+                        if (timeValue) {
+                            timeOk = (now - timeValue) <= windowMs;
+                        }
+                    }
+                    proxy.visible = sourceOk && searchOk && timeOk && categoryOk && !clusterCollapsed;
                     const scale = proxy.visible ? (proxy.baseScale || 1.0) : 0.0001;
                     proxy.scale.setScalar(scale);
                     this.syncInstance(proxy);
@@ -2186,6 +3285,7 @@
                         line.visible = visibleIds.has(line.userData.sourceId) && visibleIds.has(line.userData.targetId);
                         return;
                     }
+                    if (!line.geometry || !line.geometry.attributes || !line.geometry.attributes.position) return;
                     const pos = line.geometry.attributes.position.array;
                     // attempt to find source/target by comparing positions (fallback)
                     let a = pos.slice(0,3);
@@ -2201,6 +3301,14 @@
                     const tId = approxFind(b);
                     line.visible = sId && tId && visibleIds.has(sId) && visibleIds.has(tId);
                 });
+                if (this.proxyEdges && this.proxyEdges.length > 0) {
+                    this.proxyEdges.forEach(line => {
+                        if (!line || !line.userData) return;
+                        const sId = line.userData.sourceId;
+                        const tId = line.userData.targetId;
+                        line.visible = visibleIds.has(sId) && visibleIds.has(tId);
+                    });
+                }
                 this.updateSelectionHighlight();
             }
 
@@ -2219,6 +3327,7 @@
                     const rec = this.getRecencyValue(proxy.userData);
                     const mass = 0.8 + (spec * 2.4) + (conv * 1.6);
                     const seed = this.hashScalar(proxy.userData.id);
+                    const locked = !!(proxy.userData.locked || proxy.userData.is_cluster || proxy.userData.parent_cluster);
                     this.nodeState.set(proxy.userData.id, {
                         id: proxy.userData.id,
                         proxy,
@@ -2230,6 +3339,7 @@
                         convergence: conv,
                         recency: rec,
                         seed,
+                        locked,
                     });
                 });
 
@@ -2276,6 +3386,7 @@
                 let centerWeight = 0;
                 this.nodeState.forEach((state, id) => {
                     if (!visibleIds.has(id)) return;
+                    if (state.locked) return;
                     const weight = Math.pow(state.spectrum || 0.35, 1.6) + ((state.convergence || 0.0) * 0.8);
                     center.add(state.position.clone().multiplyScalar(weight));
                     centerWeight += weight;
@@ -2286,6 +3397,7 @@
 
                 this.nodeState.forEach((state, id) => {
                     if (!visibleIds.has(id)) return;
+                    if (state.locked) return;
                     forces.set(id, new THREE.Vector3());
                 });
 
@@ -2295,6 +3407,7 @@
                     const a = this.nodeState.get(edge.sourceId);
                     const b = this.nodeState.get(edge.targetId);
                     if (!a || !b) return;
+                    if (a.locked && b.locked) return;
                     const delta = new THREE.Vector3().subVectors(b.position, a.position);
                     const dist = Math.max(0.001, delta.length());
                     const stretch = dist - edge.restLength;
@@ -2305,12 +3418,24 @@
                     const forceMag = stretch * this.physics.springK * (0.65 + (similarity * 0.7)) * convBoost * weightBoost;
                     const dir = delta.multiplyScalar(1.0 / dist);
                     const force = dir.multiplyScalar(forceMag);
-                    if (forces.has(a.id)) forces.get(a.id).add(force);
-                    if (forces.has(b.id)) forces.get(b.id).addScaledVector(force, -1);
+                    if (!a.locked && forces.has(a.id)) forces.get(a.id).add(force);
+                    if (!b.locked && forces.has(b.id)) forces.get(b.id).addScaledVector(force, -1);
                 });
 
                 this.nodeState.forEach((state, id) => {
                     if (!visibleIds.has(id)) return;
+                    if (state.locked) {
+                        state.position.copy(state.rest);
+                        state.velocity.set(0, 0, 0);
+                        state.proxy.position.copy(state.position);
+                        this.syncInstance(state.proxy);
+                        if (state.proxy.userData) {
+                            state.proxy.userData.x = state.position.x;
+                            state.proxy.userData.y = state.position.y;
+                            state.proxy.userData.z = state.position.z;
+                        }
+                        return;
+                    }
                     const force = forces.get(id) || new THREE.Vector3();
                     const spec = state.spectrum || 0.35;
                     const conv = state.convergence || 0.0;
@@ -2368,6 +3493,165 @@
                 });
             }
 
+            applyLayoutSafety(deltaTime) {
+                if (!CONFIG.layoutSafety || !CONFIG.layoutSafety.enabled) return;
+                if (this.materialize) return;
+                if (this.layoutSafetyActiveUntil && Date.now() > this.layoutSafetyActiveUntil) return;
+                if (!this.nodeState || this.nodeState.size === 0) return;
+
+                const visibleIds = new Set(this.nodeMeshes.filter(m => m.visible).map(m => m.userData && m.userData.id));
+                const states = [];
+                this.nodeState.forEach((state, id) => {
+                    if (!visibleIds.has(id)) return;
+                    if (state.locked) return;
+                    const radius = (state.proxy && state.proxy.baseScale) ? state.proxy.baseScale : CONFIG.nodeRadius.base;
+                    state._index = states.length;
+                    state._radius = radius;
+                    states.push(state);
+                });
+                if (states.length < 2) return;
+
+                const cellSize = CONFIG.layoutSafety.cellSize;
+                const grid = new Map();
+                const cellKey = (x, y, z) => `${x}|${y}|${z}`;
+                const toCell = (v) => ({
+                    x: Math.floor(v.x / cellSize),
+                    y: Math.floor(v.y / cellSize),
+                    z: Math.floor(v.z / cellSize)
+                });
+
+                states.forEach(state => {
+                    const c = toCell(state.position);
+                    const key = cellKey(c.x, c.y, c.z);
+                    if (!grid.has(key)) grid.set(key, []);
+                    grid.get(key).push(state);
+                });
+
+                const minGap = CONFIG.layoutSafety.minGap;
+                const sepStrength = CONFIG.layoutSafety.separationStrength;
+                const updated = new Set();
+
+                const neighborCells = [
+                    [-1,-1,-1], [-1,-1,0], [-1,-1,1],
+                    [-1,0,-1],  [-1,0,0],  [-1,0,1],
+                    [-1,1,-1],  [-1,1,0],  [-1,1,1],
+                    [0,-1,-1],  [0,-1,0],  [0,-1,1],
+                    [0,0,-1],   [0,0,0],   [0,0,1],
+                    [0,1,-1],   [0,1,0],   [0,1,1],
+                    [1,-1,-1],  [1,-1,0],  [1,-1,1],
+                    [1,0,-1],   [1,0,0],   [1,0,1],
+                    [1,1,-1],   [1,1,0],   [1,1,1]
+                ];
+
+                states.forEach(state => {
+                    const c = toCell(state.position);
+                    neighborCells.forEach(offset => {
+                        const key = cellKey(c.x + offset[0], c.y + offset[1], c.z + offset[2]);
+                        const bucket = grid.get(key);
+                        if (!bucket) return;
+                        bucket.forEach(other => {
+                            if (other._index <= state._index) return;
+                            const delta = new THREE.Vector3().subVectors(state.position, other.position);
+                            let dist = delta.length();
+                            const minDist = (state._radius || 1) + (other._radius || 1) + minGap;
+                            if (dist < 0.0001) {
+                                const seed = this.hashScalar(`${state.id}-${other.id}`) - 0.5;
+                                delta.set(Math.cos(seed * Math.PI * 2), Math.sin(seed * Math.PI * 2), seed * 0.35);
+                                dist = delta.length();
+                            }
+                            if (dist < minDist) {
+                                const push = (minDist - dist) / dist;
+                                const offsetVec = delta.multiplyScalar(push * sepStrength * 0.5);
+                                state.position.add(offsetVec);
+                                other.position.addScaledVector(offsetVec, -1);
+                                updated.add(state);
+                                updated.add(other);
+                            }
+                        });
+                    });
+                });
+
+                const now = this.clock.getElapsedTime();
+                const edgeInterval = CONFIG.layoutSafety.edgeCheckInterval;
+                const doEdgeCheck = (now - this.layoutSafetyState.lastEdgeCheck) >= edgeInterval;
+                if (doEdgeCheck) {
+                    this.layoutSafetyState.lastEdgeCheck = now;
+                    const edgeClearance = CONFIG.layoutSafety.edgeClearance;
+                    const edgePush = CONFIG.layoutSafety.edgePush;
+                    const bendStrength = CONFIG.layoutSafety.edgeBendStrength;
+
+                    this.edgeState.forEach(edge => {
+                        if (!edge || !edge.line || !edge.line.visible) return;
+                        const a = this.nodeState.get(edge.sourceId);
+                        const b = this.nodeState.get(edge.targetId);
+                        if (!a || !b) return;
+                        if (a.locked || b.locked) return;
+                        if (!visibleIds.has(a.id) || !visibleIds.has(b.id)) return;
+
+                        const aPos = a.position;
+                        const bPos = b.position;
+                        const ab = new THREE.Vector3().subVectors(bPos, aPos);
+                        const len = ab.length();
+                        if (len < 0.001) return;
+                        const dir = ab.clone().multiplyScalar(1 / len);
+                        const steps = Math.max(6, Math.min(CONFIG.layoutSafety.maxEdgeSamples, Math.ceil(len / cellSize)));
+                        const candidates = new Map();
+
+                        for (let i = 0; i <= steps; i++) {
+                            const t = i / steps;
+                            const p = new THREE.Vector3().copy(aPos).addScaledVector(dir, len * t);
+                            const c = toCell(p);
+                            neighborCells.forEach(offset => {
+                                const key = cellKey(c.x + offset[0], c.y + offset[1], c.z + offset[2]);
+                                const bucket = grid.get(key);
+                                if (!bucket) return;
+                                bucket.forEach(s => {
+                                    if (s.id === a.id || s.id === b.id) return;
+                                    candidates.set(s.id, s);
+                                });
+                            });
+                        }
+
+                        let bend = new THREE.Vector3();
+                        candidates.forEach(state => {
+                            const p = state.position;
+                            const ap = new THREE.Vector3().subVectors(p, aPos);
+                            const t = this.clampValue(ap.dot(dir) / len, 0, 1);
+                            const closest = new THREE.Vector3().copy(aPos).addScaledVector(dir, len * t);
+                            const v = new THREE.Vector3().subVectors(p, closest);
+                            let dist = v.length();
+                            const minDist = (state._radius || 1) + edgeClearance;
+                            if (dist < 0.0001) {
+                                const seed = this.hashScalar(`${state.id}-${edge.sourceId}-${edge.targetId}`) - 0.5;
+                                v.set(Math.cos(seed * Math.PI * 2), Math.sin(seed * Math.PI * 2), seed * 0.35);
+                                dist = v.length();
+                            }
+                            if (dist < minDist) {
+                                const pushMag = (minDist - dist) * edgePush;
+                                v.normalize();
+                                state.position.addScaledVector(v, pushMag);
+                                updated.add(state);
+                                bend.addScaledVector(v, pushMag * bendStrength);
+                            }
+                        });
+
+                        if (edge.line && edge.line.userData) {
+                            edge.line.userData.clearanceBend = bend;
+                        }
+                    });
+                }
+
+                updated.forEach(state => {
+                    state.proxy.position.copy(state.position);
+                    this.syncInstance(state.proxy);
+                    if (state.proxy.userData) {
+                        state.proxy.userData.x = state.position.x;
+                        state.proxy.userData.y = state.position.y;
+                        state.proxy.userData.z = state.position.z;
+                    }
+                });
+            }
+
             updateEdgePositions() {
                 if (!this.edgeState || this.edgeState.length === 0) return;
                 this.edgeState.forEach(edge => {
@@ -2376,10 +3660,11 @@
                     const a = this.nodeState.get(edge.sourceId);
                     const b = this.nodeState.get(edge.targetId);
                     if (!a || !b) return;
-                    const pos = edge.line.geometry.attributes.position.array;
-                    const midX = (a.position.x + b.position.x) / 2;
-                    const midY = (a.position.y + b.position.y) / 2;
-                    const midZ = (a.position.z + b.position.z) / 2;
+                    const aPos = this._getNodePos(a);
+                    const bPos = this._getNodePos(b);
+                    const midX = (aPos.x + bPos.x) / 2;
+                    const midY = (aPos.y + bPos.y) / 2;
+                    const midZ = (aPos.z + bPos.z) / 2;
                     let mx = midX;
                     let my = midY;
                     let mz = midZ;
@@ -2390,17 +3675,34 @@
                         my += dir.y * offset;
                         mz += dir.z * offset;
                     }
-                    pos[0] = a.position.x;
-                    pos[1] = a.position.y;
-                    pos[2] = a.position.z;
-                    pos[3] = mx;
-                    pos[4] = my;
-                    pos[5] = mz;
-                    pos[6] = b.position.x;
-                    pos[7] = b.position.y;
-                    pos[8] = b.position.z;
-                    edge.line.geometry.attributes.position.needsUpdate = true;
+                    const bend = edge.line.userData && edge.line.userData.clearanceBend ? edge.line.userData.clearanceBend : null;
+                    if (bend) {
+                        mx += bend.x;
+                        my += bend.y;
+                        mz += bend.z;
+                    }
+                    const positions = [
+                        aPos.x, aPos.y, aPos.z,
+                        mx, my, mz,
+                        bPos.x, bPos.y, bPos.z
+                    ];
+                    if (edge.line.geometry && typeof edge.line.geometry.setPositions === 'function') {
+                        edge.line.geometry.setPositions(positions);
+                    } else if (edge.line.geometry && edge.line.geometry.attributes && edge.line.geometry.attributes.position) {
+                        const pos = edge.line.geometry.attributes.position.array;
+                        pos[0] = a.position.x;
+                        pos[1] = a.position.y;
+                        pos[2] = a.position.z;
+                        pos[3] = mx;
+                        pos[4] = my;
+                        pos[5] = mz;
+                        pos[6] = b.position.x;
+                        pos[7] = b.position.y;
+                        pos[8] = b.position.z;
+                        edge.line.geometry.attributes.position.needsUpdate = true;
+                    }
                 });
+                this.updateProxyEdgePositions();
             }
 
             updateStatus(text) {
@@ -2408,7 +3710,6 @@
             }
 
             showUI() {
-                document.querySelector('.intel-panel').style.display = 'none';
                 document.querySelector('.intel-legend').style.display = 'block';
                 document.querySelector('.status-indicator').style.display = 'block';
             }
@@ -2419,15 +3720,87 @@
                 const deltaTime = this.clock.getDelta();
                 const time = this.clock.getElapsedTime();
 
+                if (this.physicsActiveUntil) {
+                    this.physics.enabled = Date.now() < this.physicsActiveUntil;
+                }
+                this.updateAutoCollapse();
                 this.applyPhysics(deltaTime);
+                this.applyLayoutSafety(deltaTime);
+                this.updateMaterialize();
+                if (this.autoSpin) {
+                    const speed = (CONFIG.animation && CONFIG.animation.wheelSpeed) ? CONFIG.animation.wheelSpeed : 0.18;
+                    this.spinAngle += deltaTime * speed;
+                }
+                this.instancedMeshes.forEach(mesh => {
+                    if (!mesh || !mesh.material || !mesh.material.userData || !mesh.material.userData.crystalUniforms) return;
+                    mesh.material.userData.crystalUniforms.uCrystalTime.value = time;
+                });
+                this.applyWheelSpin(time);
                 this.updateEdgePositions();
 
-                // Auto rotation
-                if (this.autoSpin) {
-                    this.scene.rotation.y += CONFIG.animation.rotationSpeed;
-                    this.scene.rotation.x = 0;
-                    this.scene.rotation.z = 0;
-                }
+                const pulseTime = time * 2.6;
+                const glowMeshesTouched = new Set();
+                const coreGlowMeshesTouched = new Set();
+                this.nodeMeshes.forEach(proxy => {
+                    if (!proxy || !proxy.userData) return;
+                    if (!proxy.visible) return;
+                    const base = proxy.userData._pulseBase || proxy.baseScale || 1.0;
+                    const selected = proxy.userData._isSelected;
+                    const neighbor = proxy.userData._isNeighbor;
+                    if (selected || neighbor) {
+                        const amp = selected ? 0.2 : 0.14;
+                        const seed = this.hashScalar(proxy.userData.id || '');
+                        const blink = (selected ? 0.72 : 0.66) + (selected ? 0.28 : 0.32) * (0.5 + 0.5 * Math.sin((pulseTime * 1.8) + seed * 6.28));
+                        const pulse = 1.0 + (Math.sin(pulseTime + seed * 6.28) * amp);
+                        proxy.scale.setScalar(base * pulse * blink);
+                        this.syncInstance(proxy);
+                        if (proxy.glowMesh && proxy.userData && proxy.userData._baseColor) {
+                            const color = new THREE.Color(proxy.userData._baseColor);
+                            const glowBoost = selected ? 0.75 : 0.52;
+                            color.lerp(new THREE.Color(0xffffff), glowBoost * blink);
+                            proxy.glowMesh.setColorAt(proxy.glowInstanceId, color);
+                            glowMeshesTouched.add(proxy.glowMesh);
+                        }
+                        if (proxy.coreGlowMesh && proxy.userData && proxy.userData._baseColor) {
+                            const color = new THREE.Color(proxy.userData._baseColor);
+                            const coreBoost = selected ? 0.82 : 0.56;
+                            color.lerp(new THREE.Color(0xffffff), coreBoost * blink);
+                            proxy.coreGlowMesh.setColorAt(proxy.coreGlowInstanceId, color);
+                            coreGlowMeshesTouched.add(proxy.coreGlowMesh);
+                        }
+                        proxy.userData._glowBright = true;
+                    } else if (proxy.userData && proxy.userData._glowBright && (proxy.glowMesh || proxy.coreGlowMesh)) {
+                        const color = new THREE.Color(proxy.userData._baseColor || 0xffffff);
+                        if (proxy.glowMesh) {
+                            proxy.glowMesh.setColorAt(proxy.glowInstanceId, color);
+                            glowMeshesTouched.add(proxy.glowMesh);
+                        }
+                        if (proxy.coreGlowMesh) {
+                            proxy.coreGlowMesh.setColorAt(proxy.coreGlowInstanceId, color);
+                            coreGlowMeshesTouched.add(proxy.coreGlowMesh);
+                        }
+                        proxy.userData._glowBright = false;
+                    }
+                });
+                glowMeshesTouched.forEach(mesh => {
+                    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+                });
+                coreGlowMeshesTouched.forEach(mesh => {
+                    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+                });
+
+                const edges = this.edgeLines.concat(this.proxyEdges || []);
+                edges.forEach(line => {
+                    if (!line || !line.userData || !line.material) return;
+                    const baseOpacity = line.userData.baseOpacity || line.material.opacity || 0.2;
+                    if (line.userData.highlighted) {
+                        const seed = this.hashScalar(`${line.userData.sourceId}-${line.userData.targetId}`);
+                        const pulse = 0.5 + (Math.sin(pulseTime + seed * 6.28) * 0.5);
+                        line.material.opacity = Math.min(0.95, baseOpacity + (0.6 * pulse));
+                    } else if (line.material.opacity !== baseOpacity) {
+                        line.material.opacity = baseOpacity;
+                    }
+                });
 
                 // Update controls
                 this.controls.update();

@@ -576,6 +576,12 @@
                 spacing: 220,
                 jitter: 60
             },
+            triAxis: {
+                laneCount: 3,
+                laneSpacing: 220,
+                laneJitter: 18,
+                laneSpin: [1, -1, 1]
+            },
             layoutSafety: {
                 enabled: true,
                 minGap: 2.2,
@@ -644,6 +650,8 @@
                 this.enableAutoCollapse = false;
                 this.spinSplit = true;
                 this.sourceSpinDirection = {};
+                this.sourceLaneMap = {};
+                this.laneColorMap = {};
                 this.graphEndpoint = null;
                 this.loadRetryHandle = null;
                 this.activeEdgeTypes = null;
@@ -922,7 +930,7 @@
                 nodes.forEach(node => {
                     const spec = this.getSpectrumValue(node);
                     const conf = this.getConfidenceValue(node);
-                    const c = new THREE.Color(this.resolveNodeColor(node));
+                    const c = new THREE.Color(this.getIntegratedNodeColor(node));
                     specSum += spec;
                     confSum += conf;
                     colorSum.r += c.r;
@@ -951,11 +959,13 @@
             createGlassMaterial(stats) {
                 const spec = stats.spectrum;
                 const conf = stats.confidence;
-                const opacity = this.clampValue(0.88 + (conf * 0.06), 0.82, 0.94);
-                const transmission = 0.06;
-                const roughness = this.clampValue(0.24 - (spec * 0.12), 0.12, 0.35);
-                const emissiveIntensity = this.clampValue(0.22 + (spec * 0.18), 0.18, 0.45);
-                const emissiveColor = stats.color ? stats.color.clone().multiplyScalar(0.55) : new THREE.Color(0x0f1316);
+                const opacity = this.clampValue(0.84 + (conf * 0.08), 0.8, 0.94);
+                const transmission = this.clampValue(0.2 + (spec * 0.12), 0.18, 0.36);
+                const roughness = this.clampValue(0.16 - (spec * 0.08), 0.05, 0.22);
+                const emissiveIntensity = this.clampValue(0.2 + (spec * 0.16), 0.16, 0.42);
+                const emissiveColor = stats.color ? stats.color.clone().multiplyScalar(0.52) : new THREE.Color(0x101418);
+                const flakeStrength = this.clampValue(0.24 + (spec * 0.24) + (conf * 0.08), 0.2, 0.52);
+                const flakeScale = 24 + (spec * 14);
 
                 const material = new THREE.MeshPhysicalMaterial({
                     color: 0xffffff,
@@ -963,15 +973,46 @@
                     opacity,
                     transmission,
                     roughness,
-                    metalness: 0.85,
-                    clearcoat: 0.55,
-                    clearcoatRoughness: 0.22,
-                    ior: 1.45,
-                    thickness: 0.9,
+                    metalness: 0.62,
+                    clearcoat: 1.0,
+                    clearcoatRoughness: 0.08,
+                    ior: 1.52,
+                    thickness: 1.45,
+                    reflectivity: 1.0,
                     emissive: emissiveColor,
                     emissiveIntensity,
                     vertexColors: true
                 });
+                material.onBeforeCompile = (shader) => {
+                    shader.uniforms.uCrystalTime = { value: 0 };
+                    shader.uniforms.uFlakeStrength = { value: flakeStrength };
+                    shader.uniforms.uFlakeScale = { value: flakeScale };
+                    shader.fragmentShader = shader.fragmentShader
+                        .replace(
+                            '#include <common>',
+                            `#include <common>
+uniform float uCrystalTime;
+uniform float uFlakeStrength;
+uniform float uFlakeScale;
+float crystalHash(vec3 p) {
+    p = fract(p * 0.1031);
+    p += dot(p, p.yzx + 33.33);
+    return fract((p.x + p.y) * p.z);
+}
+`
+                        )
+                        .replace(
+                            '#include <dithering_fragment>',
+                            `float flakeField = crystalHash(floor(vViewPosition * uFlakeScale));
+float flakeMask = smoothstep(0.962, 1.0, flakeField);
+float flicker = 0.72 + 0.28 * sin((uCrystalTime * 1.7) + (flakeField * 45.0));
+float viewFactor = pow(1.0 - clamp(abs(normalize(vViewPosition).z), 0.0, 1.0), 1.8);
+float sparkle = flakeMask * flicker * (0.35 + viewFactor);
+gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
+#include <dithering_fragment>`
+                        );
+                    material.userData.crystalUniforms = shader.uniforms;
+                };
                 material.depthWrite = false;
                 material.depthTest = true;
                 return material;
@@ -1380,39 +1421,82 @@
 
             processData() {
                 const sourceKeys = Array.from(new Set(this.nodes.map(n => this.getSourceKey(n)).filter(Boolean))).sort();
-                const bandSpacing = CONFIG.sourceBands ? CONFIG.sourceBands.spacing : 200;
-                const bandJitter = CONFIG.sourceBands ? CONFIG.sourceBands.jitter : 40;
+                const triAxis = CONFIG.triAxis || {};
+                const laneCount = Math.max(3, triAxis.laneCount || 3);
+                const centerLane = Math.floor(laneCount / 2);
+                const bandSpacing = triAxis.laneSpacing || (CONFIG.sourceBands ? CONFIG.sourceBands.spacing : 220);
+                const bandJitter = (triAxis.laneJitter !== undefined && triAxis.laneJitter !== null)
+                    ? triAxis.laneJitter
+                    : (CONFIG.sourceBands ? CONFIG.sourceBands.jitter : 18);
+                const laneSpin = Array.isArray(triAxis.laneSpin) ? triAxis.laneSpin : [1, -1, 1];
+                const laneCounts = Array.from({ length: laneCount }, () => 0);
+                const sourceLaneMap = {};
+                const assignLane = (predicate, laneIndex) => {
+                    sourceKeys.forEach(key => {
+                        if (sourceLaneMap[key] !== undefined) return;
+                        if (!predicate(key)) return;
+                        sourceLaneMap[key] = laneIndex;
+                        laneCounts[laneIndex] += 1;
+                    });
+                };
+                assignLane((key) => {
+                    const lower = String(key || '').toLowerCase();
+                    return lower.includes('threatfox') || lower.includes('abuse.ch') || lower.includes('malware');
+                }, 0);
+                assignLane((key) => String(key || '').toLowerCase().includes('urlhaus'), 1 % laneCount);
+                assignLane((key) => {
+                    const lower = String(key || '').toLowerCase();
+                    return lower.includes('ransomware') || lower.includes('extortion');
+                }, 2 % laneCount);
+                sourceKeys.forEach(key => {
+                    if (sourceLaneMap[key] !== undefined) return;
+                    let targetLane = 0;
+                    let minCount = laneCounts[0];
+                    for (let i = 1; i < laneCount; i++) {
+                        if (laneCounts[i] < minCount) {
+                            minCount = laneCounts[i];
+                            targetLane = i;
+                        }
+                    }
+                    sourceLaneMap[key] = targetLane;
+                    laneCounts[targetLane] += 1;
+                });
+
                 const bandMap = {};
-                sourceKeys.forEach((key, idx) => {
-                    const offset = (idx - (sourceKeys.length - 1) / 2) * bandSpacing;
+                sourceKeys.forEach((key) => {
+                    const laneIndex = sourceLaneMap[key] !== undefined ? sourceLaneMap[key] : centerLane;
+                    const offset = (laneIndex - centerLane) * bandSpacing;
                     bandMap[key] = offset;
                 });
+                this.sourceLaneMap = sourceLaneMap;
                 this.sourceBandMap = bandMap;
                 this.sourceSpinDirection = {};
-                sourceKeys.forEach((key, idx) => {
-                    this.sourceSpinDirection[key] = (idx % 2 === 0) ? 1 : -1;
-                });
                 sourceKeys.forEach(key => {
-                    const lower = String(key || '').toLowerCase();
-                    if (lower.includes('threatfox') || lower.includes('abuse.ch')) {
-                        this.sourceSpinDirection[key] = 1;
-                    }
-                    if (lower.includes('ransomware.live')) {
-                        this.sourceSpinDirection[key] = -1;
-                    }
+                    const laneIndex = sourceLaneMap[key] !== undefined ? sourceLaneMap[key] : centerLane;
+                    const laneDir = laneSpin[laneIndex] !== undefined ? laneSpin[laneIndex] : ((laneIndex % 2 === 0) ? 1 : -1);
+                    this.sourceSpinDirection[key] = laneDir >= 0 ? 1 : -1;
                 });
-                const threatKey = sourceKeys.find(k => {
-                    const lower = String(k || '').toLowerCase();
-                    return lower.includes('threatfox') || lower.includes('abuse.ch threatfox');
+                const laneColorAccum = Array.from({ length: laneCount }, () => new THREE.Color(0, 0, 0));
+                const laneColorCount = Array.from({ length: laneCount }, () => 0);
+                sourceKeys.forEach(key => {
+                    const laneIndex = sourceLaneMap[key] !== undefined ? sourceLaneMap[key] : centerLane;
+                    const sourceColorHex = this.getSourceColor(key) || CONFIG.nodeColor;
+                    const sourceColor = new THREE.Color(sourceColorHex);
+                    laneColorAccum[laneIndex].r += sourceColor.r;
+                    laneColorAccum[laneIndex].g += sourceColor.g;
+                    laneColorAccum[laneIndex].b += sourceColor.b;
+                    laneColorCount[laneIndex] += 1;
                 });
-                const urlhausKeys = sourceKeys.filter(k => String(k || '').toLowerCase().includes('urlhaus'));
-                if (threatKey && urlhausKeys.length) {
-                    const threatBand = bandMap[threatKey] || 0;
-                    const threatDir = (this.sourceSpinDirection[threatKey] !== undefined) ? this.sourceSpinDirection[threatKey] : 1;
-                    urlhausKeys.forEach(k => {
-                        bandMap[k] = threatBand;
-                        this.sourceSpinDirection[k] = -threatDir;
-                    });
+                this.laneColorMap = {};
+                for (let laneIndex = 0; laneIndex < laneCount; laneIndex++) {
+                    let laneColor;
+                    if (laneColorCount[laneIndex] > 0) {
+                        laneColor = laneColorAccum[laneIndex].clone().multiplyScalar(1 / laneColorCount[laneIndex]);
+                    } else {
+                        laneColor = new THREE.Color(CONFIG.nodeColor);
+                        laneColor.offsetHSL((laneIndex - centerLane) * 0.08, 0.18, 0.05);
+                    }
+                    this.laneColorMap[laneIndex] = `#${laneColor.getHexString()}`;
                 }
 
                 // Assign Z-planes based on data attributes, but preserve exported z if present
@@ -1460,21 +1544,40 @@
                         const jitter = (Math.abs(hash) % 1000) / 1000;
                         node.z = (node.z * CONFIG.depthBoost) + (CONFIG.depthJitter * (jitter - 0.5));
                         const sourceKey = this.getSourceKey(node);
-                        const bandOffset = bandMap[sourceKey] || 0;
+                        const laneIndex = sourceLaneMap[sourceKey] !== undefined ? sourceLaneMap[sourceKey] : centerLane;
+                        const bandOffset = bandMap[sourceKey] !== undefined ? bandMap[sourceKey] : ((laneIndex - centerLane) * bandSpacing);
                         let bandNoise = bandJitter * (this.hashScalar(`${node.id}-band`) - 0.5);
-                        if (sourceKey && String(sourceKey).toLowerCase().includes('urlhaus') && threatKey) {
-                            bandNoise = 0;
-                        }
                         node.z = node.z + bandOffset + bandNoise;
 
                         if (this.nodes.length > 10) {
                             const jitterSeed = this.hashScalar(`${node.id}-jitter`);
-                            const jitterX = (jitterSeed - 0.5) * 70;
-                            const jitterY = (this.hashScalar(`${node.id}-jitter-y`) - 0.5) * 70;
+                            const jitterX = (jitterSeed - 0.5) * 52;
+                            const jitterY = (this.hashScalar(`${node.id}-jitter-y`) - 0.5) * 52;
                             node.x += jitterX;
                             node.y += jitterY;
                         }
                     }
+                });
+                const laneCenters = Array.from({ length: laneCount }, () => ({ x: 0, y: 0, count: 0 }));
+                this.nodes.forEach(node => {
+                    const sourceKey = this.getSourceKey(node);
+                    const laneIndex = sourceLaneMap[sourceKey] !== undefined ? sourceLaneMap[sourceKey] : centerLane;
+                    const lane = laneCenters[laneIndex];
+                    lane.x += node.x;
+                    lane.y += node.y;
+                    lane.count += 1;
+                });
+                laneCenters.forEach(lane => {
+                    if (!lane.count) return;
+                    lane.x /= lane.count;
+                    lane.y /= lane.count;
+                });
+                this.nodes.forEach(node => {
+                    const sourceKey = this.getSourceKey(node);
+                    const laneIndex = sourceLaneMap[sourceKey] !== undefined ? sourceLaneMap[sourceKey] : centerLane;
+                    const lane = laneCenters[laneIndex];
+                    node.x -= lane.x;
+                    node.y -= lane.y;
                 });
 
                 // Recentre nodes so auto-spin stays on a tight central axis
@@ -1611,7 +1714,7 @@
                         proxy.coreGlowMesh = coreGlowMesh;
                         proxy.coreGlowInstanceId = i;
                         proxy.updateMatrix();
-                        const rawColor = new THREE.Color(this.resolveNodeColor(node));
+                        const rawColor = new THREE.Color(this.getIntegratedNodeColor(node));
                         const boosted = this.boostNodeColor(rawColor);
                         const glowOverride = node && (node.glow_color || node.glowColor || node.glow);
                         const glowColor = glowOverride ? new THREE.Color(glowOverride) : boosted;
@@ -2711,8 +2814,11 @@
 
             getSourceColor(source) {
                 // Prefer server-provided sourceDefs when available
-                if (this.sourceDefs && this.sourceDefs[source]) return this.sourceDefs[source];
                 const key = (source || '').toLowerCase();
+                if (this.sourceDefs) {
+                    if (this.sourceDefs[source]) return this.sourceDefs[source];
+                    if (this.sourceDefs[key]) return this.sourceDefs[key];
+                }
                 let hash = 0;
                 for (let i = 0; i < key.length; i++) {
                     hash = ((hash << 5) - hash) + key.charCodeAt(i);
@@ -2747,6 +2853,31 @@
                     return h;
                 };
                 return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+            }
+
+            getLaneIndexForNode(node) {
+                const triAxis = CONFIG.triAxis || {};
+                const laneCount = Math.max(3, triAxis.laneCount || 3);
+                const centerLane = Math.floor(laneCount / 2);
+                const sourceKey = this.getSourceKey(node);
+                if (!sourceKey) return centerLane;
+                if (this.sourceLaneMap && this.sourceLaneMap[sourceKey] !== undefined) {
+                    return this.sourceLaneMap[sourceKey];
+                }
+                return centerLane;
+            }
+
+            getIntegratedNodeColor(node) {
+                const baseHex = this.resolveNodeColor(node) || CONFIG.nodeColor;
+                const accentHex = this.getAccentColor(node) || baseHex;
+                const base = new THREE.Color(baseHex);
+                base.lerp(new THREE.Color(accentHex), 0.22);
+                const laneIdx = this.getLaneIndexForNode(node);
+                const laneHex = this.laneColorMap && this.laneColorMap[laneIdx];
+                if (laneHex) {
+                    base.lerp(new THREE.Color(laneHex), 0.28);
+                }
+                return `#${base.getHexString()}`;
             }
 
             isRansomwareKey(sourceKey) {
@@ -2888,10 +3019,12 @@
                 if (key && this.sourceSpinDirection && this.sourceSpinDirection[key] !== undefined) {
                     return this.sourceSpinDirection[key];
                 }
-                if (key) {
-                    const lower = String(key).toLowerCase();
-                    if (lower.includes('threatfox') || lower.includes('abuse.ch')) return 1;
-                    if (lower.includes('ransomware.live')) return -1;
+                const laneIdx = this.getLaneIndexForNode(node);
+                const laneSpin = (CONFIG.triAxis && Array.isArray(CONFIG.triAxis.laneSpin))
+                    ? CONFIG.triAxis.laneSpin
+                    : [1, -1, 1];
+                if (laneSpin[laneIdx] !== undefined) {
+                    return laneSpin[laneIdx] >= 0 ? 1 : -1;
                 }
                 return -1;
             }
@@ -3598,6 +3731,10 @@
                     const speed = (CONFIG.animation && CONFIG.animation.wheelSpeed) ? CONFIG.animation.wheelSpeed : 0.18;
                     this.spinAngle += deltaTime * speed;
                 }
+                this.instancedMeshes.forEach(mesh => {
+                    if (!mesh || !mesh.material || !mesh.material.userData || !mesh.material.userData.crystalUniforms) return;
+                    mesh.material.userData.crystalUniforms.uCrystalTime.value = time;
+                });
                 this.applyWheelSpin(time);
                 this.updateEdgePositions();
 
