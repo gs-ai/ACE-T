@@ -1426,46 +1426,43 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
 
 
             processData() {
-                const sourceKeys = Array.from(new Set(this.nodes.map(n => this.getSourceKey(n)).filter(Boolean))).sort();
+                const sourceCounts = {};
+                this.nodes.forEach(n => {
+                    const key = this.getSourceKey(n);
+                    if (!key) return;
+                    sourceCounts[key] = (sourceCounts[key] || 0) + 1;
+                });
+                const sourceKeys = Object.keys(sourceCounts).sort((a, b) => {
+                    const ca = sourceCounts[a] || 0;
+                    const cb = sourceCounts[b] || 0;
+                    if (cb !== ca) return cb - ca;
+                    return a.localeCompare(b);
+                });
                 const triAxis = CONFIG.triAxis || {};
-                const laneCount = Math.max(3, triAxis.laneCount || 3);
+                const configuredLanes = triAxis.laneCount || 3;
+                const laneCount = Math.max(3, configuredLanes, sourceKeys.length);
                 const centerLane = Math.floor(laneCount / 2);
                 const bandSpacing = triAxis.laneSpacing || (CONFIG.sourceBands ? CONFIG.sourceBands.spacing : 220);
                 const bandJitter = (triAxis.laneJitter !== undefined && triAxis.laneJitter !== null)
                     ? triAxis.laneJitter
                     : (CONFIG.sourceBands ? CONFIG.sourceBands.jitter : 18);
-                const laneSpin = Array.isArray(triAxis.laneSpin) ? triAxis.laneSpin : [1, -1, 1];
-                const laneCounts = Array.from({ length: laneCount }, () => 0);
-                const sourceLaneMap = {};
-                const assignLane = (predicate, laneIndex) => {
-                    sourceKeys.forEach(key => {
-                        if (sourceLaneMap[key] !== undefined) return;
-                        if (!predicate(key)) return;
-                        sourceLaneMap[key] = laneIndex;
-                        laneCounts[laneIndex] += 1;
-                    });
-                };
-                assignLane((key) => {
-                    const lower = String(key || '').toLowerCase();
-                    return lower.includes('threatfox') || lower.includes('abuse.ch') || lower.includes('malware');
-                }, 0);
-                assignLane((key) => String(key || '').toLowerCase().includes('urlhaus'), 1 % laneCount);
-                assignLane((key) => {
-                    const lower = String(key || '').toLowerCase();
-                    return lower.includes('ransomware') || lower.includes('extortion');
-                }, 2 % laneCount);
-                sourceKeys.forEach(key => {
-                    if (sourceLaneMap[key] !== undefined) return;
-                    let targetLane = 0;
-                    let minCount = laneCounts[0];
-                    for (let i = 1; i < laneCount; i++) {
-                        if (laneCounts[i] < minCount) {
-                            minCount = laneCounts[i];
-                            targetLane = i;
-                        }
+                const laneSpin = Array.from({ length: laneCount }, (_, idx) => {
+                    if (Array.isArray(triAxis.laneSpin) && triAxis.laneSpin[idx] !== undefined) {
+                        return triAxis.laneSpin[idx] >= 0 ? 1 : -1;
                     }
-                    sourceLaneMap[key] = targetLane;
-                    laneCounts[targetLane] += 1;
+                    return (idx % 2 === 0) ? 1 : -1;
+                });
+                const sourceLaneMap = {};
+                const laneOrder = [];
+                laneOrder.push(centerLane);
+                for (let step = 1; laneOrder.length < laneCount; step++) {
+                    const right = centerLane + step;
+                    const left = centerLane - step;
+                    if (right < laneCount) laneOrder.push(right);
+                    if (left >= 0 && laneOrder.length < laneCount) laneOrder.push(left);
+                }
+                sourceKeys.forEach((key, idx) => {
+                    sourceLaneMap[key] = laneOrder[idx % laneOrder.length];
                 });
 
                 const bandMap = {};
@@ -2928,13 +2925,20 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                 const sourceNorm = String(sourceKey || '').toLowerCase();
                 const hasSourceDef = !!(sourceNorm && this.sourceDefs && (this.sourceDefs[sourceKey] || this.sourceDefs[sourceNorm]));
                 const canonicalSource = sourceNorm.includes('threatfox') || sourceNorm.includes('urlhaus') || sourceNorm.includes('ransomware.live');
+                const categoryHex = this.getCategoryColor(node);
                 // Priority: known source color -> threat/category color -> fallback.
                 const useSourceColor = sourceNorm && (hasSourceDef || canonicalSource);
-                const selectedHex = useSourceColor ? (this.getSourceColor(sourceKey) || baseHex) : baseHex;
+                const selectedHex = useSourceColor
+                    ? (this.getSourceColor(sourceKey) || categoryHex || baseHex)
+                    : (categoryHex || baseHex);
                 const base = new THREE.Color(selectedHex);
                 const accent = new THREE.Color(accentHex);
                 const spec = this.getSpectrumValue(node);
                 const specShift = (spec - 0.5);
+                if (useSourceColor && categoryHex) {
+                    // Add a light category tint so source-colored nodes still reflect category identity.
+                    base.lerp(new THREE.Color(categoryHex), 0.12);
+                }
                 // Only a very subtle spectral variation to preserve visual identity.
                 base.offsetHSL(specShift * 0.02, 0.02, specShift * 0.02);
                 if (!useSourceColor) {
@@ -2949,6 +2953,23 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                 return key.includes('ransomware');
             }
 
+            getCategoryColor(node) {
+                if (!node) return null;
+                const sector = node.sector || node.victim_category || node.category || '';
+                const normalized = String(sector || '').trim().toLowerCase();
+                if (!normalized) return null;
+                if (normalized === 'cybercrime' || normalized === 'threatfox' || normalized === 'threat fox') {
+                    return CATEGORY_COLORS.ThreatFox || CATEGORY_COLORS['ThreatFox'] || null;
+                }
+                const mapped = Object.keys(CATEGORY_COLORS).find(k => k.toLowerCase() === normalized);
+                if (mapped) return CATEGORY_COLORS[mapped];
+                if (normalized === 'public sector') return CATEGORY_COLORS.Government || CATEGORY_COLORS['Government'] || null;
+                if (normalized === 'transportation/logistics' || normalized === 'transportation / logistics') {
+                    return CATEGORY_COLORS.Transportation || CATEGORY_COLORS['Transportation'] || null;
+                }
+                return null;
+            }
+
             resolveNodeColor(node) {
                 if (!node) return CONFIG.nodeColor;
                 if (node.node_color) return node.node_color;
@@ -2958,19 +2979,8 @@ gl_FragColor.rgb += vec3(1.0, 0.95, 0.86) * sparkle * uFlakeStrength;
                 if (node.spectral_color) return node.spectral_color;
                 if (node.spectralColor) return node.spectralColor;
                 if (node.color && String(node.color).length) return node.color;
-                const sector = node.sector || node.victim_category || node.category || '';
-                const normalized = String(sector || '').trim().toLowerCase();
-                if (normalized) {
-                    if (normalized === 'cybercrime' || normalized === 'threatfox' || normalized === 'threat fox') {
-                        return CATEGORY_COLORS.ThreatFox || CATEGORY_COLORS['ThreatFox'];
-                    }
-                    const mapped = Object.keys(CATEGORY_COLORS).find(k => k.toLowerCase() === normalized);
-                    if (mapped) return CATEGORY_COLORS[mapped];
-                    if (normalized === 'public sector') return CATEGORY_COLORS.Government || CATEGORY_COLORS['Government'];
-                    if (normalized === 'transportation/logistics' || normalized === 'transportation / logistics') {
-                        return CATEGORY_COLORS.Transportation || CATEGORY_COLORS['Transportation'];
-                    }
-                }
+                const categoryColor = this.getCategoryColor(node);
+                if (categoryColor) return categoryColor;
                 if (node.source_color) return node.source_color;
                 if (node.sourceColor) return node.sourceColor;
                 return CONFIG.nodeColor;
