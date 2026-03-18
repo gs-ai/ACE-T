@@ -1424,19 +1424,32 @@ def _extract_domain(value: str) -> str:
         host = parsed.netloc or parsed.path
     except Exception:
         host = text
+    if '@' in host:
+        host = host.rsplit('@', 1)[-1]
+    if ':' in host:
+        host = host.split(':', 1)[0]
     host = host.lower()
-    if host.startswith('www.'):
-        host = host[4:]
+    host = host.strip().strip('.')
     if '/' in host:
         host = host.split('/', 1)[0]
     return host
 
+def _is_same_or_subdomain(host: str, base_domain: str) -> bool:
+    host_text = str(host or '').strip().lower().strip('.')
+    base_text = str(base_domain or '').strip().lower().strip('.')
+    if not host_text or not base_text:
+        return False
+    return host_text == base_text or host_text.endswith(f".{base_text}")
+
+def _is_domain_reference(value: str, base_domain: str) -> bool:
+    return _is_same_or_subdomain(_extract_domain(value), base_domain)
+
 def _derive_source_from_url(url: str, fallback: str) -> str:
     domain = _extract_domain(url)
     if domain:
-        if domain.endswith('reddit.com'):
+        if _is_same_or_subdomain(domain, 'reddit.com'):
             return 'reddit.com'
-        if domain.endswith('ransomware.live'):
+        if _is_same_or_subdomain(domain, 'ransomware.live'):
             return 'ransomware.live'
         return domain
     return fallback or 'unknown'
@@ -1444,7 +1457,7 @@ def _derive_source_from_url(url: str, fallback: str) -> str:
 def _is_reddit_reference(value: str) -> bool:
     if not value:
         return False
-    return 'reddit.com' in str(value).lower()
+    return _is_domain_reference(value, 'reddit.com')
 
 def _is_law_match(*values: str) -> bool:
     for value in values:
@@ -1604,14 +1617,16 @@ def load_all_raw_records():
                             # Even if we can't extract specific details, we can use the URL/entity name
                             if not victim_name:
                                 # Extract victim name from URL or entity name
-                                if 'reddit.com' in name:
+                                if _is_reddit_reference(name):
                                     # For Reddit URLs, try to extract meaningful title from URL path
-                                    path_parts = name.split('/')
-                                    if len(path_parts) > 6:  # /r/subreddit/comments/id/title/
-                                        title_slug = path_parts[6]  # Get the title part
+                                    parsed_name = urllib.parse.urlparse(name if '://' in name else f'https://{name}')
+                                    path_parts = [part for part in parsed_name.path.split('/') if part]
+                                    if len(path_parts) >= 4 and path_parts[0].lower() == 'r' and path_parts[2].lower() == 'comments':
+                                        title_slug = path_parts[3]
                                         victim_name = title_slug.replace('_', ' ').replace('-', ' ')[:50]
                                     else:
-                                        victim_name = f"Reddit Post {name.split('/')[-2]}"
+                                        post_token = path_parts[-1] if path_parts else 'unknown'
+                                        victim_name = f"Reddit Post {post_token}"
                                 else:
                                     victim_name = name[:50]
 
@@ -2285,14 +2300,9 @@ def build_graph():
         victim_domain = None
         website = record.get('url') or record.get('website') or record.get('link') or record.get('source_url')
         if website:
-            # Simple domain extraction
-            try:
-                from urllib.parse import urlparse
-                parsed = urlparse(website)
-                if parsed.netloc and 'reddit.com' not in parsed.netloc:
-                    victim_domain = parsed.netloc.lower()
-            except:
-                pass
+            candidate_domain = _extract_domain(website)
+            if candidate_domain and not _is_same_or_subdomain(candidate_domain, 'reddit.com'):
+                victim_domain = candidate_domain
 
         label_value = victim_name
         if (not label_value or label_value.lower() in {'unknown', 'unknown victim'}) and victim_domain:
@@ -2595,13 +2605,9 @@ def build_graph_streaming(batch_size=1, delay_between_batches=0.5, poll_interval
             victim_domain = None
             website = record.get('url') or record.get('website') or record.get('link')
             if website:
-                try:
-                    from urllib.parse import urlparse
-                    parsed = urlparse(website)
-                    if parsed.netloc and 'reddit.com' not in parsed.netloc:
-                        victim_domain = parsed.netloc.lower()
-                except:
-                    pass
+                candidate_domain = _extract_domain(website)
+                if candidate_domain and not _is_same_or_subdomain(candidate_domain, 'reddit.com'):
+                    victim_domain = candidate_domain
 
             label_value = victim_name
             if (not label_value or label_value.lower() in {'unknown', 'unknown victim'}) and victim_domain:
