@@ -2,6 +2,8 @@
 __pycache__/
 *.pyc
 .venv/
+.env
+.env.*
 
 # Generated graph artifacts
 graph/graph_3d.json
@@ -11,9 +13,19 @@ graph/last_live_count.txt
 
 # Generated runtime state
 db/osint.db
-outside_data/ransomware_live_cache.json
-outside_data/ransomware_live_api_key.txt
-outside_data/threatfox_api_key.txt
+outside_data/*
+!outside_data/.gitkeep
+data/ingest_summary.json
+
+# Secret/key material
+*.pem
+*.key
+*.p12
+*.pfx
+*.pkcs12
+*api_key*.txt
+*token*.txt
+*secret*.txt
 
 # Generated ingest outputs (keep directory scaffolding only)
 data/background_knowledge/*
@@ -30,3 +42,6 @@ data/quarantine/*
 !data/quarantine/.gitkeep
 data/intel_drops/*
 !data/intel_drops/.gitkeep
+
+# Local OS artifacts
+.DS_Store

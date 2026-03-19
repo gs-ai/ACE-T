@@ -1,12 +1,28 @@
 {
   "sources": [
     {
+      "name": "abuse.ch feodotracker",
+      "color": "#b7ff2d"
+    },
+    {
       "name": "abuse.ch threatfox",
       "color": "#39ff14"
     },
     {
       "name": "abuse.ch urlhaus",
       "color": "#00c8ff"
+    },
+    {
+      "name": "c2intelfeeds",
+      "color": "#a78bfa"
+    },
+    {
+      "name": "carbon black c2",
+      "color": "#fb7185"
+    },
+    {
+      "name": "montysecurity c2 tracker",
+      "color": "#f59e0b"
     },
     {
       "name": "ransomware.live",
