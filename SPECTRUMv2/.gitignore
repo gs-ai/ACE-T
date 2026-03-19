@@ -13,8 +13,7 @@ graph/last_live_count.txt
 
 # Generated runtime state
 db/osint.db
-outside_data/*
-!outside_data/.gitkeep
+outside_data/
 data/ingest_summary.json
 
 # Secret/key material
