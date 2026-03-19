@@ -10,6 +10,12 @@ fi
 cd "$ROOT_DIR"
 export PYTHONPATH="$ROOT_DIR:$ROOT_DIR/src:${PYTHONPATH:-}"
 
+# Keep live and historical viewers on the exact same script.
+if [[ -f graph/ace_t_spectrum_3d.html ]]; then
+  mkdir -p gui
+  cp graph/ace_t_spectrum_3d.html gui/ace_t_spectrum_3d.html || true
+fi
+
 # Stop any existing servers on port 8000
 if command -v lsof >/dev/null 2>&1; then
   lsof -ti :8000 | xargs -r kill -9 || true
@@ -21,6 +27,17 @@ pkill -f "graph/launch_viewer.py" >/dev/null 2>&1 || true
 
 # Force streaming off unless explicitly enabled by the caller
 export ACE_T_ENABLE_STREAMING="${ACE_T_ENABLE_STREAMING:-0}"
+is_streaming=0
+if [[ "${ACE_T_ENABLE_STREAMING}" == "1" || "${ACE_T_ENABLE_STREAMING}" == "true" || "${ACE_T_ENABLE_STREAMING}" == "yes" ]]; then
+  is_streaming=1
+fi
+
+# In streaming mode, prefer fast startup from cached artifacts unless caller disables it.
+if [[ "$is_streaming" -eq 1 ]]; then
+  export ACE_T_ASYNC_INITIAL_BUILD="${ACE_T_ASYNC_INITIAL_BUILD:-1}"
+else
+  export ACE_T_ASYNC_INITIAL_BUILD="${ACE_T_ASYNC_INITIAL_BUILD:-1}"
+fi
 
 # Default to rebuild unless explicitly skipped by caller
 if [[ -z "${ACE_T_SKIP_BUILD+x}" ]]; then
@@ -32,8 +49,16 @@ if [[ "${ACE_T_FORCE_BUILD:-0}" == "1" ]]; then
   export ACE_T_SKIP_BUILD="0"
 fi
 
+# Fast streaming start: if cached artifacts exist, skip blocking pre-build and refresh in background.
+if [[ "$is_streaming" -eq 1 && "${ACE_T_ASYNC_INITIAL_BUILD:-0}" == "1" && "${ACE_T_FORCE_BUILD:-0}" != "1" ]]; then
+  if [[ -f graph/graph_3d.json && -f graph/graph_3d_render.json ]]; then
+    export ACE_T_SKIP_BUILD="1"
+  fi
+fi
+
 # Reset generated artifacts unless explicitly told to reuse cached data
-if [[ "${ACE_T_SKIP_BUILD:-0}" != "1" ]]; then
+if [[ "${ACE_T_SKIP_BUILD:-0}" != "1" && "${ACE_T_ASYNC_INITIAL_BUILD:-0}" != "1" ]]; then
+  echo "Building graph artifacts before launch. This can take 1-3 minutes depending on feed sizes..."
   rm -f graph/graph_3d.json graph/graph_3d_render.json || true
 fi
 

@@ -31,6 +31,15 @@ sys.path.append(str(PROJECT_ROOT))
 REALTIME_FEEDS_AVAILABLE = False
 fetch_feed = None
 THREAT_FEEDS = {}
+TIERED_INGEST_AVAILABLE = False
+run_tiered_ingest = None
+
+try:
+    from src.modules.tiered_ingest import ingest_all as run_tiered_ingest  # type: ignore
+    TIERED_INGEST_AVAILABLE = True
+except Exception:
+    TIERED_INGEST_AVAILABLE = False
+    run_tiered_ingest = None
 
 def _load_threatfox_api_key() -> str:
     key = (os.getenv('THREATFOX_API_KEY') or os.getenv('ABUSECH_AUTH_KEY') or '').strip()
@@ -663,7 +672,15 @@ def _build_allowed_sources() -> set:
     if isinstance(c2_cfg, dict):
         for name, entry in c2_cfg.items():
             if isinstance(entry, dict) and entry.get('enabled'):
-                allowed.add(str(name))
+                raw_name = _normalize_source_name(str(name))
+                allowed.add(raw_name)
+                if raw_name.startswith('c2intelfeeds'):
+                    allowed.add('c2intelfeeds')
+                if raw_name in {'montysecurity_c2', 'montysecurity c2', 'montysecurity c2 tracker'}:
+                    allowed.add('montysecurity c2 tracker')
+                if raw_name in {'carbon_black_shadowpad', 'carbon black c2', 'carbon_black_c2'}:
+                    allowed.add('carbon black c2')
+                    allowed.add('shadowpad c2')
 
     # reputation feeds
     rep_cfg = cfg.get('reputation', {}) if isinstance(cfg, dict) else {}
@@ -890,6 +907,18 @@ def _build_ransomware_live_query_plan(cfg: dict) -> list[tuple[str, str | None]]
 
 def load_ransomware_live_victims():
     """Load ransomware.live victims with strict call limits and local caching."""
+    cfg = _load_ingest_sources_config()
+    ransomware_cfg = cfg.get('ransomware_live', {}) if isinstance(cfg, dict) else {}
+    public_api_base = (
+        os.environ.get('RANSOMWARE_LIVE_PUBLIC_API_BASE')
+        or (ransomware_cfg.get('public_api_base') if isinstance(ransomware_cfg, dict) else None)
+        or 'https://api.ransomware.live/v2/recentvictims'
+    )
+    public_fallback_enabled = str(
+        os.environ.get('RANSOMWARE_LIVE_PUBLIC_FALLBACK', '1')
+    ).strip().lower() in {'1', 'true', 'yes'}
+    public_timeout = int(os.environ.get('RANSOMWARE_LIVE_PUBLIC_TIMEOUT', '90'))
+
     api_key = os.environ.get('RANSOMWARE_LIVE_API_KEY')
     if not api_key:
         key_file = PROJECT_ROOT / 'outside_data' / 'ransomware_live_api_key.txt'
@@ -898,12 +927,6 @@ def load_ransomware_live_victims():
                 api_key = key_file.read_text().strip()
             except Exception:
                 api_key = None
-
-    if not api_key:
-        return []
-
-    cfg = _load_ingest_sources_config()
-    ransomware_cfg = cfg.get('ransomware_live', {}) if isinstance(cfg, dict) else {}
     query_plan = _build_ransomware_live_query_plan(ransomware_cfg)
     if not query_plan:
         fallback = os.environ.get('RANSOMWARE_LIVE_QUERY', 'law')
@@ -927,7 +950,57 @@ def load_ransomware_live_victims():
     query_cache = cache.get('query_cache', {}) if isinstance(cache.get('query_cache', {}), dict) else {}
     all_victims = []
 
+    if not api_key and public_fallback_enabled:
+        public_key = '__public_recent__'
+        public_cache = query_cache.get(public_key, {})
+        last_fetch_raw = public_cache.get('last_fetch_utc')
+        last_fetch = None
+        if last_fetch_raw:
+            try:
+                last_fetch = datetime.fromisoformat(last_fetch_raw.replace('Z', '+00:00'))
+            except Exception:
+                last_fetch = None
+
+        use_cache = False
+        if last_fetch:
+            elapsed = datetime.now(timezone.utc) - last_fetch.replace(tzinfo=timezone.utc)
+            if elapsed < timedelta(minutes=min_interval_minutes):
+                use_cache = True
+
+        victims = []
+        if use_cache:
+            victims = _extract_ransomware_live_victims(public_cache.get('data', {}))
+        else:
+            req = urllib.request.Request(
+                public_api_base,
+                headers={'accept': 'application/json', 'user-agent': 'ACE-T-SPECTRUM/1.0'}
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=public_timeout) as resp:
+                    body = resp.read().decode('utf-8')
+                    payload = json.loads(body)
+                    victims = _extract_ransomware_live_victims(payload)
+                    query_cache[public_key] = {
+                        'last_fetch_utc': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                        'data': payload
+                    }
+                    daily_count += 1
+            except Exception:
+                victims = _extract_ransomware_live_victims(public_cache.get('data', {}))
+
+        if victims:
+            all_victims.extend(victims)
+        cache_payload = {
+            'daily_date': today,
+            'daily_count': daily_count,
+            'query_cache': query_cache,
+            'queries': [term for term, _ in query_plan]
+        }
+        _save_ransomware_live_cache(cache_path, cache_payload)
+
     for term, category in query_plan:
+        if not api_key:
+            break
         if daily_count >= max_daily_calls:
             break
         term_key = str(term).strip().lower()
@@ -972,6 +1045,48 @@ def load_ransomware_live_victims():
         daily_count += 1
         fresh = _extract_ransomware_live_victims(payload)
         all_victims.extend(_apply_victim_category(fresh, category))
+
+    # If pro API is unavailable or returns nothing, fallback to public victims feed.
+    if not all_victims and public_fallback_enabled:
+        public_key = '__public_recent__'
+        public_cache = query_cache.get(public_key, {})
+        last_fetch_raw = public_cache.get('last_fetch_utc')
+        last_fetch = None
+        if last_fetch_raw:
+            try:
+                last_fetch = datetime.fromisoformat(last_fetch_raw.replace('Z', '+00:00'))
+            except Exception:
+                last_fetch = None
+
+        use_cache = False
+        if last_fetch:
+            elapsed = datetime.now(timezone.utc) - last_fetch.replace(tzinfo=timezone.utc)
+            if elapsed < timedelta(minutes=min_interval_minutes):
+                use_cache = True
+
+        public_victims = []
+        if use_cache:
+            public_victims = _extract_ransomware_live_victims(public_cache.get('data', {}))
+        else:
+            req = urllib.request.Request(
+                public_api_base,
+                headers={'accept': 'application/json', 'user-agent': 'ACE-T-SPECTRUM/1.0'}
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=public_timeout) as resp:
+                    body = resp.read().decode('utf-8')
+                    payload = json.loads(body)
+                    public_victims = _extract_ransomware_live_victims(payload)
+                    query_cache[public_key] = {
+                        'last_fetch_utc': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                        'data': payload
+                    }
+                    daily_count += 1
+            except Exception:
+                public_victims = _extract_ransomware_live_victims(public_cache.get('data', {}))
+
+        if public_victims:
+            all_victims.extend(public_victims)
 
     if daily_count >= max_daily_calls and not all_victims:
         for term, category in query_plan:
@@ -1381,6 +1496,90 @@ def load_urlhaus():
     print(f"Loaded {len(records)} URLhaus records")
     return records
 
+
+def load_feodotracker():
+    """Load FeodoTracker C2 IP blocklist feed."""
+    if not is_tier1_source('abuse.ch feodotracker'):
+        print("Abuse.ch FeodoTracker excluded by ingestion governance")
+        return []
+
+    cfg = _load_ingest_sources_config()
+    abuse_cfg = cfg.get('abuse_ch', {}) if isinstance(cfg, dict) else {}
+    feodo_cfg = abuse_cfg.get('feodotracker', {}) if isinstance(abuse_cfg, dict) else {}
+    url = (feodo_cfg.get('url') if isinstance(feodo_cfg, dict) else None) or "https://feodotracker.abuse.ch/downloads/ipblocklist.csv"
+    timeout = int(os.environ.get('FEODOTRACKER_TIMEOUT', '12'))
+    max_records = int(os.environ.get('FEODOTRACKER_MAX_RECORDS', '5000'))
+
+    records = []
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'ACE-T-SPECTRUM/1.0'})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            payload = resp.read().decode('utf-8', errors='replace')
+    except Exception as e:
+        print(f"Error fetching FeodoTracker: {e}")
+        return records
+
+    lines = [ln for ln in payload.splitlines() if ln and not ln.lstrip().startswith('#')]
+    if not lines:
+        return records
+
+    reader = csv.reader(lines)
+    rows = list(reader)
+    if not rows:
+        return records
+
+    header = [str(h).strip().lower() for h in rows[0]]
+    idx = {name: i for i, name in enumerate(header)}
+
+    def _get(row, key):
+        i = idx.get(key)
+        if i is None or i >= len(row):
+            return ''
+        return str(row[i]).strip()
+
+    for row in rows[1:]:
+        if not row:
+            continue
+        ip_value = _get(row, 'dst_ip') or _get(row, 'ip_address') or _get(row, 'ip')
+        if not ip_value:
+            continue
+        first_seen = _get(row, 'first_seen_utc') or _get(row, 'firstseen') or datetime.now().isoformat()
+        last_online = _get(row, 'last_online') or _get(row, 'lastseen')
+        malware = _get(row, 'malware') or _get(row, 'threat') or 'Unknown'
+        status = _get(row, 'status') or _get(row, 'c2_status') or ''
+        desc_parts = [f"FeodoTracker C2 IP: {ip_value}"]
+        if malware:
+            desc_parts.append(f"Malware: {malware}")
+        if status:
+            desc_parts.append(f"Status: {status}")
+        if last_online:
+            desc_parts.append(f"Last online: {last_online}")
+
+        record = {
+            'source': 'Abuse.ch FeodoTracker',
+            'category': 'feodotracker',
+            'title': ip_value,
+            'victim': ip_value,
+            'group': malware or 'Unknown',
+            'sector': 'FeodoTracker',
+            'country': '',
+            'subsource': 'ip',
+            'discovered': first_seen,
+            'description': ' | '.join(desc_parts),
+            'source_url': 'https://feodotracker.abuse.ch/',
+            'ioc_type': 'ip',
+            'ioc_value': ip_value,
+            'ip': ip_value,
+            'first_seen': first_seen,
+            'last_seen': last_online or first_seen,
+        }
+        records.append(record)
+        if len(records) >= max_records:
+            break
+
+    print(f"Loaded {len(records)} FeodoTracker records")
+    return records
+
 def _log_source_summary(records: list, label: str) -> None:
     if not records:
         print(f"{label}: 0 records")
@@ -1469,6 +1668,53 @@ def _source_color_for(source: str) -> str:
     key = (source or '').lower()
     if not key:
         return '#00E5FF'
+    canonical = {
+        'ransomware.live': '#ff3b30',
+        'abuse.ch threatfox': '#39ff14',
+        'abuse.ch urlhaus': '#00c8ff',
+        'abuse.ch feodotracker': '#b7ff2d',
+        'abuse.ch ja3': '#5eead4',
+        'c2intelfeeds': '#a78bfa',
+        'montysecurity c2 tracker': '#f59e0b',
+        'carbon black c2': '#fb7185',
+        'shadowpad c2': '#f97316',
+        'blocklist.de': '#22d3ee',
+        'ipsum': '#60a5fa',
+        'alienvault': '#8b5cf6',
+        'proofpoint': '#ef4444',
+        'cisa kev': '#facc15',
+        'nvd cve': '#818cf8',
+    }
+    if key in canonical:
+        return canonical[key]
+    if 'threatfox' in key:
+        return canonical['abuse.ch threatfox']
+    if 'urlhaus' in key:
+        return canonical['abuse.ch urlhaus']
+    if 'feodotracker' in key:
+        return canonical['abuse.ch feodotracker']
+    if 'ransomware.live' in key:
+        return canonical['ransomware.live']
+    if 'c2intelfeeds' in key:
+        return canonical['c2intelfeeds']
+    if 'montysecurity' in key:
+        return canonical['montysecurity c2 tracker']
+    if 'carbon black' in key or 'carbon_black' in key:
+        return canonical['carbon black c2']
+    if 'shadowpad' in key:
+        return canonical['shadowpad c2']
+    if 'blocklist' in key:
+        return canonical['blocklist.de']
+    if 'ipsum' in key:
+        return canonical['ipsum']
+    if 'alienvault' in key:
+        return canonical['alienvault']
+    if 'proofpoint' in key:
+        return canonical['proofpoint']
+    if 'cisa' in key or 'kev' in key:
+        return canonical['cisa kev']
+    if 'nvd' in key or 'cve' in key:
+        return canonical['nvd cve']
     h = 0
     for ch in key:
         h = ((h << 5) - h) + ord(ch)
@@ -1500,6 +1746,105 @@ def _source_color_for(source: str) -> str:
         g = hue2rgb(p, q, h_norm)
         b = hue2rgb(p, q, h_norm - 1/3)
     return f"#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}"
+
+
+def _read_jsonl(path: Path) -> list:
+    if not path.exists():
+        return []
+    items = []
+    try:
+        with open(path, 'r', encoding='utf-8') as handle:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    item = json.loads(line)
+                except Exception:
+                    continue
+                if isinstance(item, dict):
+                    items.append(item)
+    except Exception:
+        return []
+    return items
+
+
+def _normalize_infra_source_name(value: str) -> str:
+    key = _normalize_source_name(value)
+    if not key:
+        return ''
+    if key in {'threatfox', 'abuse.ch threatfox', 'abuse_ch_threatfox'}:
+        return 'abuse.ch threatfox'
+    if key in {'urlhaus', 'abuse.ch urlhaus', 'abuse_ch_urlhaus'}:
+        return 'abuse.ch urlhaus'
+    if key in {'feodotracker', 'abuse.ch feodotracker', 'abuse_ch_feodotracker'}:
+        return 'abuse.ch feodotracker'
+    if key in {'ja3', 'abuse.ch ja3', 'abuse_ch_ja3'}:
+        return 'abuse.ch ja3'
+    if key.startswith('c2intelfeeds'):
+        return 'c2intelfeeds'
+    if key in {'montysecurity_c2', 'montysecurity c2', 'montysecurity c2 tracker'}:
+        return 'montysecurity c2 tracker'
+    if key in {'carbon_black_shadowpad', 'carbon black c2', 'carbon_black_c2'}:
+        return 'carbon black c2'
+    if key in {'shadowpad_c2', 'shadowpad c2'}:
+        return 'shadowpad c2'
+    return key
+
+
+def _load_infrastructure_intel_records() -> list:
+    infra_path = PROJECT_ROOT / 'data' / 'infrastructure_intel' / 'infrastructure_intel.jsonl'
+    payload = _read_jsonl(infra_path)
+    records = []
+    for entry in payload:
+        source = _normalize_infra_source_name(entry.get('source') or '')
+        if not source or not is_tier1_source(source):
+            continue
+        # ThreatFox/URLhaus are already loaded via dedicated parsers above.
+        if source in {'abuse.ch threatfox', 'abuse.ch urlhaus'}:
+            continue
+        indicator = str(entry.get('indicator') or '').strip()
+        if not indicator:
+            continue
+        ioc_type = str(entry.get('indicator_type') or 'unknown').strip().lower()
+        first_seen = entry.get('first_seen') or datetime.now().isoformat()
+        last_seen = entry.get('last_seen') or first_seen
+        meta = entry.get('metadata') or {}
+        tags = entry.get('tags') if isinstance(entry.get('tags'), list) else []
+        group = str(meta.get('malware') or meta.get('family') or source).strip() or source
+        description = f"{source} {ioc_type}: {indicator}"
+        if tags:
+            description += f" | Tags: {', '.join(str(t) for t in tags[:8])}"
+
+        record = {
+            'source': source,
+            'category': 'infrastructure_intel',
+            'title': indicator,
+            'victim': indicator,
+            'group': group,
+            'sector': 'Infrastructure',
+            'country': '',
+            'subsource': ioc_type,
+            'discovered': first_seen,
+            'description': description,
+            'source_url': meta.get('url') or meta.get('source_url') or '',
+            'url': indicator if ioc_type == 'url' else None,
+            'ioc_type': ioc_type,
+            'ioc_value': indicator,
+            'tags': tags,
+            'first_seen': first_seen,
+            'last_seen': last_seen,
+        }
+        if ioc_type == 'ip':
+            record['ip'] = indicator
+        elif ioc_type == 'domain':
+            record['domain'] = indicator
+            record['victim_domain'] = indicator
+        elif ioc_type.startswith('hash'):
+            record['hash'] = indicator
+            record['hash_type'] = ioc_type
+        records.append(record)
+    return records
 
 def _write_sources_json(nodes: list) -> None:
     sources = {}
@@ -1668,7 +2013,7 @@ def load_all_raw_records():
         )
         discovered = victim.get('discovered') or victim.get('date') or victim.get('discovered_at') or victim.get('published')
         country = victim.get('country') or victim.get('country_code') or 'Unknown'
-        sector = victim.get('sector') or victim.get('industry') or 'Unknown'
+        sector = victim.get('sector') or victim.get('activity') or victim.get('industry') or 'Unknown'
         group = victim.get('group') or victim.get('gang') or victim.get('group_name') or 'Unknown'
         website = victim.get('website') or victim.get('url') or victim.get('link') or victim.get('post_url')
         website = _normalize_url(website)
@@ -1825,6 +2170,27 @@ def load_all_raw_records():
     raw_records.extend(urlhaus_records)
     if urlhaus_records:
         print(f"Loaded {len(urlhaus_records)} URLhaus records")
+
+    # Load FeodoTracker data (additional Tier-1 infrastructure source)
+    feodo_records = load_feodotracker()
+    raw_records.extend(feodo_records)
+    if feodo_records:
+        print(f"Loaded {len(feodo_records)} FeodoTracker records")
+
+    # Load additional infrastructure threat feeds via tiered ingest artifacts.
+    refresh_tiered = str(os.environ.get('ACE_T_REFRESH_TIERED', '1')).strip().lower() in {'1', 'true', 'yes'}
+    if TIERED_INGEST_AVAILABLE and run_tiered_ingest and refresh_tiered:
+        try:
+            tiered_summary = run_tiered_ingest()
+            infra_count = int((tiered_summary or {}).get('infrastructure_intel', 0))
+            print(f"Tiered ingest refreshed infrastructure intel: {infra_count} records")
+        except Exception as e:
+            print(f"Tiered ingest refresh failed: {e}")
+
+    infra_records = _load_infrastructure_intel_records()
+    raw_records.extend(infra_records)
+    if infra_records:
+        print(f"Loaded {len(infra_records)} infrastructure threat records")
 
     _normalize_records(raw_records)
     print(f"Total raw records: {len(raw_records)}")
@@ -2144,6 +2510,62 @@ def create_spectrum_edges(nodes: list) -> list:
             if _add_edge(orphan['id'], other['id'], 'SAME_GROUP', 1):
                 break
 
+    # SOURCE COVERAGE FAILSAFE
+    # Ensure each source has visible connector representation in the graph.
+    source_members = {}
+    for node in ordered_nodes:
+        source_key = _normalize_source_name(node.get('source') or node.get('source_key'))
+        if not source_key:
+            continue
+        source_members.setdefault(source_key, []).append(node)
+
+    def _source_of(node_id: str) -> str:
+        node = nodes_by_id.get(node_id) or {}
+        return _normalize_source_name(node.get('source') or node.get('source_key'))
+
+    def _has_intra_source_edge(source_key: str) -> bool:
+        for edge in edges:
+            a = _source_of(edge['source'])
+            b = _source_of(edge['target'])
+            if a == source_key and b == source_key:
+                return True
+        return False
+
+    def _has_any_source_edge(source_key: str) -> bool:
+        for edge in edges:
+            a = _source_of(edge['source'])
+            b = _source_of(edge['target'])
+            if a == source_key or b == source_key:
+                return True
+        return False
+
+    # Prefer an intra-source edge when source has at least 2 nodes.
+    for source_key, members in sorted(source_members.items(), key=lambda kv: kv[0]):
+        if len(members) < 2 or _has_intra_source_edge(source_key):
+            continue
+        ordered = sorted(members, key=lambda n: str(n.get('id')))
+        anchor = ordered[0]
+        for candidate in ordered[1: min(len(ordered), 12)]:
+            if _add_edge(anchor['id'], candidate['id'], 'SAME_GROUP', 1):
+                break
+
+    # If a source has exactly one node and no edges, connect it to nearest node by time.
+    for source_key, members in sorted(source_members.items(), key=lambda kv: kv[0]):
+        if len(members) != 1 or _has_any_source_edge(source_key):
+            continue
+        lone = members[0]
+        candidates = []
+        for other in ordered_nodes:
+            if other['id'] == lone['id']:
+                continue
+            delta = _time_delta_seconds(lone, other)
+            delta_key = delta if delta is not None else float('inf')
+            candidates.append((delta_key, str(other['id']), other))
+        candidates.sort(key=lambda x: (x[0], x[1]))
+        for _, __, other in candidates[:16]:
+            if _add_edge(lone['id'], other['id'], 'TIME_CLUSTER', 1):
+                break
+
     return edges
 
 def build_graph():
@@ -2195,17 +2617,8 @@ def build_graph():
             continue
         if not is_tier1_source(source):
             continue
-        # For Tier 1 sources, check if they're ransomware-related when applicable
-        threat_dict = {
-            'category': r.get('category', ''),
-            'indicators': {'group': r.get('group', ''), 'malware': r.get('group', '')},
-            'metadata': r
-        }
-        if (is_ransomware_threat(threat_dict) or 
-            source.lower() == 'ransomware.live' or 
-            source.lower() == 'abuse.ch threatfox' or
-            source.lower() == 'abuse.ch urlhaus'):
-            threat_records.append(r)
+        # All enabled Tier-1 feeds are first-class threat graph sources.
+        threat_records.append(r)
 
     total_threats = len(threat_records)
 
@@ -2290,6 +2703,7 @@ def build_graph():
         sector = record.get('sector') or 'Unknown'
         country = record.get('country') or 'Unknown'
         source = record.get('source') or 'Unknown'
+        source_key = _normalize_source_name(source)
         first_observed = record.get('discovered') or record.get('first_seen') or record.get('timestamp') or datetime.now().isoformat()
         last_observed = record.get('last_seen') or first_observed
         description = record.get('description') or record.get('notes') or 'Ransomware victim listing'
@@ -2331,8 +2745,8 @@ def build_graph():
             'group': group,
             'sector': sector or 'Unknown',
             'country': country or 'Unknown',
-            'source': _normalize_source_name(source),
-            'source_key': _normalize_source_name(source),
+            'source': source_key,
+            'source_key': source_key,
             'subsource': subsource,
             'source_url': source_url,
             'first_observed': first_observed,
@@ -2343,7 +2757,7 @@ def build_graph():
             'posted_at': record.get('discovered') or record.get('timestamp') or first_observed,
             'last_activity': record.get('last_seen') or record.get('last_observed') or record.get('updated_at') or last_observed,
             'spectrum_color': '#ff1a1a' if law_match else None,
-            'source_color': '#ff1a1a' if law_match else None
+            'source_color': '#ff1a1a' if law_match else _source_color_for(source_key)
         }
         if _is_threatfox_source(source):
             node['ioc_type'] = record.get('ioc_type') or record.get('subsource')
@@ -2521,13 +2935,8 @@ def build_graph_streaming(batch_size=1, delay_between_batches=0.5, poll_interval
                 continue
             if not is_tier1_source(source):
                 continue
-            threat_dict = {
-                'category': r.get('category', ''),
-                'indicators': {'group': r.get('group', ''), 'malware': r.get('group', '')},
-                'metadata': r
-            }
-            if is_ransomware_threat(threat_dict) or source.lower() == 'ransomware.live':
-                threat_records.append(r)
+            # All enabled Tier-1 feeds are first-class threat graph sources.
+            threat_records.append(r)
 
         # Create nodes for threat incidents according to SPECTRUM node contract
         nodes = []
@@ -2597,6 +3006,7 @@ def build_graph_streaming(batch_size=1, delay_between_batches=0.5, poll_interval
             sector = record.get('sector') or 'Unknown'
             country = record.get('country') or 'Unknown'
             source = record.get('source') or 'Unknown'
+            source_key = _normalize_source_name(source)
             first_observed = record.get('discovered') or record.get('first_seen') or record.get('timestamp') or datetime.now().isoformat()
             last_observed = record.get('last_seen') or first_observed
             description = record.get('description') or record.get('notes') or ''
@@ -2622,8 +3032,8 @@ def build_graph_streaming(batch_size=1, delay_between_batches=0.5, poll_interval
                 'group': group,
                 'sector': sector,
                 'country': country,
-                'source': _normalize_source_name(source),
-                'source_key': _normalize_source_name(source),
+                'source': source_key,
+                'source_key': source_key,
                 'subsource': record.get('subsource', ''),
                 'source_url': website,
                 'first_observed': first_observed,
@@ -2632,7 +3042,8 @@ def build_graph_streaming(batch_size=1, delay_between_batches=0.5, poll_interval
                 'confidence': record.get('predicted_prob') if record.get('predicted_prob') is not None else record.get('confidence'),
                 'severity': record.get('severity') or record.get('impact'),
                 'posted_at': record.get('discovered') or record.get('timestamp'),
-                'last_activity': record.get('last_seen') or record.get('last_observed') or record.get('updated_at')
+                'last_activity': record.get('last_seen') or record.get('last_observed') or record.get('updated_at'),
+                'source_color': _source_color_for(source_key)
             }
             nodes.append(node)
 
@@ -2650,6 +3061,32 @@ def build_graph_streaming(batch_size=1, delay_between_batches=0.5, poll_interval
                     continue
             filtered_nodes.append(node)
         nodes = filtered_nodes
+
+        # Apply canonical source/category colors in streaming mode so the live palette
+        # stays consistent with legend swatches.
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            source_key = _normalize_source_name(node.get('source') or node.get('source_key'))
+            if _is_threatfox_source(source_key):
+                node['source_color'] = '#39ff14'
+                node['node_color'] = node.get('node_color') or '#39ff14'
+                node['glow_color'] = node.get('glow_color') or '#39ff14'
+            elif source_key == 'abuse.ch urlhaus':
+                node['source_color'] = '#00c8ff'
+                node['node_color'] = node.get('node_color') or '#00c8ff'
+                node['glow_color'] = node.get('glow_color') or '#00c8ff'
+            elif source_key == 'ransomware.live':
+                node['source_color'] = node.get('source_color') or '#ff3333'
+            elif not node.get('source_color'):
+                node['source_color'] = _source_color_for(source_key)
+
+            sector_val = node.get('sector') or node.get('victim_category') or node.get('category')
+            category_color = _category_color_for(sector_val)
+            if category_color:
+                node['spectrum_color'] = category_color
+                if not node.get('source_color'):
+                    node['source_color'] = category_color
 
         # Create deterministic edges according to SPECTRUM directive
         edges = create_spectrum_edges(nodes)

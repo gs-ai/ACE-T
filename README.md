@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./SPECTRUMv2/af4a3946-938f-4a9b-94e6-096c3bb949ed.png" alt="SPECTRUM ACE-T Banner" width="1200">
+</p>
+
 # SPECTRUM ACE-T
 
 The active codebase is in [`SPECTRUMv2`](./SPECTRUMv2).

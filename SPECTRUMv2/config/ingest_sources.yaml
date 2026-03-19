@@ -1,6 +1,7 @@
 ransomware_live:
   enabled: true
   api_base: "https://api-pro.ransomware.live/victims/search"
+  public_api_base: "https://api.ransomware.live/v2/recentvictims"
   query: "law"
   query_terms:
     - law
@@ -99,13 +100,28 @@ abuse_ch:
 
 c2_intel:
   c2intelfeeds_verified:
-    enabled: false
+    enabled: true
+    url: "https://raw.githubusercontent.com/drb-ra/C2IntelFeeds/master/feeds/IPC2s.csv"
+    type: "csv"
+    indicator_type: "ip"
+    indicator_column: "ip"
   c2intelfeeds_30d:
-    enabled: false
+    enabled: true
+    url: "https://raw.githubusercontent.com/drb-ra/C2IntelFeeds/master/feeds/IPC2s-30day.csv"
+    type: "csv"
+    indicator_type: "ip"
+    indicator_column: "ip"
   montysecurity_c2:
-    enabled: false
+    enabled: true
+    url: "https://raw.githubusercontent.com/montysecurity/C2-Tracker/main/data/all.txt"
+    type: "txt"
+    indicator_type: "ip"
   carbon_black_shadowpad:
-    enabled: false
+    enabled: true
+    url: "https://raw.githubusercontent.com/carbonblack/active_c2_ioc_public/main/shadowpad/shadowpad_202210.tsv"
+    type: "tsv"
+    indicator_type: "ip"
+    indicator_column: "c2_ip"
 
 reputation:
   blocklist_de:
