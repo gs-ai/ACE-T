@@ -25,7 +25,7 @@ pytest>=8.2,<9
 python-dateutil==2.9.0.post0
 PyYAML==6.0.3
 rapidfuzz==3.14.3
-requests==2.32.5
+requests==2.33.0
 scrapling==0.3.11
 Scrapy>=2.14.2,<3.0
 selenium==4.39.0

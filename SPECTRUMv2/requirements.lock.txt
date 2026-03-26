@@ -185,7 +185,7 @@ RapidFuzz==3.14.3
 ratelim==0.1.6
 referencing==0.37.0
 regex==2025.11.3
-requests==2.32.5
+requests==2.33.0
 requests-file==3.0.1
 retrying==1.4.2
 rich @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_rich_1760026188/work/dist
